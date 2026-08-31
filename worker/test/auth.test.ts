@@ -17,6 +17,26 @@ describe('password hashing', () => {
     const b = await hashPassword('same-password');
     expect(a).not.toBe(b);
   });
+
+  it('rejects a malformed stored hash (not enough parts)', async () => {
+    expect(await verifyPassword('password', 'not-a-valid-hash')).toBe(false);
+  });
+
+  it('rejects a malformed stored hash (too many parts)', async () => {
+    expect(await verifyPassword('password', 'a:b:c:d')).toBe(false);
+  });
+
+  it('rejects a malformed stored hash (empty parts)', async () => {
+    expect(await verifyPassword('password', '100000::abc')).toBe(false);
+  });
+
+  it('rejects a malformed stored hash (non-integer iterations)', async () => {
+    expect(await verifyPassword('password', 'notanumber:deadbeef:cafe')).toBe(false);
+  });
+
+  it('rejects a malformed stored hash (zero iterations)', async () => {
+    expect(await verifyPassword('password', '0:deadbeef:cafe')).toBe(false);
+  });
 });
 
 describe('session tokens', () => {

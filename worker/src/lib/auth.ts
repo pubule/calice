@@ -10,6 +10,15 @@ function fromHex(hex: string): Uint8Array {
   return bytes;
 }
 
+function timingSafeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) {
+    diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return diff === 0;
+}
+
 export async function hashPassword(password: string): Promise<string> {
   const salt = crypto.getRandomValues(new Uint8Array(16));
   const keyMaterial = await crypto.subtle.importKey(
@@ -28,8 +37,11 @@ export async function hashPassword(password: string): Promise<string> {
 }
 
 export async function verifyPassword(password: string, stored: string): Promise<boolean> {
-  const [iterStr, saltHex, hashHex] = stored.split(':');
+  const parts = stored.split(':');
+  if (parts.length !== 3 || parts.some((p) => !p)) return false;
+  const [iterStr, saltHex, hashHex] = parts;
   const iterations = Number(iterStr);
+  if (!Number.isInteger(iterations) || iterations <= 0) return false;
   const salt = fromHex(saltHex);
   const keyMaterial = await crypto.subtle.importKey(
     'raw',
@@ -43,7 +55,7 @@ export async function verifyPassword(password: string, stored: string): Promise<
     keyMaterial,
     256,
   );
-  return toHex(derived) === hashHex;
+  return timingSafeEqual(toHex(derived), hashHex);
 }
 
 async function hmac(data: string, secret: string): Promise<string> {
@@ -70,7 +82,7 @@ export async function verifySession(token: string, secret: string): Promise<numb
   const [userIdStr, expStr, sig] = parts;
   const payload = `${userIdStr}.${expStr}`;
   const expected = await hmac(payload, secret);
-  if (expected !== sig) return null;
+  if (!timingSafeEqual(expected, sig)) return null;
   if (Date.now() > Number(expStr)) return null;
   const userId = Number(userIdStr);
   return Number.isInteger(userId) ? userId : null;
