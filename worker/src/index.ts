@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { authRoutes } from './routes/auth';
+import { cellarRoutes, inviteRoutes } from './routes/cellars';
 
 export type Env = {
   DB: D1Database;
@@ -14,6 +15,8 @@ const app = new Hono<{ Bindings: Env }>();
 
 app.get('/health', (c) => c.json({ ok: true }));
 app.route('/api/auth', authRoutes);
+app.route('/api/cellars', cellarRoutes);
+app.route('/api/invites', inviteRoutes);
 
 export default {
   fetch: app.fetch,
