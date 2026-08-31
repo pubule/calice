@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import { authRoutes } from './routes/auth';
 
 export type Env = {
   DB: D1Database;
@@ -12,6 +13,7 @@ export type Env = {
 const app = new Hono<{ Bindings: Env }>();
 
 app.get('/health', (c) => c.json({ ok: true }));
+app.route('/api/auth', authRoutes);
 
 export default {
   fetch: app.fetch,
