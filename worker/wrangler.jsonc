@@ -1,0 +1,18 @@
+{
+  "name": "calice-api",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-01-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "d1_databases": [
+    { "binding": "DB", "database_name": "calice-db", "database_id": "REPLACE_AFTER_D1_CREATE" }
+  ],
+  "r2_buckets": [
+    { "binding": "PHOTOS", "bucket_name": "calice-photos" }
+  ],
+  "triggers": {
+    "crons": ["0 8 * * *"]
+  },
+  "vars": {
+    "PAGES_ORIGIN": "https://calice.pages.dev"
+  }
+}
