@@ -4,7 +4,7 @@
   "compatibility_date": "2026-01-01",
   "compatibility_flags": ["nodejs_compat"],
   "d1_databases": [
-    { "binding": "DB", "database_name": "calice-db", "database_id": "REPLACE_AFTER_D1_CREATE" }
+    { "binding": "DB", "database_name": "calice-db", "database_id": "01336527-aa78-4967-909e-eb423784c90d" }
   ],
   "r2_buckets": [
     { "binding": "PHOTOS", "bucket_name": "calice-photos" }
