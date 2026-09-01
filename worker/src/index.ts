@@ -3,6 +3,7 @@ import { authRoutes } from './routes/auth';
 import { cellarRoutes, inviteRoutes } from './routes/cellars';
 import { wineRoutes } from './routes/wines';
 import { cellarBottleRoutes, bottleRoutes } from './routes/bottles';
+import { cellarWishlistRoutes, wishlistItemRoutes } from './routes/wishlist';
 
 export type Env = {
   DB: D1Database;
@@ -22,6 +23,8 @@ app.route('/api/invites', inviteRoutes);
 app.route('/api/wines', wineRoutes);
 app.route('/api/cellars', cellarBottleRoutes);
 app.route('/api/bottles', bottleRoutes);
+app.route('/api/cellars', cellarWishlistRoutes);
+app.route('/api/wishlist', wishlistItemRoutes);
 
 export default {
   fetch: app.fetch,
