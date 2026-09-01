@@ -63,4 +63,16 @@ describe('tasting notes visibility', () => {
     const strangerView = await (await app.request(`/api/bottles/${bottleId}/notes`, { headers: { cookie: stranger.cookie } }, env)).json<any[]>();
     expect(strangerView).toHaveLength(0);
   });
+
+  it('rejects a note write from a caller who is not a member of the bottle\'s cellar', async () => {
+    const outsider = await signup('outsider@notes.com');
+    const res = await app.request(
+      `/api/bottles/${bottleId}/notes`,
+      { method: 'POST', body: JSON.stringify({ rating: 5, text: 'not my cellar' }), headers: { cookie: outsider.cookie, 'content-type': 'application/json' } },
+      env,
+    );
+    expect(res.status).toBe(404);
+    const notes = await env.DB.prepare('select count(*) as n from tasting_notes where bottle_id = ?').bind(bottleId).first<{ n: number }>();
+    expect(notes!.n).toBe(0);
+  });
 });

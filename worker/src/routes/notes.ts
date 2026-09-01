@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { requireAuth } from '../lib/session';
+import { isCellarMember } from '../lib/cellars';
 import type { Env } from '../index';
 
 export const noteRoutes = new Hono<{ Bindings: Env; Variables: { userId: number } }>();
@@ -8,6 +9,8 @@ noteRoutes.use('*', requireAuth);
 noteRoutes.post('/:bottleId/notes', async (c) => {
   const bottleId = Number(c.req.param('bottleId'));
   const userId = c.get('userId');
+  const bottle = await c.env.DB.prepare('select cellar_id from bottles where id = ?').bind(bottleId).first<{ cellar_id: number }>();
+  if (!bottle || !(await isCellarMember(c.env.DB, bottle.cellar_id, userId))) return c.json({ error: 'not found' }, 404);
   const body = await c.req.json<{ rating: number; text: string }>();
   const note = await c.env.DB
     .prepare('insert into tasting_notes (bottle_id, user_id, rating, text) values (?, ?, ?, ?) returning *')
