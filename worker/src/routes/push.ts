@@ -10,7 +10,7 @@ pushRoutes.post('/subscribe', async (c) => {
   await c.env.DB
     .prepare(
       `insert into push_subscriptions (user_id, endpoint, p256dh, auth) values (?, ?, ?, ?)
-       on conflict(endpoint) do update set p256dh = excluded.p256dh, auth = excluded.auth`,
+       on conflict(endpoint) do update set user_id = excluded.user_id, p256dh = excluded.p256dh, auth = excluded.auth`,
     )
     .bind(c.get('userId'), body.endpoint, body.keys.p256dh, body.keys.auth)
     .run();

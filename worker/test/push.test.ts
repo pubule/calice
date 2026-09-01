@@ -25,4 +25,27 @@ describe('POST /api/push/subscribe', () => {
     const count = await env.DB.prepare('select count(*) as n from push_subscriptions').first<{ n: number }>();
     expect(count!.n).toBe(1);
   });
+
+  it('reassigns endpoint ownership when a different user subscribes with the same endpoint', async () => {
+    const cookie1 = await signup('push1@b.com');
+    const cookie2 = await signup('push2@b.com');
+    const endpoint = 'https://push.example/shared';
+    const body = JSON.stringify({ endpoint, keys: { p256dh: 'key1', auth: 'auth1' } });
+
+    // First user subscribes
+    const user1 = await env.DB.prepare('select id from users where email = ?').bind('push1@b.com').first<{ id: number }>();
+    await app.request('/api/push/subscribe', { method: 'POST', body, headers: { cookie: cookie1, 'content-type': 'application/json' } }, env);
+
+    // Second user subscribes with same endpoint
+    const user2 = await env.DB.prepare('select id from users where email = ?').bind('push2@b.com').first<{ id: number }>();
+    await app.request('/api/push/subscribe', { method: 'POST', body, headers: { cookie: cookie2, 'content-type': 'application/json' } }, env);
+
+    // Should still be one row
+    const count = await env.DB.prepare('select count(*) as n from push_subscriptions').first<{ n: number }>();
+    expect(count!.n).toBe(1);
+
+    // But user_id should be user2's id
+    const sub = await env.DB.prepare('select user_id from push_subscriptions where endpoint = ?').bind(endpoint).first<{ user_id: number }>();
+    expect(sub!.user_id).toBe(user2!.id);
+  });
 });
