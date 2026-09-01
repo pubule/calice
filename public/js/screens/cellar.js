@@ -1,5 +1,7 @@
 import { api } from '../api-client.js';
 import { escapeHtml, photoClass } from '../util.js';
+import { openDetail } from './detail.js';
+import { me } from '../auth.js';
 
 const ICON_COMPARE =
   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v18"/><path d="M16 3v18"/><path d="M3 8h4"/><path d="M17 8h4"/><path d="M3 16h4"/><path d="M17 16h4"/></svg> Confronta due vini';
@@ -56,6 +58,13 @@ async function renderList() {
       // removal, so the list reflects what actually persisted.
       currentBottles = await api.get(`/api/cellars/${currentCellarId}/bottles`);
       renderList();
+    }),
+  );
+  list.querySelectorAll('.cellar-row').forEach((row) =>
+    row.addEventListener('click', async () => {
+      if (compareMode) return;
+      const bottle = currentBottles.find((b) => b.id === Number(row.dataset.id));
+      if (bottle) await openDetail(bottle, await me());
     }),
   );
 }

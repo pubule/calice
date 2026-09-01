@@ -213,34 +213,23 @@
       <div class="detail-body">
         <div>
           <div class="section-head" style="margin-bottom:8px;"><h3 style="font-size:13px;">Le tue foto</h3></div>
-          <div class="gallery-row">
-            <div class="gallery-thumb photo photo-rosso"></div>
-            <div class="gallery-thumb photo photo-rosso" style="filter:brightness(.9);"></div>
-            <div class="gallery-add"><svg viewBox="0 0 24 24" style="width:18px;height:18px;" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
-          </div>
+          <div class="gallery-row" id="detail-gallery"></div>
         </div>
         <div class="loc-row">
           <svg class="ic" viewBox="0 0 24 24" style="width:17px;height:17px;"><path d="M12 21s7-7.2 7-12a7 7 0 1 0-14 0c0 4.8 7 12 7 12Z"/><circle cx="12" cy="9" r="2.4"/></svg>
-          <div class="loc-text"><b>Posizione fisica</b><span id="loc-value">Scaffale A · Fila 2 · Posizione 5</span></div>
+          <div class="loc-text"><b>Posizione fisica</b><span id="loc-value">Non assegnata</span></div>
           <div class="loc-edit" id="loc-edit-btn">modifica</div>
         </div>
 
         <div class="rack" id="rack-panel">
           <div class="section-head" style="margin-bottom:2px;"><h3 style="font-size:13px;">Scegli la posizione</h3><a>+ nuovo scaffale</a></div>
           <div class="rack-grid">
-            <div class="rack-slot taken"></div><div class="rack-slot taken"></div><div class="rack-slot"></div><div class="rack-slot taken"></div><div class="rack-slot"></div><div class="rack-slot taken"></div>
-            <div class="rack-slot"></div><div class="rack-slot taken"></div><div class="rack-slot taken"></div><div class="rack-slot"></div><div class="rack-slot taken"></div><div class="rack-slot"></div>
-            <div class="rack-slot taken"></div><div class="rack-slot"></div><div class="rack-slot sel"></div><div class="rack-slot taken"></div><div class="rack-slot"></div><div class="rack-slot taken"></div>
-            <div class="rack-slot"></div><div class="rack-slot taken"></div><div class="rack-slot"></div><div class="rack-slot taken"></div><div class="rack-slot taken"></div><div class="rack-slot"></div>
+            <div class="rack-slot taken" data-shelf="A1"></div><div class="rack-slot taken" data-shelf="A2"></div><div class="rack-slot" data-shelf="A3"></div><div class="rack-slot taken" data-shelf="A4"></div><div class="rack-slot" data-shelf="A5"></div><div class="rack-slot taken" data-shelf="A6"></div>
+            <div class="rack-slot" data-shelf="B1"></div><div class="rack-slot taken" data-shelf="B2"></div><div class="rack-slot taken" data-shelf="B3"></div><div class="rack-slot" data-shelf="B4"></div><div class="rack-slot taken" data-shelf="B5"></div><div class="rack-slot" data-shelf="B6"></div>
+            <div class="rack-slot taken" data-shelf="C1"></div><div class="rack-slot" data-shelf="C2"></div><div class="rack-slot" data-shelf="C3"></div><div class="rack-slot taken" data-shelf="C4"></div><div class="rack-slot" data-shelf="C5"></div><div class="rack-slot taken" data-shelf="C6"></div>
+            <div class="rack-slot" data-shelf="D1"></div><div class="rack-slot taken" data-shelf="D2"></div><div class="rack-slot" data-shelf="D3"></div><div class="rack-slot taken" data-shelf="D4"></div><div class="rack-slot taken" data-shelf="D5"></div><div class="rack-slot" data-shelf="D6"></div>
           </div>
           <div class="rack-save" id="rack-save">Salva posizione</div>
-        </div>
-
-        <div class="price-card">
-          <div class="price-now"><span class="p">€68</span><span class="l">prezzo medio di mercato</span></div>
-          <div class="price-row"><span class="shop">Enoteca Il Grappolo</span><span class="amt">€64</span></div>
-          <div class="price-row"><span class="shop">Tannico</span><span class="amt">€71</span></div>
-          <div class="price-row"><span class="shop">Vino.com</span><span class="amt">€69</span></div>
         </div>
 
         <div>
@@ -254,25 +243,15 @@
         </div>
 
         <div class="rev-tabs">
-          <div class="rev-tab active" data-tab="web">Dalla community</div>
+          <div class="rev-tab active" data-tab="others">Dalla community</div>
           <div class="rev-tab" data-tab="mine">Le tue note</div>
         </div>
 
-        <div id="tab-web" style="display:flex; flex-direction:column; gap:10px;">
-          <div class="rev-card">
-            <div class="rev-head"><div class="rev-avatar">MR</div><div class="rev-name">Marco R.</div><span class="rev-src">dal web</span></div>
-            <div class="rev-stars">★★★★★</div>
-            <div class="rev-text">Tannino elegante, note di ciliegia e liquirizia. Uno dei migliori Barolo dell'annata 2016.</div>
-          </div>
-          <div class="rev-card">
-            <div class="rev-head"><div class="rev-avatar">JW</div><div class="rev-name">James W.</div><span class="rev-src">dal web</span></div>
-            <div class="rev-stars">★★★★☆</div>
-            <div class="rev-text" data-original="Still quite tannic, I'd cellar this for another couple of years before opening." data-translated="Ancora piuttosto tannico, lo terrei in cantina un altro paio d'anni prima di aprirlo.">Still quite tannic, I'd cellar this for another couple of years before opening.</div>
-            <div class="rev-translate" data-state="orig">Traduci</div>
-          </div>
+        <div class="rev-tabpanel" data-panel="others" style="display:flex; flex-direction:column; gap:10px;">
+          <div id="notes-others"></div>
         </div>
 
-        <div id="tab-mine" style="display:none; flex-direction:column; gap:10px;">
+        <div class="rev-tabpanel" data-panel="mine" style="display:none; flex-direction:column; gap:10px;">
           <div class="add-note">
             <textarea id="note-text" placeholder="Scrivi una nota di degustazione…"></textarea>
             <div class="row">
@@ -280,13 +259,7 @@
               <button id="note-submit">Salva nota</button>
             </div>
           </div>
-          <div id="my-notes" style="display:flex; flex-direction:column; gap:10px;">
-            <div class="rev-card">
-              <div class="rev-head"><div class="rev-avatar">FS</div><div class="rev-name">Tu</div><span class="rev-src">28 ago</span></div>
-              <div class="rev-stars">★★★★☆</div>
-              <div class="rev-text">Tannino ancora deciso, aspetterei un altro anno. Ottimo con brasato.</div>
-            </div>
-          </div>
+          <div id="notes-mine" style="display:flex; flex-direction:column; gap:10px;"></div>
         </div>
       </div>
     </div>
@@ -330,54 +303,6 @@
     });
   });
 
-  let compareMode = false;
-  let compareSelected = [];
-
-  const overlay = document.getElementById('detail-overlay');
-  document.querySelectorAll('.wine-card, .cellar-row, .diary-row, .result-row').forEach(el=>{
-    el.addEventListener('click', ()=>{ if(!compareMode) overlay.classList.add('open'); });
-  });
-  document.getElementById('detail-close').addEventListener('click', ()=> overlay.classList.remove('open'));
-
-  document.getElementById('loc-edit-btn').addEventListener('click', ()=>{
-    document.getElementById('rack-panel').classList.toggle('open');
-  });
-  document.querySelectorAll('.rack-slot:not(.taken)').forEach(slot=>{
-    slot.addEventListener('click', ()=>{
-      document.querySelectorAll('.rack-slot').forEach(s=>s.classList.remove('sel'));
-      slot.classList.add('sel');
-    });
-  });
-  document.getElementById('rack-save').addEventListener('click', ()=>{
-    document.getElementById('loc-value').textContent = 'Scaffale B · Fila 3 · Posizione 4';
-    document.getElementById('rack-panel').classList.remove('open');
-  });
-
-  document.querySelectorAll('.rev-tab').forEach(tab=>{
-    tab.addEventListener('click', ()=>{
-      document.querySelectorAll('.rev-tab').forEach(t=>t.classList.remove('active'));
-      tab.classList.add('active');
-      document.getElementById('tab-web').style.display = tab.dataset.tab==='web' ? 'flex':'none';
-      document.getElementById('tab-mine').style.display = tab.dataset.tab==='mine' ? 'flex':'none';
-    });
-  });
-
-  document.querySelectorAll('.stars-input span').forEach((s,i,arr)=>{
-    s.addEventListener('click', ()=>{
-      arr.forEach((el,j)=> el.classList.toggle('on', j<=i));
-    });
-  });
-  document.getElementById('note-submit').addEventListener('click', ()=>{
-    const ta = document.getElementById('note-text');
-    if(!ta.value.trim()) return;
-    const card = document.createElement('div');
-    card.className = 'rev-card';
-    card.innerHTML = '<div class="rev-head"><div class="rev-avatar">FS</div><div class="rev-name">Tu</div><span class="rev-src">oggi</span></div><div class="rev-stars">★★★★☆</div><div class="rev-text"></div>';
-    card.querySelector('.rev-text').textContent = ta.value;
-    document.getElementById('my-notes').prepend(card);
-    ta.value = '';
-  });
-
   document.querySelectorAll('.alert-dismiss').forEach(btn=>{
     btn.addEventListener('click', function(){
       this.closest('.alert-banner').remove();
@@ -386,21 +311,12 @@
 
   // Cantina list rendering, wishlist, and compare-selection are now owned by
   // js/screens/cellar.js (driven by real API data instead of hardcoded rows).
-
-  document.querySelectorAll('.rev-translate').forEach(btn=>{
-    btn.addEventListener('click', ()=>{
-      const textEl = btn.previousElementSibling;
-      if(btn.dataset.state === 'orig'){
-        textEl.textContent = textEl.dataset.translated;
-        btn.textContent = 'Mostra originale';
-        btn.dataset.state = 'trans';
-      } else {
-        textEl.textContent = textEl.dataset.original;
-        btn.textContent = 'Traduci';
-        btn.dataset.state = 'orig';
-      }
-    });
-  });
+  // The detail sheet (open/close, location rack picker, photo gallery, notes
+  // tabs) is now owned by js/screens/detail.js — opened for real bottle ids
+  // from cellar.js's row click handler, instead of the old static
+  // `.wine-card, .cellar-row, .diary-row, .result-row` delegated listener
+  // that used to live here (dead on arrival: none of those rows exist in the
+  // DOM at page-load time, they're all rendered later from API data).
 
   const surprisePicks = [
     {cls:'photo-rosso', name:'Barolo DOCG 2016', sub:"Elio Altare · Piemonte · pronto da bere"},
