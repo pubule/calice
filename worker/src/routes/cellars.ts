@@ -43,7 +43,7 @@ cellarRoutes.post('/:id/invite', async (c) => {
   const cellarId = Number(c.req.param('id'));
   const userId = c.get('userId');
   if (!(await isCellarMember(c.env.DB, cellarId, userId))) return c.json({ error: 'not a member' }, 403);
-  const code = crypto.randomUUID().slice(0, 8);
+  const code = crypto.randomUUID();
   await c.env.DB
     .prepare('insert into cellar_invites (code, cellar_id, created_by) values (?, ?, ?)')
     .bind(code, cellarId, userId)
