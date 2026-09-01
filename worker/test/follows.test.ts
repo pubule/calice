@@ -42,9 +42,20 @@ describe('follows + activity feed', () => {
       env,
     );
 
+    // unrelated user x: a neither follows x nor shares a cellar with x
+    const x = await signup('feedx@b.com');
+    const xCellarId = (await (await app.request('/api/cellars', { headers: { cookie: x.cookie } }, env)).json<any[]>())[0].id;
+    const otherWine = await env.DB.prepare(`insert into wines (name, producer, country, type, source) values ('Barolo Riserva', 'Altro', 'Italia', 'rosso', 'catalog') returning id`).first<{ id: number }>();
+    await app.request(
+      `/api/cellars/${xCellarId}/bottles`,
+      { method: 'POST', body: JSON.stringify({ wineId: otherWine!.id, quantity: 1 }), headers: { cookie: x.cookie, 'content-type': 'application/json' } },
+      env,
+    );
+
     const feed = await (await app.request('/api/me/activity', { headers: { cookie: a.cookie } }, env)).json<any[]>();
     expect(feed).toHaveLength(1);
     expect(feed[0].wine_name).toBe('Franciacorta Brut');
     expect(feed[0].actor_name).toBe('feedb@b.com');
+    expect(feed.some((row) => row.wine_name === 'Barolo Riserva')).toBe(false);
   });
 });
