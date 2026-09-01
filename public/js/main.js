@@ -5,6 +5,7 @@ import { mountCellar } from './screens/cellar.js';
 import { mountAdd } from './screens/add.js';
 import { mountStats } from './screens/stats.js';
 import { mountProfile } from './screens/profile.js';
+import { mountInviteAccept } from './screens/invite.js';
 
 const AUTH_VIEWS = ['view-login', 'view-signup'];
 
@@ -22,6 +23,7 @@ registerRoute('#/cellar', async () => { showView('view-cellar'); await mountCell
 registerRoute('#/add', async () => { showView('view-add'); await mountAdd(); });
 registerRoute('#/stats', async () => { showView('view-stats'); await mountStats(); });
 registerRoute('#/profile', async () => { showView('view-profile'); await mountProfile(); });
+registerRoute('#/invite/:code', async (search, params) => { showView('view-invite'); await mountInviteAccept(search, params); });
 
 function flashError(btnId, message) {
   console.error(message);
