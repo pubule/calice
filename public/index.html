@@ -127,56 +127,19 @@
   <div class="view" id="view-stats">
     <div class="topbar"><h2 class="screen-title">Statistiche</h2></div>
     <div class="hero">
-      <div class="ring"><span>68</span></div>
-      <div class="stat-row">
-        <div class="stat"><div class="num">128</div><div class="lbl">bottiglie</div></div>
-        <div class="stat"><div class="num">€4.250</div><div class="lbl">valore</div></div>
-        <div class="stat"><div class="num">2018</div><div class="lbl">annata media</div></div>
-      </div>
+      <div class="stat-row" id="stats-summary"></div>
     </div>
     <div class="card">
       <div class="section-head" style="margin-bottom:8px;"><h3>Per tipo</h3></div>
-      <div class="type-row"><span class="type-dot" style="background:#5b2333"></span><span class="tname">Rosso</span><div class="tbar"><i style="width:52%; background:#5b2333"></i></div><span class="tn">52%</span></div>
-      <div class="type-row"><span class="type-dot" style="background:#b9a750"></span><span class="tname">Bianco</span><div class="tbar"><i style="width:28%; background:#b9a750"></i></div><span class="tn">28%</span></div>
-      <div class="type-row"><span class="type-dot" style="background:#6b7a4f"></span><span class="tname">Bollicine</span><div class="tbar"><i style="width:14%; background:#6b7a4f"></i></div><span class="tn">14%</span></div>
-      <div class="type-row"><span class="type-dot" style="background:#a24a5a"></span><span class="tname">Rosato</span><div class="tbar"><i style="width:6%; background:#a24a5a"></i></div><span class="tn">6%</span></div>
+      <div id="stats-type"></div>
     </div>
     <div class="card">
       <div class="section-head" style="margin-bottom:2px;"><h3>Paesi</h3></div>
-      <div class="region-row"><span class="rname">Italia</span><div class="rbar"><i style="width:100%"></i></div><span class="rn">92%</span></div>
-      <div class="region-row"><span class="rname">Francia</span><div class="rbar"><i style="width:10%"></i></div><span class="rn">5%</span></div>
-      <div class="region-row"><span class="rname">Spagna</span><div class="rbar"><i style="width:6%"></i></div><span class="rn">3%</span></div>
+      <div id="stats-country"></div>
     </div>
     <div class="card">
       <div class="section-head" style="margin-bottom:2px;"><h3>Regioni</h3></div>
-      <div class="region-row"><span class="rname">Piemonte</span><div class="rbar"><i style="width:100%"></i></div><span class="rn">34</span></div>
-      <div class="region-row"><span class="rname">Toscana</span><div class="rbar"><i style="width:65%"></i></div><span class="rn">22</span></div>
-      <div class="region-row"><span class="rname">Veneto</span><div class="rbar"><i style="width:53%"></i></div><span class="rn">18</span></div>
-      <div class="region-row"><span class="rname">Sicilia</span><div class="rbar"><i style="width:35%"></i></div><span class="rn">12</span></div>
-      <div class="region-row"><span class="rname">Lombardia</span><div class="rbar"><i style="width:26%"></i></div><span class="rn">9</span></div>
-      <div class="region-row"><span class="rname">Sardegna</span><div class="rbar"><i style="width:18%"></i></div><span class="rn">6</span></div>
-      <div class="region-row"><span class="rname">Campania</span><div class="rbar"><i style="width:15%"></i></div><span class="rn">5</span></div>
-    </div>
-    <div class="card">
-      <div class="section-head" style="margin-bottom:2px;"><h3>Bottiglie aggiunte</h3></div>
-      <div class="month-chart">
-        <div class="month-col"><div class="bar" style="height:36px;"><i style="height:40%"></i></div><span class="m">mar</span></div>
-        <div class="month-col"><div class="bar" style="height:50px;"><i style="height:55%"></i></div><span class="m">apr</span></div>
-        <div class="month-col"><div class="bar" style="height:44px;"><i style="height:48%"></i></div><span class="m">mag</span></div>
-        <div class="month-col"><div class="bar" style="height:60px;"><i style="height:70%"></i></div><span class="m">giu</span></div>
-        <div class="month-col"><div class="bar" style="height:38px;"><i style="height:42%"></i></div><span class="m">lug</span></div>
-        <div class="month-col"><div class="bar" style="height:66px;"><i style="height:80%"></i></div><span class="m">ago</span></div>
-      </div>
-    </div>
-    <div class="card">
-      <div class="section-head" style="margin-bottom:8px;"><h3>Valore nel tempo</h3></div>
-      <svg viewBox="0 0 280 70" width="100%" height="70" preserveAspectRatio="none">
-        <polyline points="0,55 47,48 93,50 140,36 187,30 233,18 280,10" fill="none" stroke="#5b2333" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-        <polygon points="0,55 47,48 93,50 140,36 187,30 233,18 280,10 280,70 0,70" fill="#5b2333" opacity="0.07"/>
-      </svg>
-      <div class="spark-values">
-        <span>€2.100</span><span>€2.600</span><span>€2.900</span><span>€3.400</span><span>€3.800</span><span>€4.100</span><span>€4.250</span>
-      </div>
+      <div id="stats-region"></div>
     </div>
   </div>
 
