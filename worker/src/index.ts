@@ -8,6 +8,7 @@ import { noteRoutes } from './routes/notes';
 import { photoRoutes, photoFileRoutes } from './routes/photos';
 import { followRoutes, activityRoutes } from './routes/follows';
 import { pushRoutes } from './routes/push';
+import { runNotificationScan } from './cron';
 
 export type Env = {
   DB: D1Database;
@@ -38,6 +39,9 @@ app.route('/api/push', pushRoutes);
 
 export default {
   fetch: app.fetch,
+  scheduled: async (_event: ScheduledEvent, env: Env) => {
+    await runNotificationScan(env);
+  },
 };
 
 export { app };
