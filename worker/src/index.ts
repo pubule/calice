@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import { cors } from 'hono/cors';
 import { authRoutes } from './routes/auth';
 import { cellarRoutes, inviteRoutes } from './routes/cellars';
 import { wineRoutes } from './routes/wines';
@@ -20,6 +21,10 @@ export type Env = {
 };
 
 const app = new Hono<{ Bindings: Env }>();
+
+app.use('*', async (c, next) => {
+  return cors({ origin: c.env.PAGES_ORIGIN, credentials: true })(c, next);
+});
 
 app.get('/health', (c) => c.json({ ok: true }));
 app.route('/api/auth', authRoutes);
