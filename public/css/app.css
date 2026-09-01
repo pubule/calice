@@ -75,8 +75,8 @@
   .cellar-row{display:flex; gap:12px; align-items:center; background:#ffffff; border:1px solid #e2e0d8; border-radius:12px; padding:11px 12px; cursor:pointer; transition:border-color .15s, background .15s;}
   .rowcheck{display:none; width:20px; height:20px; border-radius:50%; border:1.5px solid #d8ceb8; align-items:center; justify-content:center; flex-shrink:0;}
   .check-ic{display:none; width:12px; height:12px;}
-  #wall-owned.selecting .rowcheck{display:flex;}
-  #wall-owned.selecting .row-actions{display:none;}
+  #cellar-list.selecting .rowcheck{display:flex;}
+  #cellar-list.selecting .row-actions{display:none;}
   .cellar-row.selected{border-color:#5b2333; background:#fbf3f5;}
   .cellar-row.selected .rowcheck{background:#5b2333; border-color:#5b2333;}
   .cellar-row.selected .check-ic{display:block;}
