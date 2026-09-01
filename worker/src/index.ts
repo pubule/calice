@@ -7,6 +7,7 @@ import { cellarWishlistRoutes, wishlistItemRoutes } from './routes/wishlist';
 import { noteRoutes } from './routes/notes';
 import { photoRoutes, photoFileRoutes } from './routes/photos';
 import { followRoutes, activityRoutes } from './routes/follows';
+import { pushRoutes } from './routes/push';
 
 export type Env = {
   DB: D1Database;
@@ -33,6 +34,7 @@ app.route('/api/bottles', photoRoutes);
 app.route('/api/photos', photoFileRoutes);
 app.route('/api/follows', followRoutes);
 app.route('/api/me', activityRoutes);
+app.route('/api/push', pushRoutes);
 
 export default {
   fetch: app.fetch,
