@@ -7,6 +7,14 @@ import { mountStats } from './screens/stats.js';
 import { mountProfile } from './screens/profile.js';
 import { mountInviteAccept } from './screens/invite.js';
 
+// Stash an invite code from the raw hash BEFORE the auth guard below can run
+// (a 401 from `me()` makes api-client.js overwrite location.hash to
+// '#/login' before startRouter() ever sees the original hash, so
+// '#/invite/:code' would otherwise vanish for a logged-out visitor with no
+// trace in sessionStorage for auth.js to resume after login/signup).
+const inviteMatch = location.hash.match(/^#\/invite\/(.+)$/);
+if (inviteMatch) sessionStorage.setItem('pendingInviteCode', inviteMatch[1]);
+
 const AUTH_VIEWS = ['view-login', 'view-signup'];
 
 function showView(id) {
@@ -35,8 +43,8 @@ function flashError(btnId, message) {
 
 document.getElementById('login-submit').addEventListener('click', async () => {
   try {
-    await login(document.getElementById('login-email').value, document.getElementById('login-password').value);
-    navigate('#/home');
+    const joinedInvite = await login(document.getElementById('login-email').value, document.getElementById('login-password').value);
+    navigate(joinedInvite ? '#/cellar' : '#/home');
   } catch (err) {
     flashError('login-submit', 'Credenziali non valide');
   }
@@ -45,12 +53,12 @@ document.getElementById('go-signup').addEventListener('click', () => navigate('#
 document.getElementById('go-login').addEventListener('click', () => navigate('#/login'));
 document.getElementById('signup-submit').addEventListener('click', async () => {
   try {
-    await signup(
+    const joinedInvite = await signup(
       document.getElementById('signup-email').value,
       document.getElementById('signup-password').value,
       document.getElementById('signup-name').value,
     );
-    navigate('#/home');
+    navigate(joinedInvite ? '#/cellar' : '#/home');
   } catch (err) {
     flashError('signup-submit', 'Registrazione non riuscita');
   }
@@ -67,5 +75,6 @@ document.querySelectorAll('.navbtn[data-view]').forEach((btn) => {
 // Route guard: only start the router (and thus render any view) once we know
 // whether there's a valid session. On 401 the api-client already set
 // location.hash to '#/login' before this rejects, so startRouter() picks
-// that hash up on its first render either way.
+// that hash up on its first render either way — any '#/invite/:code' was
+// already captured to sessionStorage above, before this could clobber it.
 me().catch(() => navigate('#/login')).finally(() => startRouter());

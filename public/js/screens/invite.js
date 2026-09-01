@@ -26,6 +26,11 @@ export async function mountInviteAccept(search, params) {
     navigate('#/login');
     return;
   }
+  // Authenticated: handle the accept directly, right here — clear whatever
+  // main.js's bootstrap guard may have stashed for this code so a later
+  // login/signup in this tab doesn't try to re-resume an invite that was
+  // already resolved (success or failure) on this direct visit.
+  sessionStorage.removeItem('pendingInviteCode');
   try {
     await acceptInvite(code);
     navigate('#/cellar');
