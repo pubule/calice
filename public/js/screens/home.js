@@ -1,20 +1,22 @@
 import { api } from '../api-client.js';
-import { escapeHtml } from '../util.js';
-
-const WINE_TYPES = ['rosso', 'bianco', 'bollicine', 'rosato'];
+import { escapeHtml, photoClass } from '../util.js';
 
 function scoreBadge(score) {
   return score == null ? '' : `<span class="badge-score">${score.toFixed(1)}</span>`;
 }
 
-function photoClass(type) {
-  return WINE_TYPES.includes(type) ? `photo-${type}` : 'photo-rosso';
-}
-
 export async function mountHome() {
   const cellars = await api.get('/api/cellars');
   const cellar = cellars[0];
-  const bottles = await api.get(`/api/cellars/${cellar.id}/bottles`);
+  // quantity/price_paid come from the API as unvalidated JSON (no backend
+  // schema check) — coerce to Number here so a malicious non-numeric string
+  // can't survive into arithmetic (string concatenation) and then into the
+  // unescaped stat/banner HTML below.
+  const bottles = (await api.get(`/api/cellars/${cellar.id}/bottles`)).map((b) => ({
+    ...b,
+    quantity: Number(b.quantity) || 0,
+    price_paid: b.price_paid != null ? Number(b.price_paid) || 0 : null,
+  }));
   const activity = await api.get('/api/me/activity');
 
   const totalBottles = bottles.reduce((n, b) => n + b.quantity, 0);

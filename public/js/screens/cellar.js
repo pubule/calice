@@ -1,11 +1,5 @@
 import { api } from '../api-client.js';
-import { escapeHtml } from '../util.js';
-
-const WINE_TYPES = ['rosso', 'bianco', 'bollicine', 'rosato'];
-
-function photoClass(type) {
-  return WINE_TYPES.includes(type) ? `photo-${type}` : 'photo-rosso';
-}
+import { escapeHtml, photoClass } from '../util.js';
 
 const ICON_COMPARE =
   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v18"/><path d="M16 3v18"/><path d="M3 8h4"/><path d="M17 8h4"/><path d="M3 16h4"/><path d="M17 16h4"/></svg> Confronta due vini';
@@ -21,14 +15,15 @@ function rowHtml(b) {
   const photo = photoClass(b.type);
   const name = escapeHtml(b.name);
   const sub = `${escapeHtml(b.producer)} · ${escapeHtml(b.region ?? b.country)}`;
-  const price = b.price_paid != null ? `€${b.price_paid}` : '—';
+  const price = b.price_paid != null ? `€${escapeHtml(b.price_paid)}` : '—';
   const score = b.score != null ? b.score.toFixed(1) : '—';
   const shelf = b.shelf_location ? ' · ' + escapeHtml(b.shelf_location) : '';
+  const quantity = escapeHtml(b.quantity);
   return `
     <div class="cellar-row" data-id="${b.id}" data-photo="${photo}" data-name="${name}" data-sub="${sub}" data-price="${price}" data-score="${score}">
       <div class="rowcheck"><svg class="check-ic" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 12 9 17 20 6"/></svg></div>
       <div class="cphoto photo ${photo}"></div>
-      <div class="cinfo"><div class="name">${name}</div><div class="sub">${sub} · ×${b.quantity}${shelf}</div></div>
+      <div class="cinfo"><div class="name">${name}</div><div class="sub">${sub} · ×${quantity}${shelf}</div></div>
       <div class="cprice">${price}<small>a bottiglia</small></div>
       <div class="row-actions">
         <div class="icon-btn edit-btn" data-id="${b.id}" title="Modifica"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></div>
@@ -40,7 +35,7 @@ function rowHtml(b) {
 function wishRowHtml(w) {
   const photo = photoClass(w.type);
   const name = escapeHtml(w.name);
-  const price = w.target_price ? ' · €' + w.target_price : '';
+  const price = w.target_price ? ' · €' + escapeHtml(w.target_price) : '';
   const sub = `${escapeHtml(w.producer)} · ${escapeHtml(w.region ?? w.country)}${price}`;
   return `
     <div class="wish-row" data-id="${w.id}">
