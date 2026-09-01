@@ -1,7 +1,14 @@
 import { api } from '../api-client.js';
+import { escapeHtml } from '../util.js';
+
+const WINE_TYPES = ['rosso', 'bianco', 'bollicine', 'rosato'];
 
 function scoreBadge(score) {
   return score == null ? '' : `<span class="badge-score">${score.toFixed(1)}</span>`;
+}
+
+function photoClass(type) {
+  return WINE_TYPES.includes(type) ? `photo-${type}` : 'photo-rosso';
 }
 
 export async function mountHome() {
@@ -26,10 +33,10 @@ export async function mountHome() {
     .map(
       (b) => `
       <div class="wine-card">
-        <div class="card-photo photo photo-${b.type}">${scoreBadge(b.score)}</div>
+        <div class="card-photo photo ${photoClass(b.type)}">${scoreBadge(b.score)}</div>
         <div class="card-body">
-          <div class="name">${b.name}</div>
-          <div class="sub">${b.producer} · ${b.vintage ?? ''} · ${b.region ?? b.country}</div>
+          <div class="name">${escapeHtml(b.name)}</div>
+          <div class="sub">${escapeHtml(b.producer)} · ${b.vintage ?? ''} · ${escapeHtml(b.region ?? b.country)}</div>
           <span class="status-tag ready">pronto</span>
         </div>
       </div>`,
@@ -47,7 +54,7 @@ export async function mountHome() {
     .slice(0, 5)
     .map(
       ([name, n]) => `
-      <div class="region-row"><span class="rname">${name}</span>
+      <div class="region-row"><span class="rname">${escapeHtml(name)}</span>
         <div class="rbar"><i style="width:${(n / maxRegion) * 100}%"></i></div>
         <span class="rn">${n}</span></div>`,
     )
@@ -57,8 +64,8 @@ export async function mountHome() {
     .slice(0, 5)
     .map(
       (a) => `
-      <div class="feed-row"><div class="rev-avatar">${a.actor_name.slice(0, 2).toUpperCase()}</div>
-        <div class="txt"><b>${a.actor_name}</b> ha aggiunto ${a.wine_name}</div>
+      <div class="feed-row"><div class="rev-avatar">${escapeHtml(a.actor_name.slice(0, 2).toUpperCase())}</div>
+        <div class="txt"><b>${escapeHtml(a.actor_name)}</b> ha aggiunto ${escapeHtml(a.wine_name)}</div>
         <span class="time">${new Date(a.created_at).toLocaleDateString('it-IT')}</span></div>`,
     )
     .join('');
@@ -67,6 +74,6 @@ export async function mountHome() {
   const lowStock = bottles.find((b) => b.quantity <= 2);
   const banners = [];
   if (soon.length) banners.push(`<div class="alert-banner"><div class="txt"><b>Hai vini pronti da bere</b>${soon.length} bottiglie nella finestra di consumo</div></div>`);
-  if (lowStock) banners.push(`<div class="alert-banner"><div class="txt"><b>Scorte in esaurimento</b>${lowStock.name}: restano ${lowStock.quantity} bottiglie</div></div>`);
+  if (lowStock) banners.push(`<div class="alert-banner"><div class="txt"><b>Scorte in esaurimento</b>${escapeHtml(lowStock.name)}: restano ${lowStock.quantity} bottiglie</div></div>`);
   document.getElementById('home-alerts').innerHTML = banners.join('');
 }
