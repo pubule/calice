@@ -29,6 +29,20 @@ describe('follows + activity feed', () => {
     expect(unfollowRes.status).toBe(200);
   });
 
+  it('GET / lists followees and reflects unfollow', async () => {
+    const a = await signup('lista@b.com');
+    const b = await signup('listb@b.com');
+    await app.request(`/api/follows/${b.userId}`, { method: 'POST', headers: { cookie: a.cookie } }, env);
+
+    const afterFollow = await (await app.request('/api/follows', { headers: { cookie: a.cookie } }, env)).json<any[]>();
+    expect(afterFollow).toHaveLength(1);
+    expect(afterFollow[0]).toMatchObject({ id: b.userId, name: 'listb@b.com' });
+
+    await app.request(`/api/follows/${b.userId}`, { method: 'DELETE', headers: { cookie: a.cookie } }, env);
+    const afterUnfollow = await (await app.request('/api/follows', { headers: { cookie: a.cookie } }, env)).json<any[]>();
+    expect(afterUnfollow).toHaveLength(0);
+  });
+
   it('activity feed shows a followed user\'s bottle-add', async () => {
     const a = await signup('feeda@b.com');
     const b = await signup('feedb@b.com');

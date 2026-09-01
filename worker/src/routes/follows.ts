@@ -5,6 +5,18 @@ import type { Env } from '../index';
 export const followRoutes = new Hono<{ Bindings: Env; Variables: { userId: number } }>();
 followRoutes.use('*', requireAuth);
 
+followRoutes.get('/', async (c) => {
+  const rows = await c.env.DB
+    .prepare(
+      `select users.id, users.name from follows
+       join users on users.id = follows.followee_id
+       where follows.follower_id = ?`,
+    )
+    .bind(c.get('userId'))
+    .all();
+  return c.json(rows.results);
+});
+
 followRoutes.post('/:userId', async (c) => {
   const followeeId = Number(c.req.param('userId'));
   await c.env.DB
