@@ -1,70 +1,80 @@
 # Calice
 
-Wine cellar app. Worker API (Hono + D1 + R2) in `worker/`, static frontend in `public/`.
+Wine cellar app. One Worker (Hono API under `/api/*` + static assets under
+`public/`) serves both the frontend and the backend from the same origin.
+Source for the API lives in `worker/src/`; deploy config is the root
+`wrangler.jsonc`.
 
 ## Live
 
-- API: https://calice-api.fabio-stocco85.workers.dev
-- App: https://calice.fabio-stocco85.workers.dev
+- https://calice.smartcores.org
 
-Separate Cloudflare Pages/Workers projects from the existing "roccamora" project — nothing here touches it.
+Separate Cloudflare project from the existing "roccamora"/"Budget" projects
+on the same account — nothing here touches them, though it reuses the same
+Zero Trust team (`smartcores`) and domain (`smartcores.org`).
+
+## Auth
+
+No password/signup flow. **Cloudflare Access** sits in front of
+`calice.smartcores.org`: it gates the whole site with Google login, checked
+against an email allowlist configured in the Access Application's policy
+(Zero Trust dashboard, not this repo). The Worker verifies the
+`Cf-Access-Jwt-Assertion` header's signature itself (`worker/src/lib/access.ts`)
+rather than trusting Cloudflare's edge alone — see the comment there for why.
+A user's row (and their first cellar) is created lazily on their first
+authenticated request (`worker/src/lib/session.ts`).
+
+For local dev/tests, set `CALICE_DEV_EMAIL` (never in `wrangler.jsonc` —
+it's a `wrangler dev --var` only) to impersonate an email without a real
+Access JWT; the `X-Calice-Dev-Email` header picks which one, mirroring
+`ombre-su-roccamora`'s `OSR_DEV_EMAIL` pattern.
 
 ## First-time setup
 
-    cd worker
     npm install
     npx wrangler login
     npx wrangler d1 create calice-db          # paste the returned database_id into wrangler.jsonc
     npx wrangler r2 bucket create calice-photos
-    npx wrangler d1 migrations apply calice-db --remote
-    npx wrangler d1 execute calice-db --remote --file=./seed/wines.sql
-    npx wrangler secret put SESSION_SECRET     # any long random string
-    npx web-push generate-vapid-keys           # then:
+    cd worker && npx wrangler d1 migrations apply calice-db --remote && cd ..
+    npx wrangler d1 execute calice-db --remote --file=./worker/seed/wines.sql
+    npx web-push generate-vapid-keys          # then:
     npx wrangler secret put VAPID_PUBLIC_KEY
     npx wrangler secret put VAPID_PRIVATE_KEY
 
+Then, in the Zero Trust dashboard (one-time, not automatable — no API token
+here has Access:Edit scope): Access -> Applications -> Add an application ->
+Self-hosted, domain `calice.smartcores.org`, Google as the only identity
+provider, an "allow" policy listing the emails that may sign in. Copy the
+app's Application Audience (AUD) Tag into `wrangler.jsonc`'s
+`vars.ACCESS_AUD`.
+
 ## Local development
 
-    cd worker && npm run dev          # API on http://localhost:8787
-    npx wrangler pages dev ../public  # frontend, in a second terminal
+    npx wrangler dev --var CALICE_DEV_EMAIL:you@example.com
 
-For local dev, `window.CALICE_API_URL` defaults to `http://localhost:8787` in
-`public/js/api-client.js` — no config needed. `window.CALICE_VAPID_PUBLIC_KEY`
-is set inline in `public/index.html` (see the production value below to know
-what shape to use for a fresh local VAPID key pair, if you generate your own).
+Serves both the frontend and `/api/*` from one local server, with
+`CALICE_DEV_EMAIL` standing in for a real Access login.
 
 ## Deploy
 
-    cd worker && npx wrangler deploy                  # deploys the Worker
-    npx wrangler pages deploy ../public --project-name=calice
+    npx wrangler deploy
 
-Set `window.CALICE_API_URL` / `window.CALICE_VAPID_PUBLIC_KEY` in
-`public/index.html` (small inline `<script>` right before `js/main.js`) to
-the deployed Worker URL and your VAPID public key before deploying Pages.
-
-Set the Pages project's resulting URL as `worker/wrangler.jsonc`'s
-`vars.PAGES_ORIGIN`, then `npx wrangler deploy` the Worker again so CORS
-allows it.
+Deploys both the static frontend and the API as one Worker. Do **not**
+deploy this with a placeholder `ACCESS_AUD` and `workers_dev: true`/no
+`routes` — either leaves the live site open with no authentication at all,
+since there's no password fallback anymore.
 
 ### R2 note
 
-R2 was not enabled on this Cloudflare account at deploy time (`dash.cloudflare.com`
--> R2 -> enable — a one-time manual step). `worker/wrangler.jsonc` keeps the
-`r2_buckets` binding declared (needed for local tests — `vitest-pool-workers`
-simulates R2 locally regardless of whether the real bucket exists) but the
-**currently deployed** Worker was deployed from a build with that binding
-temporarily removed, since `wrangler deploy` refuses to deploy if a declared
-R2 bucket doesn't exist in the account. That means the live app works for
-everything except uploading a photo (`POST /api/bottles/:id/photos` will
-500; `GET` on the same path just returns an empty list, since it has
-nothing to read). Once R2 is enabled:
+R2 was not enabled on this Cloudflare account at first deploy (`dash.cloudflare.com`
+-> R2 -> enable — a one-time manual step). If `r2_buckets` in `wrangler.jsonc`
+doesn't match a bucket that exists yet, `wrangler deploy` refuses to deploy;
+temporarily comment out the `r2_buckets` block, deploy, then restore it
+(needed for local tests — `vitest-pool-workers` simulates R2 regardless of
+whether the real bucket exists). Once enabled:
 
     npx wrangler r2 bucket create calice-photos
-    cd worker && npx wrangler deploy
-
-The committed `wrangler.jsonc` already has the `r2_buckets` block — no edit
-needed, just redeploy once the bucket exists. Nothing else in the app depends
-on R2.
+    npx wrangler deploy
 
 ## Tests
 

@@ -1,6 +1,4 @@
 import { api } from '../api-client.js';
-import { logout } from '../auth.js';
-import { navigate } from '../router.js';
 import { escapeHtml } from '../util.js';
 
 function urlBase64ToUint8Array(base64String) {
@@ -72,11 +70,6 @@ document.getElementById('notif-toggle')?.addEventListener('change', async (e) =>
     console.error('push subscription failed', err);
     e.target.checked = false;
   }
-});
-
-document.getElementById('logout-btn')?.addEventListener('click', async () => {
-  await logout();
-  navigate('#/login');
 });
 
 export async function mountProfile() {

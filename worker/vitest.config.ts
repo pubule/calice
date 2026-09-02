@@ -10,7 +10,7 @@ export default defineWorkersConfig(async () => {
         workers: {
           wrangler: { configPath: './wrangler.jsonc' },
           miniflare: {
-            bindings: { TEST_MIGRATIONS: migrations, SESSION_SECRET: 'test-secret' },
+            bindings: { TEST_MIGRATIONS: migrations, CALICE_DEV_EMAIL: 'dev-override@test.local' },
           },
         },
       },

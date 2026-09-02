@@ -1,16 +1,12 @@
-export const API_URL = window.CALICE_API_URL || 'http://localhost:8787';
-
+// Same origin as the frontend now (both served by one Worker behind
+// Cloudflare Access) — no more cross-origin CORS/cookie dance.
 async function request(method, path, body) {
-  const res = await fetch(`${API_URL}${path}`, {
+  const res = await fetch(path, {
     method,
     credentials: 'include',
     headers: body instanceof FormData ? {} : { 'content-type': 'application/json' },
     body: body instanceof FormData ? body : body ? JSON.stringify(body) : undefined,
   });
-  if (res.status === 401) {
-    window.location.hash = '#/login';
-    throw new Error('unauthorized');
-  }
   if (!res.ok) {
     const err = new Error(`${method} ${path} failed: ${res.status}`);
     err.status = res.status;

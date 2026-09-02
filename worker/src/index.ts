@@ -1,5 +1,4 @@
 import { Hono } from 'hono';
-import { cors } from 'hono/cors';
 import { authRoutes } from './routes/auth';
 import { cellarRoutes, inviteRoutes } from './routes/cellars';
 import { wineRoutes } from './routes/wines';
@@ -14,17 +13,14 @@ import { runNotificationScan } from './cron';
 export type Env = {
   DB: D1Database;
   PHOTOS: R2Bucket;
-  SESSION_SECRET: string;
   VAPID_PUBLIC_KEY: string;
   VAPID_PRIVATE_KEY: string;
-  PAGES_ORIGIN: string;
+  ACCESS_TEAM: string;
+  ACCESS_AUD: string;
+  CALICE_DEV_EMAIL?: string;
 };
 
 const app = new Hono<{ Bindings: Env }>();
-
-app.use('*', async (c, next) => {
-  return cors({ origin: c.env.PAGES_ORIGIN, credentials: true })(c, next);
-});
 
 app.get('/health', (c) => c.json({ ok: true }));
 app.route('/api/auth', authRoutes);

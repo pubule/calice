@@ -2,13 +2,8 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { env } from 'cloudflare:test';
 import { app } from '../src/index';
 
-async function signup(email: string) {
-  const res = await app.request(
-    '/api/auth/signup',
-    { method: 'POST', body: JSON.stringify({ email, password: 'secret123', name: email }), headers: { 'content-type': 'application/json' } },
-    env,
-  );
-  return res.headers.get('set-cookie')!.split(';')[0];
+function signup(email: string) {
+  return { 'X-Calice-Dev-Email': email };
 }
 
 beforeEach(async () => {
@@ -21,16 +16,16 @@ beforeEach(async () => {
 
 describe('GET /api/wines/search', () => {
   it('matches by partial name', async () => {
-    const cookie = await signup('s1@b.com');
-    const res = await app.request('/api/wines/search?q=barolo', { headers: { cookie } }, env);
+    const auth = signup('s1@b.com');
+    const res = await app.request('/api/wines/search?q=barolo', { headers: auth }, env);
     const results = await res.json<any[]>();
     expect(results).toHaveLength(1);
     expect(results[0].producer).toBe('Elio Altare');
   });
 
   it('matches an exact barcode', async () => {
-    const cookie = await signup('s2@b.com');
-    const res = await app.request('/api/wines/search?barcode=8001234500019', { headers: { cookie } }, env);
+    const auth = signup('s2@b.com');
+    const res = await app.request('/api/wines/search?barcode=8001234500019', { headers: auth }, env);
     const results = await res.json<any[]>();
     expect(results).toHaveLength(1);
   });
@@ -38,13 +33,13 @@ describe('GET /api/wines/search', () => {
 
 describe('POST /api/wines', () => {
   it('creates a custom wine', async () => {
-    const cookie = await signup('c1@b.com');
+    const auth = signup('c1@b.com');
     const res = await app.request(
       '/api/wines',
       {
         method: 'POST',
         body: JSON.stringify({ name: 'Vino di famiglia', producer: 'Zio Carlo', region: 'Umbria', country: 'Italia', type: 'rosso', vintage: 2020 }),
-        headers: { cookie, 'content-type': 'application/json' },
+        headers: { ...auth, 'content-type': 'application/json' },
       },
       env,
     );
@@ -54,13 +49,13 @@ describe('POST /api/wines', () => {
   });
 
   it('rejects an invalid type with 400', async () => {
-    const cookie = await signup('c2@b.com');
+    const auth = signup('c2@b.com');
     const res = await app.request(
       '/api/wines',
       {
         method: 'POST',
         body: JSON.stringify({ name: 'Vino strano', producer: 'Zio Carlo', country: 'Italia', type: 'not-a-real-type' }),
-        headers: { cookie, 'content-type': 'application/json' },
+        headers: { ...auth, 'content-type': 'application/json' },
       },
       env,
     );
@@ -68,13 +63,13 @@ describe('POST /api/wines', () => {
   });
 
   it('rejects an out-of-range vintage with 400', async () => {
-    const cookie = await signup('c3@b.com');
+    const auth = signup('c3@b.com');
     const res = await app.request(
       '/api/wines',
       {
         method: 'POST',
         body: JSON.stringify({ name: 'Vino del futuro', producer: 'Zio Carlo', country: 'Italia', type: 'rosso', vintage: 3050 }),
-        headers: { cookie, 'content-type': 'application/json' },
+        headers: { ...auth, 'content-type': 'application/json' },
       },
       env,
     );
@@ -82,13 +77,13 @@ describe('POST /api/wines', () => {
   });
 
   it('rejects an empty name with 400', async () => {
-    const cookie = await signup('c4@b.com');
+    const auth = signup('c4@b.com');
     const res = await app.request(
       '/api/wines',
       {
         method: 'POST',
         body: JSON.stringify({ name: '', producer: 'Zio Carlo', country: 'Italia', type: 'rosso' }),
-        headers: { cookie, 'content-type': 'application/json' },
+        headers: { ...auth, 'content-type': 'application/json' },
       },
       env,
     );

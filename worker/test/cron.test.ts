@@ -4,14 +4,9 @@ import { app } from '../src/index';
 import { runNotificationScan } from '../src/cron';
 
 async function signup(email: string) {
-  const res = await app.request(
-    '/api/auth/signup',
-    { method: 'POST', body: JSON.stringify({ email, password: 'secret123', name: email }), headers: { 'content-type': 'application/json' } },
-    env,
-  );
-  const cookie = res.headers.get('set-cookie')!.split(';')[0];
-  const me = await (await app.request('/api/auth/me', { headers: { cookie } }, env)).json<{ id: number }>();
-  return { cookie, userId: me.id };
+  const auth = { 'X-Calice-Dev-Email': email };
+  const me = await (await app.request('/api/auth/me', { headers: auth }, env)).json<{ id: number }>();
+  return { auth, userId: me.id };
 }
 
 beforeEach(async () => {
@@ -23,7 +18,7 @@ beforeEach(async () => {
 describe('runNotificationScan', () => {
   it('sends one push per subscribed user with a bottle in its drink window', async () => {
     const user = await signup('cron@b.com');
-    const cellarId = (await (await app.request('/api/cellars', { headers: { cookie: user.cookie } }, env)).json<any[]>())[0].id;
+    const cellarId = (await (await app.request('/api/cellars', { headers: user.auth }, env)).json<any[]>())[0].id;
     const wine = await env.DB.prepare(`insert into wines (name, producer, country, type, source) values ('Barolo DOCG', 'Elio Altare', 'Italia', 'rosso', 'catalog') returning id`).first<{ id: number }>();
     await env.DB
       .prepare(`insert into bottles (cellar_id, wine_id, quantity, drink_from, drink_until, added_by) values (?, ?, 1, date('now','-1 day'), date('now','+30 day'), ?)`)
@@ -31,7 +26,7 @@ describe('runNotificationScan', () => {
       .run();
     await app.request(
       '/api/push/subscribe',
-      { method: 'POST', body: JSON.stringify({ endpoint: 'https://push.example/xyz', keys: { p256dh: 'k', auth: 'a' } }), headers: { cookie: user.cookie, 'content-type': 'application/json' } },
+      { method: 'POST', body: JSON.stringify({ endpoint: 'https://push.example/xyz', keys: { p256dh: 'k', auth: 'a' } }), headers: { ...user.auth, 'content-type': 'application/json' } },
       env,
     );
 
@@ -57,26 +52,26 @@ describe('runNotificationScan', () => {
     const wine = await env.DB.prepare(`insert into wines (name, producer, country, type, source) values ('Barolo DOCG', 'Elio Altare', 'Italia', 'rosso', 'catalog') returning id`).first<{ id: number }>();
 
     const dead = await signup('dead@b.com');
-    const deadCellarId = (await (await app.request('/api/cellars', { headers: { cookie: dead.cookie } }, env)).json<any[]>())[0].id;
+    const deadCellarId = (await (await app.request('/api/cellars', { headers: dead.auth }, env)).json<any[]>())[0].id;
     await env.DB
       .prepare(`insert into bottles (cellar_id, wine_id, quantity, drink_from, drink_until, added_by) values (?, ?, 1, date('now','-1 day'), date('now','+30 day'), ?)`)
       .bind(deadCellarId, wine!.id, dead.userId)
       .run();
     await app.request(
       '/api/push/subscribe',
-      { method: 'POST', body: JSON.stringify({ endpoint: 'https://push.example/dead', keys: { p256dh: 'k', auth: 'a' } }), headers: { cookie: dead.cookie, 'content-type': 'application/json' } },
+      { method: 'POST', body: JSON.stringify({ endpoint: 'https://push.example/dead', keys: { p256dh: 'k', auth: 'a' } }), headers: { ...dead.auth, 'content-type': 'application/json' } },
       env,
     );
 
     const alive = await signup('alive@b.com');
-    const aliveCellarId = (await (await app.request('/api/cellars', { headers: { cookie: alive.cookie } }, env)).json<any[]>())[0].id;
+    const aliveCellarId = (await (await app.request('/api/cellars', { headers: alive.auth }, env)).json<any[]>())[0].id;
     await env.DB
       .prepare(`insert into bottles (cellar_id, wine_id, quantity, drink_from, drink_until, added_by) values (?, ?, 1, date('now','-1 day'), date('now','+30 day'), ?)`)
       .bind(aliveCellarId, wine!.id, alive.userId)
       .run();
     await app.request(
       '/api/push/subscribe',
-      { method: 'POST', body: JSON.stringify({ endpoint: 'https://push.example/alive', keys: { p256dh: 'k', auth: 'a' } }), headers: { cookie: alive.cookie, 'content-type': 'application/json' } },
+      { method: 'POST', body: JSON.stringify({ endpoint: 'https://push.example/alive', keys: { p256dh: 'k', auth: 'a' } }), headers: { ...alive.auth, 'content-type': 'application/json' } },
       env,
     );
 

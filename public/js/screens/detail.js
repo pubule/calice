@@ -1,4 +1,4 @@
-import { api, API_URL } from '../api-client.js';
+import { api } from '../api-client.js';
 import { escapeHtml, photoClass } from '../util.js';
 
 let currentBottleId = null;
@@ -53,7 +53,7 @@ async function loadPhotos(bottleId) {
   const gallery = document.getElementById('detail-gallery');
   gallery.innerHTML =
     photos
-      .map((p) => `<div class="gallery-thumb" style="background-image:url('${escapeHtml(API_URL + p.url)}');background-size:cover;"></div>`)
+      .map((p) => `<div class="gallery-thumb" style="background-image:url('${escapeHtml(p.url)}');background-size:cover;"></div>`)
       .join('') +
     '<div class="gallery-add" id="gallery-add-btn"><svg viewBox="0 0 24 24" style="width:18px;height:18px;" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg><input type="file" accept="image/*" capture="environment" style="display:none" id="gallery-file-input"></div>';
   document.getElementById('gallery-add-btn').addEventListener('click', () => document.getElementById('gallery-file-input').click());

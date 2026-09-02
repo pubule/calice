@@ -1,4 +1,8 @@
 {
+  // Test-only: vitest-pool-workers (worker/vitest.config.ts) uses this file
+  // for local D1/R2 bindings. Production deploys from the root wrangler.jsonc,
+  // which merges this Hono app with the static frontend into one Worker
+  // behind Cloudflare Access.
   "name": "calice-api",
   "main": "src/index.ts",
   "compatibility_date": "2026-01-01",
@@ -13,6 +17,7 @@
     "crons": ["0 8 * * *"]
   },
   "vars": {
-    "PAGES_ORIGIN": "https://calice.smartcores.org"
+    "ACCESS_TEAM": "smartcores",
+    "ACCESS_AUD": "test-aud"
   }
 }

@@ -1,27 +1,30 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
+import { env } from 'cloudflare:test';
 import { Hono } from 'hono';
 import { requireAuth } from '../src/lib/session';
-import { signSession } from '../src/lib/auth';
 
 function buildApp() {
-  const app = new Hono<{ Bindings: { SESSION_SECRET: string } }>();
+  const app = new Hono<{ Bindings: typeof env; Variables: { userId: number } }>();
   app.use('/protected', requireAuth);
-  app.get('/protected', (c) => c.json({ userId: c.get('userId' as never) }));
+  app.get('/protected', (c) => c.json({ userId: c.get('userId') }));
   return app;
 }
 
-describe('requireAuth', () => {
-  const env = { SESSION_SECRET: 'test-secret' } as any;
+beforeEach(async () => {
+  await env.DB.exec('DELETE FROM cellar_members; DELETE FROM cellars; DELETE FROM users;');
+});
 
-  it('rejects a request with no cookie', async () => {
-    const res = await buildApp().request('/protected', {}, env);
+describe('requireAuth', () => {
+  it('rejects a request with no dev-email override and no Access JWT', async () => {
+    const noDevEmail = { ...env, CALICE_DEV_EMAIL: undefined };
+    const res = await buildApp().request('/protected', {}, noDevEmail);
     expect(res.status).toBe(401);
   });
 
-  it('accepts a request with a valid session cookie', async () => {
-    const token = await signSession(7, env.SESSION_SECRET);
-    const res = await buildApp().request('/protected', { headers: { cookie: `session=${token}` } }, env);
+  it('accepts the X-Calice-Dev-Email header and creates the user', async () => {
+    const res = await buildApp().request('/protected', { headers: { 'X-Calice-Dev-Email': 'session@b.com' } }, env);
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ userId: 7 });
+    const user = await env.DB.prepare('select id from users where email = ?').bind('session@b.com').first<{ id: number }>();
+    expect(await res.json()).toEqual({ userId: user!.id });
   });
 });
