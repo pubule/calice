@@ -27,7 +27,10 @@ wineRoutes.get('/search', async (c) => {
 });
 
 wineRoutes.post('/', async (c) => {
-  const body = await c.req.json<{ name: string; producer: string; region?: string; country: string; type: string; vintage?: number; barcode?: string }>();
+  const body = await c.req.json<{
+    name: string; producer: string; region?: string; country: string; type: string; vintage?: number; barcode?: string;
+    grapeVariety?: string; denomination?: string; imageUrl?: string;
+  }>();
 
   if (!isNonEmptyShortString(body.name)) return c.json({ error: 'name is required (1-200 chars)' }, 400);
   if (!isNonEmptyShortString(body.producer)) return c.json({ error: 'producer is required (1-200 chars)' }, 400);
@@ -40,10 +43,13 @@ wineRoutes.post('/', async (c) => {
 
   const wine = await c.env.DB
     .prepare(
-      `insert into wines (name, producer, region, country, type, vintage, barcode, source, created_by)
-       values (?, ?, ?, ?, ?, ?, ?, 'custom', ?) returning *`,
+      `insert into wines (name, producer, region, country, type, vintage, barcode, grape_variety, denomination, image_url, source, created_by)
+       values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'custom', ?) returning *`,
     )
-    .bind(body.name, body.producer, body.region ?? null, body.country, type, body.vintage ?? null, body.barcode ?? null, c.get('userId'))
+    .bind(
+      body.name, body.producer, body.region ?? null, body.country, type, body.vintage ?? null, body.barcode ?? null,
+      body.grapeVariety ?? null, body.denomination ?? null, body.imageUrl ?? null, c.get('userId'),
+    )
     .first();
   return c.json(wine);
 });

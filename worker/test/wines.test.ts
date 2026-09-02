@@ -89,4 +89,37 @@ describe('POST /api/wines', () => {
     );
     expect(res.status).toBe(400);
   });
+
+  it('accepts and returns grapeVariety, denomination, and imageUrl', async () => {
+    const auth = signup('c5@b.com');
+    const res = await app.request(
+      '/api/wines',
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          name: 'Barolo Riserva', producer: 'Zio Carlo', country: 'Italia', type: 'rosso',
+          grapeVariety: 'Nebbiolo', denomination: 'Barolo DOCG', imageUrl: 'https://example.com/label.jpg',
+        }),
+        headers: { ...auth, 'content-type': 'application/json' },
+      },
+      env,
+    );
+    expect(res.status).toBe(200);
+    const body = await res.json<{ grape_variety: string; denomination: string; image_url: string }>();
+    expect(body.grape_variety).toBe('Nebbiolo');
+    expect(body.denomination).toBe('Barolo DOCG');
+    expect(body.image_url).toBe('https://example.com/label.jpg');
+  });
+
+  it('creates a wine with none of the optional recognition fields, same as before', async () => {
+    const auth = signup('c6@b.com');
+    const res = await app.request(
+      '/api/wines',
+      { method: 'POST', body: JSON.stringify({ name: 'Vino semplice', producer: 'Zio Carlo', country: 'Italia', type: 'rosso' }), headers: { ...auth, 'content-type': 'application/json' } },
+      env,
+    );
+    expect(res.status).toBe(200);
+    const body = await res.json<{ grape_variety: string | null }>();
+    expect(body.grape_variety).toBeNull();
+  });
 });
