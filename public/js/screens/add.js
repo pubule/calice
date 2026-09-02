@@ -107,6 +107,7 @@ async function runLabelScan() {
 }
 
 let pendingImageUrl;
+let pendingBarcode;
 
 function openRecognizeSheet(suggestion, capturedPhotoDataUrl) {
   document.getElementById('rec-name').value = suggestion.name ?? '';
@@ -118,6 +119,7 @@ function openRecognizeSheet(suggestion, capturedPhotoDataUrl) {
   document.getElementById('rec-grape').value = suggestion.grapeVariety ?? '';
   document.getElementById('rec-denomination').value = suggestion.denomination ?? '';
   pendingImageUrl = suggestion.imageUrl;
+  pendingBarcode = suggestion.barcode;
 
   const photoWrap = document.getElementById('recognize-photo-wrap');
   const photoImg = document.getElementById('recognize-photo');
@@ -160,7 +162,7 @@ async function saveRecognizedWine() {
   const denomination = document.getElementById('rec-denomination').value.trim() || undefined;
 
   try {
-    const wine = await api.post('/api/wines', { name, producer, country, region, type, vintage, grapeVariety, denomination, imageUrl: pendingImageUrl });
+    const wine = await api.post('/api/wines', { name, producer, country, region, type, vintage, grapeVariety, denomination, imageUrl: pendingImageUrl, barcode: pendingBarcode });
     closeRecognizeSheet();
     await addWineToCellar(wine.id);
   } catch (err) {
