@@ -19,7 +19,15 @@ function base64ToBytes(dataUrl: string): number[] {
   return bytes;
 }
 
+// Comfortably above what canvas.toDataURL('image/jpeg', 0.7) produces for a
+// camera frame (typically 1-2MB base64) but well under what would risk an
+// isolate OOM in base64ToBytes, whose per-byte boxed-number array is not
+// caught by the try/catch below (an isolate OOM isn't catchable at all).
+const MAX_PHOTO_BASE64_LEN = 2_000_000;
+
 export async function runVisionOcr(ai: Ai, photoBase64: string): Promise<OcrResult | null> {
+  if (photoBase64.length > MAX_PHOTO_BASE64_LEN) return null;
+
   let text: string;
   try {
     const response: any = await ai.run(VISION_MODEL as any, { image: base64ToBytes(photoBase64), prompt: PROMPT, max_tokens: 256 });

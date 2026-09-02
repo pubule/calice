@@ -112,4 +112,18 @@ describe('POST /api/wines/recognize', () => {
     );
     expect(res.status).toBe(401);
   });
+
+  it('returns 200 with the local wine when the barcode is a catalog hit', async () => {
+    await env.DB
+      .prepare(`insert into wines (name, producer, country, type, barcode, source) values ('Barolo DOCG', 'Elio Altare', 'Italia', 'rosso', '8001234500019', 'catalog')`)
+      .run();
+    const res = await app.request(
+      '/api/wines/recognize',
+      { method: 'POST', body: JSON.stringify({ barcode: '8001234500019' }), headers: { 'X-Calice-Dev-Email': 'rec2@b.com', 'content-type': 'application/json' } },
+      env,
+    );
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.name).toBe('Barolo DOCG');
+  });
 });

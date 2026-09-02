@@ -161,8 +161,14 @@ async function saveRecognizedWine() {
   const grapeVariety = document.getElementById('rec-grape').value.trim() || undefined;
   const denomination = document.getElementById('rec-denomination').value.trim() || undefined;
 
+  // imageUrl comes from Open Food Facts, outside user control and outside
+  // the review form's editable fields — drop it rather than sending an
+  // oversized value the backend will reject (imageUrl is cosmetic, never
+  // worth blocking the save over).
+  const imageUrl = pendingImageUrl && pendingImageUrl.length <= 200 ? pendingImageUrl : undefined;
+
   try {
-    const wine = await api.post('/api/wines', { name, producer, country, region, type, vintage, grapeVariety, denomination, imageUrl: pendingImageUrl, barcode: pendingBarcode });
+    const wine = await api.post('/api/wines', { name, producer, country, region, type, vintage, grapeVariety, denomination, imageUrl, barcode: pendingBarcode });
     closeRecognizeSheet();
     await addWineToCellar(wine.id);
   } catch (err) {

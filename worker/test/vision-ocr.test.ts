@@ -29,4 +29,10 @@ describe('runVisionOcr', () => {
     const fakeAi = { run: async () => ({}) } as any;
     expect(await runVisionOcr(fakeAi, 'data:image/jpeg;base64,AAAA')).toBeNull();
   });
+
+  it('returns null without calling ai.run when photoBase64 exceeds the size guard', async () => {
+    const fakeAi = { run: async (): Promise<never> => { throw new Error('should not be called'); } } as any;
+    const oversized = 'data:image/jpeg;base64,' + 'A'.repeat(2_000_001);
+    expect(await runVisionOcr(fakeAi, oversized)).toBeNull();
+  });
 });
