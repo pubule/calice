@@ -194,6 +194,12 @@ async function saveRecognizedWine() {
 // manual-add link) belong here, not there, to avoid stacking duplicates.
 // Mirrors the wireStaticControls() split in screens/cellar.js.
 document.getElementById('add-search-input')?.addEventListener('input', (e) => runSearch(e.target.value.trim()));
+// Hide the navbar while the keyboard is up: it's a normal flex sibling of
+// .view now (not position:fixed — see app.css for why), so with the
+// keyboard open it just floats right above it instead of doing anything
+// useful. Simplest fix: get it out of the way while typing.
+document.getElementById('add-search-input')?.addEventListener('focus', () => document.querySelector('.navbar')?.classList.add('kb-hidden'));
+document.getElementById('add-search-input')?.addEventListener('blur', () => document.querySelector('.navbar')?.classList.remove('kb-hidden'));
 document.getElementById('scan-barcode-tile')?.addEventListener('click', runBarcodeScan);
 document.getElementById('scan-label-tile')?.addEventListener('click', runLabelScan);
 document.getElementById('manual-add-link')?.addEventListener('click', () => openRecognizeSheet({}));

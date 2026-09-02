@@ -154,6 +154,7 @@
   .logout{color:#8a3244; text-align:center; font-size:12.5px; font-weight:600; padding:12px;}
 
   .navbar{ flex:none; display:flex; align-items:stretch; justify-content:space-around; padding:2px 6px calc(2px + env(safe-area-inset-bottom)); background:rgba(247,245,240,.94); -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px); border-top:1px solid #e2e0d8; box-shadow:0 -2px 8px rgba(20,15,12,.05); }
+  .navbar.kb-hidden{display:none;}
   .navbtn{ flex:1; background:none; border:none; color:#a89b89; font-family:'Archivo',sans-serif; font-size:9.5px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; padding:4px 4px; min-height:44px; cursor:pointer; -webkit-tap-highlight-color:transparent; touch-action:manipulation; }
   .navbtn.active{color:#5b2333;}
 
