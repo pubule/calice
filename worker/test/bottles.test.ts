@@ -20,7 +20,7 @@ let wineId: number;
 
 beforeEach(async () => {
   await env.DB.exec(
-    'DELETE FROM activity_feed; DELETE FROM tasting_notes; DELETE FROM bottles; DELETE FROM wines; DELETE FROM cellar_members; DELETE FROM cellars; DELETE FROM users;',
+    'DELETE FROM activity_feed; DELETE FROM photos; DELETE FROM tasting_notes; DELETE FROM bottles; DELETE FROM wines; DELETE FROM cellar_members; DELETE FROM cellars; DELETE FROM users;',
   );
   const wine = await env.DB
     .prepare(`insert into wines (name, producer, country, type, source) values ('Barolo DOCG', 'Elio Altare', 'Italia', 'rosso', 'catalog') returning id`)

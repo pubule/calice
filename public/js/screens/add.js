@@ -82,12 +82,17 @@ async function runBarcodeScan() {
 async function runManualAdd() {
   const name = prompt('Nome del vino');
   if (!name) return;
-  const producer = prompt('Produttore') || '';
+  const producer = prompt('Produttore') || 'Produttore sconosciuto';
   const country = prompt('Paese', 'Italia') || 'Italia';
   const region = prompt('Regione') || '';
   const type = prompt('Tipo (rosso/bianco/bollicine/rosato)', 'rosso') || 'rosso';
-  const wine = await api.post('/api/wines', { name, producer, country, region, type });
-  await addWineToCellar(wine.id);
+  try {
+    const wine = await api.post('/api/wines', { name, producer, country, region, type });
+    await addWineToCellar(wine.id);
+  } catch (err) {
+    console.error(err);
+    alert('Impossibile aggiungere il vino: controlla i dati inseriti e riprova.');
+  }
 }
 
 // Wired once at module load — mountAdd() re-runs on every visit to #/add, so

@@ -31,7 +31,7 @@
   .avatar.lg{width:52px; height:52px; font-size:16px;}
 
   .hero{ background:#ffffff; border:1px solid #e2e0d8; border-radius:14px; padding:16px; display:flex; align-items:center; gap:16px; }
-  .ring{ position:relative; width:70px; height:70px; border-radius:50%; flex-shrink:0; background:conic-gradient(#5b2333 0 68%, #ece6da 68% 100%); display:flex; align-items:center; justify-content:center; }
+  .ring{ position:relative; width:70px; height:70px; border-radius:50%; flex-shrink:0; border:6px solid #e2e0d8; display:flex; align-items:center; justify-content:center; }
   .ring::before{content:''; position:absolute; inset:6px; border-radius:50%; background:#fff;}
   .ring span{position:relative; font-family:'JetBrains Mono',monospace; font-weight:600; font-size:15px;}
   .stat-row{flex:1; display:flex;}

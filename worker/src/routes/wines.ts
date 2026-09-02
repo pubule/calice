@@ -32,7 +32,8 @@ wineRoutes.post('/', async (c) => {
   if (!isNonEmptyShortString(body.name)) return c.json({ error: 'name is required (1-200 chars)' }, 400);
   if (!isNonEmptyShortString(body.producer)) return c.json({ error: 'producer is required (1-200 chars)' }, 400);
   if (!isNonEmptyShortString(body.country)) return c.json({ error: 'country is required (1-200 chars)' }, 400);
-  if (!WINE_TYPES.includes(body.type)) return c.json({ error: `type must be one of ${WINE_TYPES.join(', ')}` }, 400);
+  const type = typeof body.type === 'string' ? body.type.trim().toLowerCase() : body.type;
+  if (!WINE_TYPES.includes(type)) return c.json({ error: `type must be one of ${WINE_TYPES.join(', ')}` }, 400);
   if (body.vintage != null && (!Number.isInteger(body.vintage) || body.vintage < 1900 || body.vintage > 2100)) {
     return c.json({ error: 'vintage must be an integer between 1900 and 2100' }, 400);
   }
@@ -42,7 +43,7 @@ wineRoutes.post('/', async (c) => {
       `insert into wines (name, producer, region, country, type, vintage, barcode, source, created_by)
        values (?, ?, ?, ?, ?, ?, ?, 'custom', ?) returning *`,
     )
-    .bind(body.name, body.producer, body.region ?? null, body.country, body.type, body.vintage ?? null, body.barcode ?? null, c.get('userId'))
+    .bind(body.name, body.producer, body.region ?? null, body.country, type, body.vintage ?? null, body.barcode ?? null, c.get('userId'))
     .first();
   return c.json(wine);
 });
