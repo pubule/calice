@@ -14,9 +14,9 @@
   <div class="status"><span>9:41</span><div class="dots"><span class="bar"></span><span class="bar"></span><span class="bar"></span><span class="bar"></span></div></div>
 
   <div class="view active" id="view-home">
-    <div class="topbar"><div class="greet"><div class="eyebrow">Buonasera</div><h2>Fabio</h2></div></div>
+    <div class="topbar"><div class="greet"><div class="eyebrow">Buonasera</div><h2 id="home-greet-name">…</h2></div></div>
     <div class="hero">
-      <div class="ring"><span>68</span></div>
+      <div class="ring"></div>
       <div class="stat-row" id="home-stats"></div>
     </div>
 
@@ -25,26 +25,6 @@
     <div>
       <div class="section-head"><h3>Da bere presto</h3><a>vedi tutte</a></div>
       <div class="scroller" id="home-soon"></div>
-    </div>
-
-    <div>
-      <div class="section-head"><h3>Cosa apro stasera?</h3></div>
-      <div class="surprise-card" style="margin-top:8px;">
-        <div class="occasion-chips">
-          <div class="chip active">Cena romantica</div>
-          <div class="chip">Aperitivo</div>
-          <div class="chip">Con ospiti</div>
-          <div class="chip">Pesce</div>
-        </div>
-        <div class="surprise-pick">
-          <div class="surprise-photo photo photo-rosso"></div>
-          <div class="surprise-info"><div class="name">Barolo DOCG 2016</div><div class="sub">Elio Altare · Piemonte · pronto da bere</div></div>
-        </div>
-        <div class="shuffle-btn" id="shuffle-btn">
-          <svg viewBox="0 0 24 24" style="width:14px;height:14px;" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h4l7 10h5"/><path d="M4 17h4l2.5-3.5"/><path d="M16 7h4"/><path d="M18 5l2 2-2 2"/><path d="M18 15l2 2-2 2"/></svg>
-          Un'altra proposta
-        </div>
-      </div>
     </div>
 
     <div class="card">
@@ -92,14 +72,6 @@
     </div>
 
     <div id="wishlist-list" style="display:none; flex-direction:column; gap:8px;"></div>
-
-    <div>
-      <div class="section-head"><h3>Diario</h3><a>vedi tutto</a></div>
-      <div class="diary-row"><div class="diary-date">28<br/>ago</div><div class="diary-photo photo photo-rosso"></div>
-        <div class="diary-body"><div class="name">Barolo DOCG 2016</div><div class="sub">Elio Altare · Piemonte · con brasato</div></div><div class="diary-stars">★★★★☆</div></div>
-      <div class="diary-row"><div class="diary-date">24<br/>ago</div><div class="diary-photo photo photo-bollicine"></div>
-        <div class="diary-body"><div class="name">Franciacorta Brut</div><div class="sub">Ca' del Bosco · Lombardia · aperitivo</div></div><div class="diary-stars">★★★★★</div></div>
-    </div>
   </div>
 
   <div class="view" id="view-add">
@@ -148,14 +120,12 @@
   <div class="view" id="view-profile">
     <div class="topbar"><h2 class="screen-title">Profilo</h2></div>
     <div class="profile-head">
-      <div class="avatar lg">FS</div>
-      <div><div class="name">Fabio Stocco</div><div class="email">fabio.stocco85@gmail.com</div></div>
+      <div class="avatar lg" id="profile-avatar">…</div>
+      <div><div class="name" id="profile-name">…</div><div class="email" id="profile-email"></div></div>
     </div>
     <div class="card">
       <div class="section-head" style="margin-bottom:10px;"><h3>Cantina condivisa</h3></div>
       <div class="shared-row">
-        <div class="avatars"><div class="a">M</div><div class="a">G</div></div>
-        <span style="font-size:11.5px; color:#8f8474;">2 persone</span>
         <div class="invite-btn" id="invite-btn">Invita</div>
       </div>
       <div id="invite-result" style="font-size:11px; color:#8f8474; word-break:break-all; margin-top:6px;"></div>
@@ -210,7 +180,7 @@
         <div class="scrim2"></div>
         <div class="close" id="detail-close"><svg viewBox="0 0 24 24" style="width:15px;height:15px;" fill="none" stroke="#241e1a" stroke-width="1.8" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="6" y1="18" x2="18" y2="6"/></svg></div>
         <span class="badge-score">4.3</span>
-        <div class="info"><div class="name">Barolo DOCG 2016</div><div class="sub">Elio Altare · Piemonte · Nebbiolo</div><span class="vintage-badge">Annata eccellente</span></div>
+        <div class="info"><div class="name">Barolo DOCG 2016</div><div class="sub">Elio Altare · Piemonte · Nebbiolo</div></div>
       </div>
       <div class="detail-body">
         <div>
@@ -232,16 +202,6 @@
             <div class="rack-slot" data-shelf="D1"></div><div class="rack-slot taken" data-shelf="D2"></div><div class="rack-slot" data-shelf="D3"></div><div class="rack-slot taken" data-shelf="D4"></div><div class="rack-slot taken" data-shelf="D5"></div><div class="rack-slot" data-shelf="D6"></div>
           </div>
           <div class="rack-save" id="rack-save">Salva posizione</div>
-        </div>
-
-        <div>
-          <div class="section-head" style="margin-bottom:8px;"><h3 style="font-size:13px;">Abbinamenti consigliati</h3></div>
-          <div class="pairing-chips">
-            <div class="pairing-chip">Brasato al Barolo</div>
-            <div class="pairing-chip">Formaggi stagionati</div>
-            <div class="pairing-chip">Selvaggina</div>
-            <div class="pairing-chip">Cioccolato fondente</div>
-          </div>
         </div>
 
         <div class="rev-tabs">
@@ -319,27 +279,6 @@
   // `.wine-card, .cellar-row, .diary-row, .result-row` delegated listener
   // that used to live here (dead on arrival: none of those rows exist in the
   // DOM at page-load time, they're all rendered later from API data).
-
-  const surprisePicks = [
-    {cls:'photo-rosso', name:'Barolo DOCG 2016', sub:"Elio Altare · Piemonte · pronto da bere"},
-    {cls:'photo-bollicine', name:'Franciacorta Brut', sub:"Ca' del Bosco · Lombardia · aperitivo"},
-    {cls:'photo-bianco', name:'Vermentino di Gallura', sub:'Capichera · Sardegna · con pesce'}
-  ];
-  let pickIndex = 0;
-  document.getElementById('shuffle-btn')?.addEventListener('click', ()=>{
-    pickIndex = (pickIndex + 1) % surprisePicks.length;
-    const p = surprisePicks[pickIndex];
-    document.querySelector('.surprise-photo').className = 'surprise-photo photo ' + p.cls;
-    document.querySelector('.surprise-info .name').textContent = p.name;
-    document.querySelector('.surprise-info .sub').textContent = p.sub;
-  });
-
-  document.querySelectorAll('.occasion-chips .chip').forEach(chip=>{
-    chip.addEventListener('click', ()=>{
-      chip.parentElement.querySelectorAll('.chip').forEach(c=>c.classList.remove('active'));
-      chip.classList.add('active');
-    });
-  });
 
   document.querySelectorAll('[data-follow]').forEach(btn=>{
     btn.addEventListener('click', ()=>{

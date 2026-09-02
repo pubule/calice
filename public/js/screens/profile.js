@@ -80,6 +80,13 @@ document.getElementById('logout-btn')?.addEventListener('click', async () => {
 });
 
 export async function mountProfile() {
+  // Set via textContent (not innerHTML), so no escapeHtml() needed here —
+  // the DOM API itself treats these as plain text, not markup.
+  const user = await api.get('/api/auth/me');
+  document.getElementById('profile-avatar').textContent = String(user.name).slice(0, 2).toUpperCase();
+  document.getElementById('profile-name').textContent = user.name;
+  document.getElementById('profile-email').textContent = user.email;
+
   const cellars = await api.get('/api/cellars');
   firstCellarId = cellars[0]?.id ?? null;
   document.getElementById('profile-cellar-count').textContent = String(cellars.length);

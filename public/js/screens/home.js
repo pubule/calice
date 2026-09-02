@@ -1,4 +1,5 @@
 import { api } from '../api-client.js';
+import { me } from '../auth.js';
 import { escapeHtml, photoClass } from '../util.js';
 
 function scoreBadge(score) {
@@ -6,6 +7,9 @@ function scoreBadge(score) {
 }
 
 export async function mountHome() {
+  const user = await me();
+  document.getElementById('home-greet-name').textContent = user.name;
+
   const cellars = await api.get('/api/cellars');
   const cellar = cellars[0];
   // quantity/price_paid come from the API as unvalidated JSON (no backend
@@ -38,7 +42,7 @@ export async function mountHome() {
         <div class="card-photo photo ${photoClass(b.type)}">${scoreBadge(b.score)}</div>
         <div class="card-body">
           <div class="name">${escapeHtml(b.name)}</div>
-          <div class="sub">${escapeHtml(b.producer)} · ${b.vintage ?? ''} · ${escapeHtml(b.region ?? b.country)}</div>
+          <div class="sub">${escapeHtml(b.producer)} · ${escapeHtml(b.vintage ?? '')} · ${escapeHtml(b.region ?? b.country)}</div>
           <span class="status-tag ready">pronto</span>
         </div>
       </div>`,
