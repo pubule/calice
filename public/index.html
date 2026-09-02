@@ -75,7 +75,7 @@
     <div class="topbar"><h2 class="screen-title">Aggiungi vino</h2></div>
     <input id="add-search-input" class="search" placeholder="Cerca per nome, produttore, regione…" type="text">
     <div class="scan-tiles">
-      <div class="scan-tile">
+      <div class="scan-tile" id="scan-label-tile">
         <div class="ic-wrap"><svg class="ic" viewBox="0 0 24 24" style="width:18px;height:18px;"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7l1.8-2.5h4.4L16 7"/><circle cx="12" cy="13.5" r="3.2"/></svg></div>
         <div class="t">Scansiona etichetta</div><div class="s">Riconoscimento foto</div>
       </div>
@@ -226,6 +226,28 @@
           <div class="stat-line"><span>Prezzo</span><b>—</b></div>
         </div>
       </div>
+    </div>
+  </div>
+
+  <div class="compare-overlay" id="recognize-overlay">
+    <div class="compare-sheet">
+      <div class="compare-head"><h3>Rivedi e conferma</h3><div class="close" id="recognize-close"><svg viewBox="0 0 24 24" style="width:14px;height:14px;" fill="none" stroke="#241e1a" stroke-width="1.8" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="6" y1="18" x2="18" y2="6"/></svg></div></div>
+      <div id="recognize-photo-wrap" style="display:none;"><img id="recognize-photo" alt="" style="width:100%;border-radius:10px;display:block;"></div>
+      <div id="recognize-rawtext" class="lang-note" style="display:none;"></div>
+      <input id="rec-name" class="search" placeholder="Nome del vino" type="text">
+      <input id="rec-producer" class="search" placeholder="Produttore" type="text">
+      <input id="rec-country" class="search" placeholder="Paese" type="text">
+      <input id="rec-region" class="search" placeholder="Regione (opzionale)" type="text">
+      <select id="rec-type" class="search">
+        <option value="rosso">Rosso</option>
+        <option value="bianco">Bianco</option>
+        <option value="bollicine">Bollicine</option>
+        <option value="rosato">Rosato</option>
+      </select>
+      <input id="rec-vintage" class="search" placeholder="Annata (opzionale)" type="number">
+      <input id="rec-grape" class="search" placeholder="Vitigno (opzionale)" type="text">
+      <input id="rec-denomination" class="search" placeholder="Denominazione (opzionale)" type="text">
+      <div class="action" id="recognize-save" style="cursor:pointer;">Salva</div>
     </div>
   </div>
 </div>

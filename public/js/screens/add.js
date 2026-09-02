@@ -67,10 +67,15 @@ async function runBarcodeScan() {
       return;
     }
     const wines = await api.get(`/api/wines/search?barcode=${encodeURIComponent(barcodes[0].rawValue)}`);
-    if (results) {
-      results.innerHTML = wines.length ? wines.map(resultRowHtml).join('') : '<p class="sub">Nessun vino trovato per questo codice</p>';
-      wireResults(results);
+    if (wines.length) {
+      if (results) {
+        results.innerHTML = wines.map(resultRowHtml).join('');
+        wireResults(results);
+      }
+      return;
     }
+    const suggestion = await api.post('/api/wines/recognize', { barcode: barcodes[0].rawValue });
+    openRecognizeSheet(suggestion);
   } catch (err) {
     console.error(err);
     alert('Impossibile accedere alla fotocamera');
@@ -79,15 +84,84 @@ async function runBarcodeScan() {
   }
 }
 
-async function runManualAdd() {
-  const name = prompt('Nome del vino');
-  if (!name) return;
-  const producer = prompt('Produttore') || 'Produttore sconosciuto';
-  const country = prompt('Paese', 'Italia') || 'Italia';
-  const region = prompt('Regione') || '';
-  const type = prompt('Tipo (rosso/bianco/bollicine/rosato)', 'rosso') || 'rosso';
+async function runLabelScan() {
+  let stream;
   try {
-    const wine = await api.post('/api/wines', { name, producer, country, region, type });
+    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+    const video = document.createElement('video');
+    video.srcObject = stream;
+    await video.play();
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    canvas.getContext('2d').drawImage(video, 0, 0);
+    const photoBase64 = canvas.toDataURL('image/jpeg', 0.7);
+    const suggestion = await api.post('/api/wines/recognize', { photoBase64 });
+    openRecognizeSheet(suggestion, photoBase64);
+  } catch (err) {
+    console.error(err);
+    alert('Impossibile accedere alla fotocamera');
+  } finally {
+    stream?.getTracks().forEach((t) => t.stop());
+  }
+}
+
+let pendingImageUrl;
+
+function openRecognizeSheet(suggestion, capturedPhotoDataUrl) {
+  document.getElementById('rec-name').value = suggestion.name ?? '';
+  document.getElementById('rec-producer').value = suggestion.producer ?? '';
+  document.getElementById('rec-country').value = suggestion.country ?? 'Italia';
+  document.getElementById('rec-region').value = suggestion.region ?? '';
+  document.getElementById('rec-type').value = suggestion.type ?? 'rosso';
+  document.getElementById('rec-vintage').value = suggestion.vintage ?? '';
+  document.getElementById('rec-grape').value = suggestion.grapeVariety ?? '';
+  document.getElementById('rec-denomination').value = suggestion.denomination ?? '';
+  pendingImageUrl = suggestion.imageUrl;
+
+  const photoWrap = document.getElementById('recognize-photo-wrap');
+  const photoImg = document.getElementById('recognize-photo');
+  const shownPhoto = capturedPhotoDataUrl ?? suggestion.imageUrl;
+  if (shownPhoto) {
+    photoImg.src = shownPhoto;
+    photoWrap.style.display = '';
+  } else {
+    photoWrap.style.display = 'none';
+  }
+
+  const rawTextEl = document.getElementById('recognize-rawtext');
+  if (suggestion.rawText) {
+    rawTextEl.textContent = "Testo letto dall'etichetta: " + suggestion.rawText;
+    rawTextEl.style.display = '';
+  } else {
+    rawTextEl.style.display = 'none';
+  }
+
+  document.getElementById('recognize-overlay').classList.add('open');
+}
+
+function closeRecognizeSheet() {
+  document.getElementById('recognize-overlay').classList.remove('open');
+}
+
+async function saveRecognizedWine() {
+  const name = document.getElementById('rec-name').value.trim();
+  if (!name) {
+    alert('Il nome del vino è obbligatorio');
+    return;
+  }
+  const producer = document.getElementById('rec-producer').value.trim() || 'Produttore sconosciuto';
+  const country = document.getElementById('rec-country').value.trim() || 'Italia';
+  const region = document.getElementById('rec-region').value.trim() || undefined;
+  const type = document.getElementById('rec-type').value;
+  const vintageRaw = document.getElementById('rec-vintage').value.trim();
+  const vintage = vintageRaw ? Number(vintageRaw) : undefined;
+  const grapeVariety = document.getElementById('rec-grape').value.trim() || undefined;
+  const denomination = document.getElementById('rec-denomination').value.trim() || undefined;
+
+  try {
+    const wine = await api.post('/api/wines', { name, producer, country, region, type, vintage, grapeVariety, denomination, imageUrl: pendingImageUrl });
+    closeRecognizeSheet();
     await addWineToCellar(wine.id);
   } catch (err) {
     console.error(err);
@@ -101,7 +175,10 @@ async function runManualAdd() {
 // Mirrors the wireStaticControls() split in screens/cellar.js.
 document.getElementById('add-search-input')?.addEventListener('input', (e) => runSearch(e.target.value.trim()));
 document.getElementById('scan-barcode-tile')?.addEventListener('click', runBarcodeScan);
-document.getElementById('manual-add-link')?.addEventListener('click', runManualAdd);
+document.getElementById('scan-label-tile')?.addEventListener('click', runLabelScan);
+document.getElementById('manual-add-link')?.addEventListener('click', () => openRecognizeSheet({}));
+document.getElementById('recognize-close')?.addEventListener('click', closeRecognizeSheet);
+document.getElementById('recognize-save')?.addEventListener('click', saveRecognizedWine);
 
 export async function mountAdd() {
   const cellars = await api.get('/api/cellars');
