@@ -12,6 +12,12 @@ noteRoutes.post('/:bottleId/notes', async (c) => {
   const bottle = await c.env.DB.prepare('select cellar_id from bottles where id = ?').bind(bottleId).first<{ cellar_id: number }>();
   if (!bottle || !(await isCellarMember(c.env.DB, bottle.cellar_id, userId))) return c.json({ error: 'not found' }, 404);
   const body = await c.req.json<{ rating: number; text: string }>();
+  if (typeof body.rating !== 'number' || Number.isNaN(body.rating) || body.rating < 0 || body.rating > 5) {
+    return c.json({ error: 'rating must be a number between 0 and 5' }, 400);
+  }
+  if (typeof body.text !== 'string' || body.text.trim().length === 0 || body.text.length > 2000) {
+    return c.json({ error: 'text is required (1-2000 chars)' }, 400);
+  }
   const note = await c.env.DB
     .prepare('insert into tasting_notes (bottle_id, user_id, rating, text) values (?, ?, ?, ?) returning *')
     .bind(bottleId, userId, body.rating, body.text)

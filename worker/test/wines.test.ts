@@ -52,4 +52,46 @@ describe('POST /api/wines', () => {
     const body = await res.json<{ source: string }>();
     expect(body.source).toBe('custom');
   });
+
+  it('rejects an invalid type with 400', async () => {
+    const cookie = await signup('c2@b.com');
+    const res = await app.request(
+      '/api/wines',
+      {
+        method: 'POST',
+        body: JSON.stringify({ name: 'Vino strano', producer: 'Zio Carlo', country: 'Italia', type: 'not-a-real-type' }),
+        headers: { cookie, 'content-type': 'application/json' },
+      },
+      env,
+    );
+    expect(res.status).toBe(400);
+  });
+
+  it('rejects an out-of-range vintage with 400', async () => {
+    const cookie = await signup('c3@b.com');
+    const res = await app.request(
+      '/api/wines',
+      {
+        method: 'POST',
+        body: JSON.stringify({ name: 'Vino del futuro', producer: 'Zio Carlo', country: 'Italia', type: 'rosso', vintage: 3050 }),
+        headers: { cookie, 'content-type': 'application/json' },
+      },
+      env,
+    );
+    expect(res.status).toBe(400);
+  });
+
+  it('rejects an empty name with 400', async () => {
+    const cookie = await signup('c4@b.com');
+    const res = await app.request(
+      '/api/wines',
+      {
+        method: 'POST',
+        body: JSON.stringify({ name: '', producer: 'Zio Carlo', country: 'Italia', type: 'rosso' }),
+        headers: { cookie, 'content-type': 'application/json' },
+      },
+      env,
+    );
+    expect(res.status).toBe(400);
+  });
 });

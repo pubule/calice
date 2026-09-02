@@ -15,12 +15,14 @@ async function signup(email: string) {
 
 let bottleId: number;
 let cellarId: number;
+let ownerCookie: string;
 
 beforeEach(async () => {
   await env.DB.exec(
     'DELETE FROM tasting_notes; DELETE FROM follows; DELETE FROM bottles; DELETE FROM wines; DELETE FROM cellar_members; DELETE FROM cellars; DELETE FROM users;',
   );
   const owner = await signup('owner@notes.com');
+  ownerCookie = owner.cookie;
   cellarId = (await (await app.request('/api/cellars', { headers: { cookie: owner.cookie } }, env)).json<any[]>())[0].id;
   const wine = await env.DB.prepare(`insert into wines (name, producer, country, type, source) values ('Barolo DOCG', 'Elio Altare', 'Italia', 'rosso', 'catalog') returning id`).first<{ id: number }>();
   const bottle = await app.request(
@@ -74,5 +76,23 @@ describe('tasting notes visibility', () => {
     expect(res.status).toBe(404);
     const notes = await env.DB.prepare('select count(*) as n from tasting_notes where bottle_id = ?').bind(bottleId).first<{ n: number }>();
     expect(notes!.n).toBe(0);
+  });
+
+  it('rejects a rating outside 0-5 with 400', async () => {
+    const res = await app.request(
+      `/api/bottles/${bottleId}/notes`,
+      { method: 'POST', body: JSON.stringify({ rating: 7, text: 'troppo entusiasta' }), headers: { cookie: ownerCookie, 'content-type': 'application/json' } },
+      env,
+    );
+    expect(res.status).toBe(400);
+  });
+
+  it('rejects an empty text with 400', async () => {
+    const res = await app.request(
+      `/api/bottles/${bottleId}/notes`,
+      { method: 'POST', body: JSON.stringify({ rating: 4, text: '' }), headers: { cookie: ownerCookie, 'content-type': 'application/json' } },
+      env,
+    );
+    expect(res.status).toBe(400);
   });
 });

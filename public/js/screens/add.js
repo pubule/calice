@@ -23,7 +23,9 @@ function resultRowHtml(w) {
 }
 
 async function addWineToCellar(wineId) {
-  const quantity = Number(prompt('Quante bottiglie?', '1')) || 1;
+  const raw = prompt('Quante bottiglie?', '1');
+  if (raw === null) return; // user pressed Cancel — abort, don't default to adding 1
+  const quantity = Number(raw) || 1;
   await api.post(`/api/cellars/${currentCellarId}/bottles`, { wineId, quantity });
   alert('Aggiunto alla cantina');
 }

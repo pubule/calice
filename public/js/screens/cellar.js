@@ -43,7 +43,7 @@ function wishRowHtml(w) {
     <div class="wish-row" data-id="${w.id}">
       <div class="wish-photo photo ${photo}"></div>
       <div class="result-body"><div class="name">${name}</div><div class="sub">${sub}</div></div>
-      <div class="wish-add" data-id="${w.id}">Sposta in cantina</div>
+      <div class="wish-add" data-id="${w.id}">Rimuovi dai desideri</div>
     </div>`;
 }
 
