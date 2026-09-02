@@ -2,17 +2,14 @@
 <html lang="it">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Calice</title>
 <link rel="stylesheet" href="css/app.css">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon-192.png">
 </head>
 <body>
-<div class="device"><div class="screen">
-  <div class="notch"></div>
-  <div class="status"><span>9:41</span><div class="dots"><span class="bar"></span><span class="bar"></span><span class="bar"></span><span class="bar"></span></div></div>
-
+<div class="screen">
   <div class="view active" id="view-home">
     <div class="topbar"><div class="greet"><div class="eyebrow">Buonasera</div><h2 id="home-greet-name">…</h2></div></div>
     <div class="hero">
@@ -248,7 +245,7 @@
       </div>
     </div>
   </div>
-</div></div>
+</div>
 <script>
   document.querySelectorAll('.navbtn[data-view]').forEach(btn=>{
     btn.addEventListener('click',()=>{
