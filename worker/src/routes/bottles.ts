@@ -72,6 +72,18 @@ bottleRoutes.patch('/:id', async (c) => {
 bottleRoutes.delete('/:id', async (c) => {
   const id = Number(c.req.param('id'));
   if (!(await assertBottleAccess(c.env, id, c.get('userId')))) return c.json({ error: 'not found' }, 404);
+
+  // D1 enforces the (non-cascading) FKs from tasting_notes/photos to bottles,
+  // so deleting a bottle that still has either would 500 with a FOREIGN KEY
+  // constraint failure. Clear the children first — photos also own an R2
+  // object that has no FK of its own, so it has to be cleaned up explicitly
+  // or it's orphaned storage forever.
+  const photos = await c.env.DB.prepare('select r2_key from photos where bottle_id = ?').bind(id).all<{ r2_key: string }>();
+  for (const photo of photos.results) {
+    await c.env.PHOTOS.delete(photo.r2_key);
+  }
+  await c.env.DB.prepare('delete from photos where bottle_id = ?').bind(id).run();
+  await c.env.DB.prepare('delete from tasting_notes where bottle_id = ?').bind(id).run();
   await c.env.DB.prepare('delete from bottles where id = ?').bind(id).run();
   return c.json({ ok: true });
 });

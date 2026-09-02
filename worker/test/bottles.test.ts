@@ -100,4 +100,40 @@ describe('bottles', () => {
     const bottles = await (await app.request(`/api/cellars/${cellarId}/bottles`, { headers: { cookie } }, env)).json<any[]>();
     expect(bottles).toHaveLength(0);
   });
+
+  it('deletes a bottle that has a tasting note and a photo without 500ing, and cleans up both', async () => {
+    const cookie = await signup('b4@b.com');
+    const cellarId = await myCellarId(cookie);
+    const created = await (
+      await app.request(
+        `/api/cellars/${cellarId}/bottles`,
+        { method: 'POST', body: JSON.stringify({ wineId, quantity: 1 }), headers: { cookie, 'content-type': 'application/json' } },
+        env,
+      )
+    ).json<{ id: number }>();
+
+    await app.request(
+      `/api/bottles/${created.id}/notes`,
+      { method: 'POST', body: JSON.stringify({ rating: 4, text: 'buono' }), headers: { cookie, 'content-type': 'application/json' } },
+      env,
+    );
+
+    const JPEG_MAGIC = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10]);
+    const form = new FormData();
+    form.append('file', new Blob([JPEG_MAGIC], { type: 'image/jpeg' }), 'label.jpg');
+    await app.request(`/api/bottles/${created.id}/photos`, { method: 'POST', body: form, headers: { cookie } }, env);
+
+    const notesBefore = await env.DB.prepare('select count(*) as n from tasting_notes where bottle_id = ?').bind(created.id).first<{ n: number }>();
+    const photosBefore = await env.DB.prepare('select count(*) as n from photos where bottle_id = ?').bind(created.id).first<{ n: number }>();
+    expect(notesBefore!.n).toBe(1);
+    expect(photosBefore!.n).toBe(1);
+
+    const delRes = await app.request(`/api/bottles/${created.id}`, { method: 'DELETE', headers: { cookie } }, env);
+    expect(delRes.status).toBe(200);
+
+    const notesAfter = await env.DB.prepare('select count(*) as n from tasting_notes where bottle_id = ?').bind(created.id).first<{ n: number }>();
+    const photosAfter = await env.DB.prepare('select count(*) as n from photos where bottle_id = ?').bind(created.id).first<{ n: number }>();
+    expect(notesAfter!.n).toBe(0);
+    expect(photosAfter!.n).toBe(0);
+  });
 });
