@@ -1,4 +1,4 @@
-const CACHE = 'calice-shell-v6';
+const CACHE = 'calice-shell-v7';
 const SHELL_FILES = [
   '/', '/index.html', '/css/app.css',
   '/js/main.js', '/js/api-client.js', '/js/router.js', '/js/auth.js', '/js/util.js',
