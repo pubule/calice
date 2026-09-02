@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { requireAuth } from '../lib/session';
 import { lookupBarcode as defaultLookupBarcode } from '../lib/open-food-facts';
+import { enrichFromWikidata as defaultEnrichFromWikidata } from '../lib/wikidata';
 import type { Env } from '../index';
 
 export type Suggestion = {
@@ -12,10 +13,11 @@ export type Suggestion = {
 
 export type RecognizeDeps = {
   lookupBarcode: typeof defaultLookupBarcode;
+  enrichFromWikidata: typeof defaultEnrichFromWikidata;
 };
 
 function defaultDeps(): RecognizeDeps {
-  return { lookupBarcode: defaultLookupBarcode };
+  return { lookupBarcode: defaultLookupBarcode, enrichFromWikidata: defaultEnrichFromWikidata };
 }
 
 type WineRow = {
@@ -48,6 +50,11 @@ export async function buildSuggestion(
       if (off.country) suggestion.country = off.country;
       if (off.imageUrl) suggestion.imageUrl = off.imageUrl;
     }
+  }
+
+  if (suggestion.name && !suggestion.grapeVariety) {
+    const wd = await deps.enrichFromWikidata(suggestion.name, suggestion.producer);
+    if (wd?.grapeVariety) suggestion.grapeVariety = wd.grapeVariety;
   }
 
   return suggestion;

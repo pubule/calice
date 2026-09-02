@@ -14,7 +14,8 @@ describe('buildSuggestion', () => {
       .prepare(`insert into wines (name, producer, country, type, barcode, grape_variety, denomination, image_url, source) values ('Barolo DOCG', 'Elio Altare', 'Italia', 'rosso', '8001234500019', 'Nebbiolo', 'Barolo DOCG', 'https://x/img.jpg', 'catalog')`)
       .run();
     const lookupBarcode = async (): Promise<OffSuggestion | null> => { throw new Error('should not be called'); };
-    const result = await buildSuggestion(env, { barcode: '8001234500019' }, { lookupBarcode });
+    const enrichFromWikidata = async (): Promise<never> => { throw new Error('should not be called'); };
+    const result = await buildSuggestion(env, { barcode: '8001234500019' }, { lookupBarcode, enrichFromWikidata });
     expect(result).toEqual({
       name: 'Barolo DOCG', producer: 'Elio Altare', country: 'Italia', region: undefined, type: 'rosso',
       vintage: undefined, barcode: '8001234500019', grapeVariety: 'Nebbiolo', denomination: 'Barolo DOCG', imageUrl: 'https://x/img.jpg',
@@ -23,19 +24,39 @@ describe('buildSuggestion', () => {
 
   it('falls back to Open Food Facts on a local miss and maps its fields', async () => {
     const lookupBarcode = async (): Promise<OffSuggestion | null> => ({ name: 'Chianti Classico', producer: 'Antinori', country: 'Italia', imageUrl: 'https://x/img.jpg' });
-    const result = await buildSuggestion(env, { barcode: '1234567890123' }, { lookupBarcode });
+    const enrichFromWikidata = async () => null;
+    const result = await buildSuggestion(env, { barcode: '1234567890123' }, { lookupBarcode, enrichFromWikidata });
     expect(result).toEqual({ barcode: '1234567890123', name: 'Chianti Classico', producer: 'Antinori', country: 'Italia', imageUrl: 'https://x/img.jpg' });
   });
 
   it('keeps the barcode and returns an otherwise-empty suggestion when Open Food Facts finds nothing', async () => {
     const lookupBarcode = async (): Promise<OffSuggestion | null> => null;
-    const result = await buildSuggestion(env, { barcode: '0000000000000' }, { lookupBarcode });
+    const enrichFromWikidata = async (): Promise<never> => { throw new Error('should not be called'); };
+    const result = await buildSuggestion(env, { barcode: '0000000000000' }, { lookupBarcode, enrichFromWikidata });
     expect(result).toEqual({ barcode: '0000000000000' });
   });
 
   it('returns an empty suggestion when called with neither barcode nor photo', async () => {
     const result = await buildSuggestion(env, {});
     expect(result).toEqual({});
+  });
+
+  it('enriches with grape variety once a name is known from Open Food Facts', async () => {
+    const lookupBarcode = async () => ({ name: 'Barolo DOCG', producer: 'Elio Altare' });
+    const enrichFromWikidata = async (name: string, producer?: string) => {
+      expect(name).toBe('Barolo DOCG');
+      expect(producer).toBe('Elio Altare');
+      return { grapeVariety: 'Nebbiolo' };
+    };
+    const result = await buildSuggestion(env, { barcode: '9999999999999' }, { lookupBarcode, enrichFromWikidata });
+    expect(result.grapeVariety).toBe('Nebbiolo');
+  });
+
+  it('skips Wikidata entirely when no name is known yet', async () => {
+    const lookupBarcode = async () => null;
+    const enrichFromWikidata = async (): Promise<never> => { throw new Error('should not be called'); };
+    const result = await buildSuggestion(env, { barcode: '9999999999998' }, { lookupBarcode, enrichFromWikidata });
+    expect(result).toEqual({ barcode: '9999999999998' });
   });
 });
 
