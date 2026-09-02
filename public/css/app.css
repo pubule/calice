@@ -7,10 +7,10 @@
   .screen{ position:relative; width:100%; max-width:480px; margin:0 auto; height:100dvh; overflow:hidden; background:#f7f5f0; color:#241e1a; font-family:'Archivo',sans-serif; display:flex; flex-direction:column; padding-top:env(safe-area-inset-top); }
   svg.ic{width:19px; height:19px; stroke:currentColor; stroke-width:1.6; fill:none; stroke-linecap:round; stroke-linejoin:round; flex-shrink:0;}
 
-  .view{flex:1; overflow-y:auto; padding:8px 20px 96px; display:none; flex-direction:column; gap:20px;}
+  .view{flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch; padding:14px 20px calc(104px + env(safe-area-inset-bottom)); display:none; flex-direction:column; gap:20px;}
   .view.active{display:flex;}
 
-  .topbar{display:flex; align-items:center; justify-content:space-between; padding-top:6px;}
+  .topbar{display:flex; align-items:center; justify-content:space-between; padding-top:8px;}
   .greet .eyebrow{ font-family:'JetBrains Mono',monospace; font-size:10px; letter-spacing:.12em; text-transform:uppercase; color:#a89b89; }
   .greet h2{font-family:'Newsreader',serif; font-weight:500; font-size:21px; letter-spacing:-0.02em; margin:2px 0 0;}
   .screen-title{font-family:'Newsreader',serif; font-weight:500; font-size:21px; letter-spacing:-0.02em; margin:6px 0 0;}
@@ -145,8 +145,8 @@
   .settings-row .chev{stroke:#c9bfae; width:15px; height:15px;}
   .logout{color:#8a3244; text-align:center; font-size:12.5px; font-weight:600; padding:12px;}
 
-  .navbar{ position:absolute; bottom:0; left:0; right:0; display:flex; align-items:center; justify-content:space-around; padding:12px 8px calc(14px + env(safe-area-inset-bottom)); background:rgba(247,245,240,.94); backdrop-filter:blur(6px); border-top:1px solid #e2e0d8; }
-  .navbtn{ background:none; border:none; color:#a89b89; font-family:'Archivo',sans-serif; font-size:9.5px; display:flex; flex-direction:column; align-items:center; gap:5px; cursor:pointer; }
+  .navbar{ position:absolute; bottom:0; left:0; right:0; z-index:10; display:flex; align-items:stretch; justify-content:space-around; padding:6px 6px calc(6px + env(safe-area-inset-bottom)); background:rgba(247,245,240,.94); -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px); border-top:1px solid #e2e0d8; box-shadow:0 -2px 8px rgba(20,15,12,.05); }
+  .navbtn{ flex:1; background:none; border:none; color:#a89b89; font-family:'Archivo',sans-serif; font-size:9.5px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:5px; padding:8px 4px; min-height:48px; cursor:pointer; -webkit-tap-highlight-color:transparent; touch-action:manipulation; }
   .navbtn.active{color:#5b2333;}
 
   .wine-card, .cell:not(.empty), .diary-row, .result-row{cursor:pointer;}
