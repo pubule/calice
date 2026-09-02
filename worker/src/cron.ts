@@ -32,12 +32,20 @@ export async function runNotificationScan(env: Env, sendFn?: SendFn) {
     const body = row.in_window
       ? `Il tuo ${row.wine_name} è pronto da bere`
       : `${row.wine_name}: scorte in esaurimento`;
-    await send(
-      { endpoint: row.endpoint, keys: { p256dh: row.p256dh, auth: row.auth } },
-      JSON.stringify({ title, body }),
-      { vapidDetails: { subject: 'mailto:fabio.stocco85@gmail.com', publicKey: env.VAPID_PUBLIC_KEY, privateKey: env.VAPID_PRIVATE_KEY } },
-    );
-    notified++;
+    try {
+      await send(
+        { endpoint: row.endpoint, keys: { p256dh: row.p256dh, auth: row.auth } },
+        JSON.stringify({ title, body }),
+        { vapidDetails: { subject: 'mailto:fabio.stocco85@gmail.com', publicKey: env.VAPID_PUBLIC_KEY, privateKey: env.VAPID_PRIVATE_KEY } },
+      );
+      notified++;
+    } catch (err) {
+      // A single dead/expired subscription (a normal, expected state over
+      // time) must not throw and take the rest of the day's batch down with
+      // it — drop it so it stops being retried forever, and keep scanning.
+      console.error('push send failed, removing subscription', row.endpoint, err);
+      await env.DB.prepare('delete from push_subscriptions where endpoint = ?').bind(row.endpoint).run();
+    }
   }
   return { notified };
 }

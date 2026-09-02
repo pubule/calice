@@ -52,4 +52,44 @@ describe('runNotificationScan', () => {
     expect(result.notified).toBe(0);
     expect(sendFn).not.toHaveBeenCalled();
   });
+
+  it('keeps scanning past a dead subscription: the other subscriber still gets notified, and the dead row is removed', async () => {
+    const wine = await env.DB.prepare(`insert into wines (name, producer, country, type, source) values ('Barolo DOCG', 'Elio Altare', 'Italia', 'rosso', 'catalog') returning id`).first<{ id: number }>();
+
+    const dead = await signup('dead@b.com');
+    const deadCellarId = (await (await app.request('/api/cellars', { headers: { cookie: dead.cookie } }, env)).json<any[]>())[0].id;
+    await env.DB
+      .prepare(`insert into bottles (cellar_id, wine_id, quantity, drink_from, drink_until, added_by) values (?, ?, 1, date('now','-1 day'), date('now','+30 day'), ?)`)
+      .bind(deadCellarId, wine!.id, dead.userId)
+      .run();
+    await app.request(
+      '/api/push/subscribe',
+      { method: 'POST', body: JSON.stringify({ endpoint: 'https://push.example/dead', keys: { p256dh: 'k', auth: 'a' } }), headers: { cookie: dead.cookie, 'content-type': 'application/json' } },
+      env,
+    );
+
+    const alive = await signup('alive@b.com');
+    const aliveCellarId = (await (await app.request('/api/cellars', { headers: { cookie: alive.cookie } }, env)).json<any[]>())[0].id;
+    await env.DB
+      .prepare(`insert into bottles (cellar_id, wine_id, quantity, drink_from, drink_until, added_by) values (?, ?, 1, date('now','-1 day'), date('now','+30 day'), ?)`)
+      .bind(aliveCellarId, wine!.id, alive.userId)
+      .run();
+    await app.request(
+      '/api/push/subscribe',
+      { method: 'POST', body: JSON.stringify({ endpoint: 'https://push.example/alive', keys: { p256dh: 'k', auth: 'a' } }), headers: { cookie: alive.cookie, 'content-type': 'application/json' } },
+      env,
+    );
+
+    const sendFn = vi.fn().mockImplementation((subscription: { endpoint: string }) => {
+      if (subscription.endpoint === 'https://push.example/dead') return Promise.reject(new Error('410 Gone'));
+      return Promise.resolve(undefined);
+    });
+
+    const result = await runNotificationScan(env as any, sendFn);
+    expect(result.notified).toBe(1);
+    expect(sendFn).toHaveBeenCalledTimes(2);
+
+    const remaining = await env.DB.prepare('select endpoint from push_subscriptions').all<{ endpoint: string }>();
+    expect(remaining.results.map((r) => r.endpoint)).toEqual(['https://push.example/alive']);
+  });
 });
