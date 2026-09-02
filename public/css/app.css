@@ -5,10 +5,15 @@
   *{box-sizing:border-box;}
   html{ background:#f7f5f0; color-scheme:light; height:100%; height:-webkit-fill-available; overscroll-behavior-y:none; }
   body{ margin:0; height:100%; height:-webkit-fill-available; background:var(--page-bg); overscroll-behavior-y:none; }
-  .screen{ position:relative; width:100%; max-width:480px; margin:0 auto; height:100%; height:-webkit-fill-available; overflow:hidden; background:#f7f5f0; color:#241e1a; font-family:'Archivo',sans-serif; display:flex; flex-direction:column; padding-top:env(safe-area-inset-top); }
+  .screen{ position:relative; width:100%; max-width:480px; margin:0 auto; height:100dvh; overflow:hidden; background:#f7f5f0; color:#241e1a; font-family:'Archivo',sans-serif; display:flex; flex-direction:column; padding-top:env(safe-area-inset-top); }
   svg.ic{width:19px; height:19px; stroke:currentColor; stroke-width:1.6; fill:none; stroke-linecap:round; stroke-linejoin:round; flex-shrink:0;}
 
-  .view{flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch; padding:14px 20px calc(88px + env(safe-area-inset-bottom)); display:none; flex-direction:column; gap:20px;}
+  /* .navbar is a normal flex child (flex:none, last in DOM order), never
+     position:fixed/absolute: fixed anchors to the LAYOUT viewport, not the
+     VISIBLE one, so it drifts out of sync with Safari/Chrome's address bar
+     opening and closing on scroll, leaving a gap. Confirmed against the
+     same bug already solved this way in the sibling Budget app. */
+  .view{flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch; padding:14px 20px 20px; display:none; flex-direction:column; gap:20px;}
   .view.active{display:flex;}
 
   .topbar{display:flex; align-items:center; justify-content:space-between; padding-top:8px;}
@@ -148,7 +153,7 @@
   .settings-row .chev{stroke:#c9bfae; width:15px; height:15px;}
   .logout{color:#8a3244; text-align:center; font-size:12.5px; font-weight:600; padding:12px;}
 
-  .navbar{ position:fixed; bottom:0; left:50%; transform:translateX(-50%); width:100%; max-width:480px; z-index:10; display:flex; align-items:stretch; justify-content:space-around; padding:2px 6px calc(2px + env(safe-area-inset-bottom)); background:rgba(247,245,240,.94); -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px); border-top:1px solid #e2e0d8; box-shadow:0 -2px 8px rgba(20,15,12,.05); }
+  .navbar{ flex:none; display:flex; align-items:stretch; justify-content:space-around; padding:2px 6px calc(2px + env(safe-area-inset-bottom)); background:rgba(247,245,240,.94); -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px); border-top:1px solid #e2e0d8; box-shadow:0 -2px 8px rgba(20,15,12,.05); }
   .navbtn{ flex:1; background:none; border:none; color:#a89b89; font-family:'Archivo',sans-serif; font-size:9.5px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; padding:4px 4px; min-height:44px; cursor:pointer; -webkit-tap-highlight-color:transparent; touch-action:manipulation; }
   .navbtn.active{color:#5b2333;}
 
