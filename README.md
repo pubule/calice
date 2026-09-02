@@ -17,7 +17,7 @@ Separate Cloudflare Pages/Workers projects from the existing "roccamora" project
     npx wrangler d1 create calice-db          # paste the returned database_id into wrangler.jsonc
     npx wrangler r2 bucket create calice-photos
     npx wrangler d1 migrations apply calice-db --remote
-    npm run db:seed
+    npx wrangler d1 execute calice-db --remote --file=./seed/wines.sql
     npx wrangler secret put SESSION_SECRET     # any long random string
     npx web-push generate-vapid-keys           # then:
     npx wrangler secret put VAPID_PUBLIC_KEY
@@ -55,8 +55,9 @@ simulates R2 locally regardless of whether the real bucket exists) but the
 **currently deployed** Worker was deployed from a build with that binding
 temporarily removed, since `wrangler deploy` refuses to deploy if a declared
 R2 bucket doesn't exist in the account. That means the live app works for
-everything except photo upload/list (`POST`/`GET /api/bottles/:id/photos`,
-which will 500). Once R2 is enabled:
+everything except uploading a photo (`POST /api/bottles/:id/photos` will
+500; `GET` on the same path just returns an empty list, since it has
+nothing to read). Once R2 is enabled:
 
     npx wrangler r2 bucket create calice-photos
     cd worker && npx wrangler deploy
