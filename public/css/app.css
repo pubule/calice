@@ -13,7 +13,7 @@
      VISIBLE one, so it drifts out of sync with Safari/Chrome's address bar
      opening and closing on scroll, leaving a gap. Confirmed against the
      same bug already solved this way in the sibling Budget app. */
-  .view{flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch; padding:14px 20px 20px; display:none; flex-direction:column; gap:20px;}
+  .view{flex:1; overflow-y:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; padding:14px 20px 20px; display:none; flex-direction:column; gap:20px;}
   .view.active{display:flex;}
 
   .topbar{display:flex; align-items:center; justify-content:space-between; padding-top:8px;}
