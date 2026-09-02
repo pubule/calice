@@ -16,6 +16,13 @@
   .view{flex:1; overflow-y:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; padding:14px 20px 20px; display:none; flex-direction:column; gap:20px;}
   .view.active{display:flex;}
 
+  /* #view-add only: header (scan tiles + search) stays put, only the
+     results list scrolls under it — .view's own overflow-y:auto would
+     otherwise scroll the whole screen (header included) as one list. */
+  #view-add{overflow:hidden; padding:0;}
+  #view-add .add-header{flex:none; display:flex; flex-direction:column; gap:20px; padding:14px 20px 0;}
+  #view-add .add-body{flex:1; overflow-y:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; display:flex; flex-direction:column; gap:20px; padding:20px 20px 20px;}
+
   .topbar{display:flex; align-items:center; justify-content:space-between; padding-top:8px;}
   .greet .eyebrow{ font-family:'JetBrains Mono',monospace; font-size:10px; letter-spacing:.12em; text-transform:uppercase; color:#a89b89; }
   .greet h2{font-family:'Newsreader',serif; font-weight:500; font-size:21px; letter-spacing:-0.02em; margin:2px 0 0;}
