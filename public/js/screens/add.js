@@ -44,8 +44,20 @@ async function runSearch(query) {
     return;
   }
   const wines = await api.get(`/api/wines/search?q=${encodeURIComponent(query)}`);
-  results.innerHTML = wines.length ? wines.map(resultRowHtml).join('') : '<p class="sub">Nessun vino trovato</p>';
-  wireResults(results);
+  if (wines.length) {
+    results.innerHTML = wines.map(resultRowHtml).join('');
+    wireResults(results);
+    return;
+  }
+  // Text search only ever looks at the local catalog — Open Food Facts
+  // (the one external source we have) can only look up a barcode, not a
+  // free-text name, so there's no "smarter" search to fall back to here.
+  // Point straight at the real next step (scan or manual) instead of a
+  // dead-end message, with the typed name carried over so it isn't retyped.
+  results.innerHTML = `
+    <p class="sub">Nessun vino trovato per "${escapeHtml(query)}"</p>
+    <div class="manual-link" id="add-from-search">Aggiungilo manualmente</div>`;
+  document.getElementById('add-from-search')?.addEventListener('click', () => openRecognizeSheet({ name: query }));
 }
 
 async function runBarcodeScan() {
