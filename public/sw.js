@@ -1,4 +1,4 @@
-const CACHE = 'calice-shell-v1';
+const CACHE = 'calice-shell-v2';
 const SHELL_FILES = [
   '/', '/index.html', '/css/app.css',
   '/js/main.js', '/js/api-client.js', '/js/router.js', '/js/auth.js', '/js/util.js',
@@ -20,5 +20,30 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
   if (url.pathname.startsWith('/api/')) return; // never cache API calls
-  event.respondWith(caches.match(event.request).then((cached) => cached || fetch(event.request)));
+  // Network-first with cache fallback: an online user always gets the latest
+  // deployed shell files (a cache-first strategy would pin whoever already
+  // installed the PWA to whatever was cached at install time, forever).
+  // Falling back to the cache keeps the offline-shell guarantee when the
+  // network fetch fails (e.g. offline).
+  event.respondWith(
+    fetch(event.request)
+      .then((res) => {
+        const copy = res.clone();
+        caches.open(CACHE).then((cache) => cache.put(event.request, copy));
+        return res;
+      })
+      .catch(() => caches.match(event.request)),
+  );
+});
+
+self.addEventListener('push', (event) => {
+  let data;
+  try {
+    data = event.data ? event.data.json() : {};
+  } catch {
+    data = {};
+  }
+  const title = data.title || 'Calice';
+  const body = data.body || '';
+  event.waitUntil(self.registration.showNotification(title, { body, icon: '/icon-192.png' }));
 });
