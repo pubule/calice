@@ -1,4 +1,4 @@
-const CACHE = 'calice-shell-v2';
+const CACHE = 'calice-shell-v3';
 const SHELL_FILES = [
   '/', '/index.html', '/css/app.css',
   '/js/main.js', '/js/api-client.js', '/js/router.js', '/js/auth.js', '/js/util.js',
@@ -26,7 +26,7 @@ self.addEventListener('fetch', (event) => {
   // Falling back to the cache keeps the offline-shell guarantee when the
   // network fetch fails (e.g. offline).
   event.respondWith(
-    fetch(event.request)
+    fetch(event.request, { cache: 'no-store' })
       .then((res) => {
         if (res.ok) {
           const copy = res.clone();
