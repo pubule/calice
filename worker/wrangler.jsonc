@@ -13,6 +13,6 @@
     "crons": ["0 8 * * *"]
   },
   "vars": {
-    "PAGES_ORIGIN": "https://calice.fabio-stocco85.workers.dev"
+    "PAGES_ORIGIN": "https://calice.smartcores.org"
   }
 }

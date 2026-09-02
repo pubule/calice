@@ -4,5 +4,9 @@
   "compatibility_date": "2026-08-31",
   "assets": {
     "directory": "public"
-  }
+  },
+  "routes": [
+    { "pattern": "calice.smartcores.org", "custom_domain": true }
+  ],
+  "workers_dev": true
 }
