@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { requireAuth } from '../lib/session';
 import { lookupBarcode as defaultLookupBarcode } from '../lib/open-food-facts';
 import { enrichFromWikidata as defaultEnrichFromWikidata } from '../lib/wikidata';
+import { runVisionOcr as defaultRunVisionOcr } from '../lib/vision-ocr';
 import type { Env } from '../index';
 
 export type Suggestion = {
@@ -14,10 +15,15 @@ export type Suggestion = {
 export type RecognizeDeps = {
   lookupBarcode: typeof defaultLookupBarcode;
   enrichFromWikidata: typeof defaultEnrichFromWikidata;
+  runVisionOcr: (photoBase64: string) => ReturnType<typeof defaultRunVisionOcr>;
 };
 
-function defaultDeps(): RecognizeDeps {
-  return { lookupBarcode: defaultLookupBarcode, enrichFromWikidata: defaultEnrichFromWikidata };
+function defaultDeps(env: Env): RecognizeDeps {
+  return {
+    lookupBarcode: defaultLookupBarcode,
+    enrichFromWikidata: defaultEnrichFromWikidata,
+    runVisionOcr: (photoBase64) => defaultRunVisionOcr(env.AI, photoBase64),
+  };
 }
 
 type WineRow = {
@@ -28,7 +34,7 @@ type WineRow = {
 export async function buildSuggestion(
   env: Env,
   body: { barcode?: string; photoBase64?: string },
-  deps: RecognizeDeps = defaultDeps(),
+  deps: RecognizeDeps = defaultDeps(env),
 ): Promise<Suggestion> {
   const suggestion: Suggestion = {};
 
@@ -49,6 +55,18 @@ export async function buildSuggestion(
       if (off.producer) suggestion.producer = off.producer;
       if (off.country) suggestion.country = off.country;
       if (off.imageUrl) suggestion.imageUrl = off.imageUrl;
+    }
+  }
+
+  if (body.photoBase64 && !suggestion.name) {
+    const ocr = await deps.runVisionOcr(body.photoBase64);
+    if (ocr?.parsed) {
+      if (ocr.parsed.name) suggestion.name = ocr.parsed.name;
+      if (ocr.parsed.producer) suggestion.producer = ocr.parsed.producer;
+      if (ocr.parsed.vintage) suggestion.vintage = ocr.parsed.vintage;
+      if (ocr.parsed.denomination) suggestion.denomination = ocr.parsed.denomination;
+    } else if (ocr?.rawText) {
+      suggestion.rawText = ocr.rawText;
     }
   }
 

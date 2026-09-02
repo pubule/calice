@@ -13,6 +13,7 @@
   "r2_buckets": [
     { "binding": "PHOTOS", "bucket_name": "calice-photos" }
   ],
+  "ai": { "binding": "AI" },
   "triggers": {
     "crons": ["0 8 * * *"]
   },

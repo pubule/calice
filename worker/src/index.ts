@@ -14,6 +14,7 @@ import { runNotificationScan } from './cron';
 export type Env = {
   DB: D1Database;
   PHOTOS: R2Bucket;
+  AI: Ai;
   VAPID_PUBLIC_KEY: string;
   VAPID_PRIVATE_KEY: string;
   ACCESS_TEAM: string;
