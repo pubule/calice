@@ -3,6 +3,16 @@
   // for local D1/R2 bindings. Production deploys from the root wrangler.jsonc,
   // which merges this Hono app with the static frontend into one Worker
   // behind Cloudflare Access.
+  //
+  // No "ai" binding here on purpose: with it declared, the pinned local
+  // toolchain (@cloudflare/vitest-pool-workers@0.6.16 / miniflare@3.20250204.1
+  // / wrangler@3.114.17) fails to boot the workerd runtime at all ("wrapped
+  // binding module can't be resolved ... __WRANGLER_EXTERNAL_AI_WORKER"),
+  // blocking the whole suite. No test needs a real AI binding — every
+  // AI-touching test injects a fake `ai` object or a fake `runVisionOcr`
+  // function — and `Env.AI: Ai` in worker/src/index.ts already gives it a
+  // TypeScript type. The real binding lives in the root wrangler.jsonc
+  // (production config) only.
   "name": "calice-api",
   "main": "src/index.ts",
   "compatibility_date": "2026-01-01",
@@ -13,7 +23,6 @@
   "r2_buckets": [
     { "binding": "PHOTOS", "bucket_name": "calice-photos" }
   ],
-  "ai": { "binding": "AI" },
   "triggers": {
     "crons": ["0 8 * * *"]
   },
