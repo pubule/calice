@@ -17,12 +17,9 @@
   "triggers": {
     "crons": ["0 8 * * *"]
   },
-  // ACCESS_AUD: fill in once the "Calice" Access Application exists in
-  // Zero Trust (dash.cloudflare.com -> Zero Trust -> Access -> Applications
-  // -> Calice -> Overview -> Application Audience (AUD) Tag).
   "vars": {
     "ACCESS_TEAM": "smartcores",
-    "ACCESS_AUD": "TODO-fill-in-after-creating-the-Access-app"
+    "ACCESS_AUD": "76e9740eac8450d98dc640b497ed23e69390ea323334299cbcaa072f195c9e2c"
   },
   "routes": [
     { "pattern": "calice.smartcores.org", "custom_domain": true }
