@@ -11,7 +11,11 @@ async function request(method, path, body) {
     window.location.hash = '#/login';
     throw new Error('unauthorized');
   }
-  if (!res.ok) throw new Error(`${method} ${path} failed: ${res.status}`);
+  if (!res.ok) {
+    const err = new Error(`${method} ${path} failed: ${res.status}`);
+    err.status = res.status;
+    throw err;
+  }
   return res.status === 204 ? null : res.json();
 }
 

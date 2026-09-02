@@ -60,7 +60,7 @@ document.getElementById('signup-submit').addEventListener('click', async () => {
     );
     navigate(joinedInvite ? '#/cellar' : '#/home');
   } catch (err) {
-    flashError('signup-submit', 'Registrazione non riuscita');
+    flashError('signup-submit', err.status === 409 ? 'Email già registrata — accedi' : 'Registrazione non riuscita');
   }
 });
 document.querySelector('.logout')?.addEventListener('click', async () => {
