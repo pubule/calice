@@ -3,7 +3,8 @@
   @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){ --page-bg:#111011; --page-ink:#efece6; --page-muted:#a39c90; --page-line:#2c2a27; } }
   :root[data-theme="dark"]{ --page-bg:#111011; --page-ink:#efece6; --page-muted:#a39c90; --page-line:#2c2a27; }
   *{box-sizing:border-box;}
-  body{ margin:0; background:var(--page-bg); }
+  html{ background:#f7f5f0; color-scheme:light; height:100%; overscroll-behavior-y:none; }
+  body{ margin:0; height:100%; background:var(--page-bg); overscroll-behavior-y:none; }
   .screen{ position:relative; width:100%; max-width:480px; margin:0 auto; height:100dvh; overflow:hidden; background:#f7f5f0; color:#241e1a; font-family:'Archivo',sans-serif; display:flex; flex-direction:column; padding-top:env(safe-area-inset-top); }
   svg.ic{width:19px; height:19px; stroke:currentColor; stroke-width:1.6; fill:none; stroke-linecap:round; stroke-linejoin:round; flex-shrink:0;}
 
@@ -94,6 +95,8 @@
   .diary-stars{font-size:9.5px; color:#8a6a1a; flex-shrink:0;}
 
   .search{ display:flex; align-items:center; gap:9px; background:#ffffff; border:1px solid #e2e0d8; border-radius:10px; padding:11px 14px; font-size:13px; color:#a89b89; }
+  /* Real form fields need >=16px or iOS Safari zooms the page in on focus. */
+  input.search, select.search, textarea{ font-size:16px; }
   .chips{display:flex; gap:7px; overflow-x:auto; margin:0 -20px; padding:2px 20px;}
   .chip{ flex:0 0 auto; padding:6px 13px; border-radius:9999px; font-size:11.5px; border:1px solid #e2e0d8; color:#756b60; white-space:nowrap; background:#ffffff; }
   .chip.active{background:#5b2333; border-color:#5b2333; color:#f7f5f0;}
@@ -145,7 +148,7 @@
   .settings-row .chev{stroke:#c9bfae; width:15px; height:15px;}
   .logout{color:#8a3244; text-align:center; font-size:12.5px; font-weight:600; padding:12px;}
 
-  .navbar{ position:absolute; bottom:0; left:0; right:0; z-index:10; display:flex; align-items:stretch; justify-content:space-around; padding:4px 6px calc(3px + env(safe-area-inset-bottom)); background:rgba(247,245,240,.94); -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px); border-top:1px solid #e2e0d8; box-shadow:0 -2px 8px rgba(20,15,12,.05); }
+  .navbar{ position:fixed; bottom:0; left:50%; transform:translateX(-50%); width:100%; max-width:480px; z-index:10; display:flex; align-items:stretch; justify-content:space-around; padding:4px 6px calc(3px + env(safe-area-inset-bottom)); background:rgba(247,245,240,.94); -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px); border-top:1px solid #e2e0d8; box-shadow:0 -2px 8px rgba(20,15,12,.05); }
   .navbtn{ flex:1; background:none; border:none; color:#a89b89; font-family:'Archivo',sans-serif; font-size:9.5px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; padding:5px 4px; min-height:44px; cursor:pointer; -webkit-tap-highlight-color:transparent; touch-action:manipulation; }
   .navbtn.active{color:#5b2333;}
 
@@ -187,7 +190,7 @@
   .rev-stars{font-size:10px; color:#8a6a1a; margin-top:6px;}
   .rev-text{font-size:11.5px; color:#4a4038; line-height:1.5; margin-top:5px;}
   .add-note{background:#ffffff; border:1px solid #e2e0d8; border-radius:12px; padding:12px; display:flex; flex-direction:column; gap:8px;}
-  .add-note textarea{border:none; resize:none; font-family:'Archivo',sans-serif; font-size:12px; color:#241e1a; outline:none; min-height:44px; background:transparent;}
+  .add-note textarea{border:none; resize:none; font-family:'Archivo',sans-serif; font-size:16px; color:#241e1a; outline:none; min-height:44px; background:transparent;}
   .add-note .row{display:flex; align-items:center; justify-content:space-between;}
   .add-note .stars-input span{font-size:15px; color:#d8ceb8; cursor:pointer;}
   .add-note .stars-input span.on{color:#8a6a1a;}
