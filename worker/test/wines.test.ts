@@ -122,4 +122,62 @@ describe('POST /api/wines', () => {
     const body = await res.json<{ grape_variety: string | null }>();
     expect(body.grape_variety).toBeNull();
   });
+
+  it('rejects grapeVariety longer than 200 chars with 400', async () => {
+    const auth = signup('c7@b.com');
+    const longString = 'a'.repeat(201);
+    const res = await app.request(
+      '/api/wines',
+      {
+        method: 'POST',
+        body: JSON.stringify({ name: 'Test Wine', producer: 'Zio Carlo', country: 'Italia', type: 'rosso', grapeVariety: longString }),
+        headers: { ...auth, 'content-type': 'application/json' },
+      },
+      env,
+    );
+    expect(res.status).toBe(400);
+  });
+
+  it('rejects denomination longer than 200 chars with 400', async () => {
+    const auth = signup('c8@b.com');
+    const longString = 'a'.repeat(201);
+    const res = await app.request(
+      '/api/wines',
+      {
+        method: 'POST',
+        body: JSON.stringify({ name: 'Test Wine', producer: 'Zio Carlo', country: 'Italia', type: 'rosso', denomination: longString }),
+        headers: { ...auth, 'content-type': 'application/json' },
+      },
+      env,
+    );
+    expect(res.status).toBe(400);
+  });
+
+  it('rejects imageUrl with non-http(s) scheme with 400', async () => {
+    const auth = signup('c9@b.com');
+    const res = await app.request(
+      '/api/wines',
+      {
+        method: 'POST',
+        body: JSON.stringify({ name: 'Test Wine', producer: 'Zio Carlo', country: 'Italia', type: 'rosso', imageUrl: 'javascript:alert(1)' }),
+        headers: { ...auth, 'content-type': 'application/json' },
+      },
+      env,
+    );
+    expect(res.status).toBe(400);
+  });
+
+  it('rejects imageUrl that is not a valid URL with 400', async () => {
+    const auth = signup('c10@b.com');
+    const res = await app.request(
+      '/api/wines',
+      {
+        method: 'POST',
+        body: JSON.stringify({ name: 'Test Wine', producer: 'Zio Carlo', country: 'Italia', type: 'rosso', imageUrl: 'not a url' }),
+        headers: { ...auth, 'content-type': 'application/json' },
+      },
+      env,
+    );
+    expect(res.status).toBe(400);
+  });
 });

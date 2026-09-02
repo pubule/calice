@@ -35,6 +35,25 @@ wineRoutes.post('/', async (c) => {
   if (!isNonEmptyShortString(body.name)) return c.json({ error: 'name is required (1-200 chars)' }, 400);
   if (!isNonEmptyShortString(body.producer)) return c.json({ error: 'producer is required (1-200 chars)' }, 400);
   if (!isNonEmptyShortString(body.country)) return c.json({ error: 'country is required (1-200 chars)' }, 400);
+  if (body.grapeVariety != null && !isNonEmptyShortString(body.grapeVariety)) {
+    return c.json({ error: 'grapeVariety must be 1-200 chars' }, 400);
+  }
+  if (body.denomination != null && !isNonEmptyShortString(body.denomination)) {
+    return c.json({ error: 'denomination must be 1-200 chars' }, 400);
+  }
+  if (body.imageUrl != null) {
+    if (!isNonEmptyShortString(body.imageUrl)) {
+      return c.json({ error: 'imageUrl must be a valid http(s) URL' }, 400);
+    }
+    try {
+      const url = new URL(body.imageUrl);
+      if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+        return c.json({ error: 'imageUrl must be a valid http(s) URL' }, 400);
+      }
+    } catch {
+      return c.json({ error: 'imageUrl must be a valid http(s) URL' }, 400);
+    }
+  }
   const type = typeof body.type === 'string' ? body.type.trim().toLowerCase() : body.type;
   if (!WINE_TYPES.includes(type)) return c.json({ error: `type must be one of ${WINE_TYPES.join(', ')}` }, 400);
   if (body.vintage != null && (!Number.isInteger(body.vintage) || body.vintage < 1900 || body.vintage > 2100)) {
