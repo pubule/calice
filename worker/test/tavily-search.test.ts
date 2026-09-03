@@ -6,6 +6,16 @@ function fakeFetch(status: number, body: unknown): typeof fetch {
 }
 
 describe('searchWine', () => {
+  it('restricts the search to the trusted wine-site domain list, so Vivino coverage is guaranteed rather than hoped-for', async () => {
+    let capturedBody: any;
+    const fetchImpl = (async (_url: string, init: RequestInit) => {
+      capturedBody = JSON.parse(init.body as string);
+      return new Response(JSON.stringify({ results: [], images: [] }), { status: 200 });
+    }) as typeof fetch;
+    await searchWine('Barolo DOCG', 'key', fetchImpl);
+    expect(capturedBody.include_domains).toEqual(['vivino.com', 'wine-searcher.com', 'tannico.it']);
+  });
+
   it('zips results and images by index into candidates, and counts one credit spent', async () => {
     const fetchImpl = fakeFetch(200, {
       results: [

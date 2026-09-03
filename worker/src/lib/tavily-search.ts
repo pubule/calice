@@ -10,6 +10,14 @@ const MAX_CANDIDATES = 10;
 // 15 is under Tavily's max_results cap of 20.
 const FETCH_POOL = 15;
 
+// Tavily's ranking alone doesn't guarantee a Vivino hit shows up at all for
+// a given query — reordering only reshuffles whatever came back. Restricting
+// the search to a short list of trusted wine sites (via include_domains,
+// a hard filter — results come ONLY from these domains) guarantees Vivino
+// coverage when it exists, at the cost of losing the producer's own site and
+// smaller/regional retailers that would otherwise show up on the open web.
+const TRUSTED_DOMAINS = ['vivino.com', 'wine-searcher.com', 'tannico.it'];
+
 const STOPWORDS = new Set(['il', 'lo', 'la', 'i', 'gli', 'le', 'di', 'del', 'dello', 'della', 'dei', 'degli', 'delle', 'e', 'un', 'una', 'vino']);
 
 function queryWords(query: string): string[] {
@@ -57,9 +65,9 @@ function rankScore(words: string[], candidate: WineCandidate): number {
 // results (title/content/url) and images in the same response when
 // include_images is set. Requesting several results instead of committing to
 // one matters here — a specific product query (e.g. "Zamuner Riserva del
-// Fondatore") often ranks a retailer's product page above the producer's own
-// site, so the app can't reliably guess "the" right one. Showing a few lets
-// the user pick, same principle as every other suggestion in this feature:
+// Fondatore") often has more than one plausible retailer match among the
+// trusted domains, so the app can't reliably guess "the" right one. Showing
+// a few lets the user pick, same principle as every other suggestion in this feature:
 // nothing is trusted without a human confirming it. Images and results are
 // paired by index — Tavily doesn't tie a specific image to a specific
 // result, so this is a best-effort zip, good enough since the user visually
@@ -70,7 +78,7 @@ export async function searchWine(query: string, apiKey: string, fetchImpl: typeo
   const res = await fetchWithTimeout('https://api.tavily.com/search', 8000, fetchImpl, {
     method: 'POST',
     headers: { 'content-type': 'application/json', authorization: `Bearer ${apiKey}` },
-    body: JSON.stringify({ query: `${query} vino`, max_results: FETCH_POOL, include_images: true }),
+    body: JSON.stringify({ query: `${query} vino`, max_results: FETCH_POOL, include_images: true, include_domains: TRUSTED_DOMAINS }),
   });
   if (!res || !res.ok) return null;
 
