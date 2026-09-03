@@ -36,6 +36,40 @@ function queryWords(query: string): string[] {
     .filter((w) => w.length > 2 && !STOPWORDS.has(w));
 }
 
+// The longest query word is the best local proxy for "the distinctive
+// term" (usually the producer or wine name) when there's no corpus to
+// compute real term-frequency weighting from — a generic descriptor like
+// "blanc"/"rosso" is typically shorter than a producer/wine name and would
+// otherwise let an unrelated same-category result slip past the relevance
+// filter below.
+function keyWord(words: string[]): string | undefined {
+  return words.slice().sort((a, b) => b.length - a.length)[0];
+}
+
+// Tavily's within-domain search can return a page that's merely
+// topically adjacent (e.g. a generic "Sauvignon Blanc" category listing on
+// vivino.com for a "Zamuner Blanc" query) rather than one actually about
+// the searched wine — include_domains guarantees the *site*, not the
+// *match*. Drop anything that doesn't mention the distinctive query term
+// anywhere in title/snippet/URL, unless that would wipe out every
+// candidate (better to show a loose guess than nothing).
+function isRelevant(word: string, candidate: WineCandidate): boolean {
+  const haystack = `${candidate.title ?? ''} ${candidate.snippet ?? ''} ${candidate.sourceUrl ?? ''}`.toLowerCase();
+  return haystack.includes(word);
+}
+
+// Tavily's scraped `content` is raw page text — often littered with
+// markdown-style "#####" section separators and long runs of unrelated
+// site chrome (nav labels, marketing copy). Strip the separator noise and
+// cap the length so what's shown is a short, readable line instead of a
+// wall of unrelated text.
+const SNIPPET_MAX_LEN = 180;
+function cleanSnippet(text: string): string {
+  const cleaned = text.replace(/#+/g, ' ').replace(/\s+/g, ' ').trim();
+  if (cleaned.length <= SNIPPET_MAX_LEN) return cleaned;
+  return cleaned.slice(0, SNIPPET_MAX_LEN).replace(/\s+\S*$/, '') + '…';
+}
+
 // How many of the query's (non-stopword) words show up in the candidate's
 // URL — a producer's own domain (e.g. "zamuner.it") or a page slug that
 // echoes the search is a much stronger real-world signal than Tavily's
@@ -105,7 +139,7 @@ export async function searchWine(query: string, apiKey: string, fetchImpl: typeo
     const r = results[i];
     const candidate: WineCandidate = {};
     if (typeof r?.title === 'string' && r.title.trim()) candidate.title = r.title.trim();
-    if (typeof r?.content === 'string' && r.content.trim()) candidate.snippet = r.content.trim();
+    if (typeof r?.content === 'string' && r.content.trim()) candidate.snippet = cleanSnippet(r.content.trim());
     if (typeof r?.url === 'string' && r.url.trim()) candidate.sourceUrl = r.url.trim();
     const rawImage = images[i];
     const imageUrl = typeof rawImage === 'string' ? rawImage : rawImage?.url;
@@ -113,10 +147,14 @@ export async function searchWine(query: string, apiKey: string, fetchImpl: typeo
     if (Object.keys(candidate).length) candidates.push(candidate);
   }
 
+  const words = queryWords(query);
+  const distinctiveWord = keyWord(words);
+  const relevant = distinctiveWord ? candidates.filter((c) => isRelevant(distinctiveWord, c)) : candidates;
+  const filtered = relevant.length ? relevant : candidates;
+
   // Stable sort: candidates that tie on rank score (the common case — most
   // score 0) keep Tavily's own relevance order relative to each other.
-  const words = queryWords(query);
-  candidates.sort((a, b) => rankScore(words, b) - rankScore(words, a));
+  filtered.sort((a, b) => rankScore(words, b) - rankScore(words, a));
 
   // A basic search (what this always sends — no search_depth override) is a
   // flat 1 credit per Tavily's docs, regardless of max_results; the response
@@ -124,5 +162,5 @@ export async function searchWine(query: string, apiKey: string, fetchImpl: typeo
   // live call). Counted even when the search comes up empty — the credit is
   // spent either way, and the usage tracker (worker/src/cron.ts) needs every
   // call counted to warn before the monthly quota runs out.
-  return { candidates: candidates.slice(0, MAX_CANDIDATES), creditsUsed: 1 };
+  return { candidates: filtered.slice(0, MAX_CANDIDATES), creditsUsed: 1 };
 }

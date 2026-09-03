@@ -46,10 +46,12 @@ describe('searchWine', () => {
   it('reorders candidates so more query words matched in the URL rank first, among non-Vivino results', async () => {
     // Neither URL contains "riserva" or "fondatore" as literally as the
     // producer's own domain contains "zamuner" — zamuner.it should outrank
-    // a generic retailer URL even though Tavily listed it second.
+    // a generic retailer URL even though Tavily listed it second. Both
+    // mention "fondatore" (the distinctive word) so neither trips the
+    // relevance filter below.
     const fetchImpl = fakeFetch(200, {
       results: [
-        { title: 'Unrelated result', content: 'n/a', url: 'https://example.com/other' },
+        { title: 'Trovato: Fondatore', content: 'n/a', url: 'https://example.com/other' },
         { title: 'Zamuner | Sito ufficiale', content: 'Cantina Zamuner.', url: 'https://www.zamuner.it/riserva-del-fondatore' },
       ],
       images: [],
@@ -98,9 +100,11 @@ describe('searchWine', () => {
   });
 
   it('orders multiple Vivino results between themselves by URL-match score', async () => {
+    // Both mention "zamuner" (the distinctive word) so neither trips the
+    // relevance filter — only their URL-match score should differ.
     const fetchImpl = fakeFetch(200, {
       results: [
-        { title: 'Generic Vivino hit', content: 'n/a', url: 'https://vivino.com/wines/1' },
+        { title: 'Zamuner - lista vini', content: 'n/a', url: 'https://vivino.com/wines/1' },
         { title: 'Zamuner Vivino hit', content: 'n/a', url: 'https://vivino.com/wines/zamuner-riserva' },
       ],
       images: [],
@@ -110,6 +114,48 @@ describe('searchWine', () => {
       'https://vivino.com/wines/zamuner-riserva',
       'https://vivino.com/wines/1',
     ]);
+  });
+
+  it('drops a candidate that never mentions the distinctive query word (title/snippet/URL all miss)', async () => {
+    const fetchImpl = fakeFetch(200, {
+      results: [
+        { title: 'Sauvignon Blanc | Uve da vino', content: 'wine types. price range. showing 1-24 of 673 wines.', url: 'https://vivino.com/grapes/sauvignon-blanc' },
+        { title: 'Zamuner Blanc de Noirs', content: 'Bollicine venete.', url: 'https://vivino.com/wines/zamuner-blanc' },
+      ],
+      images: [],
+    });
+    const result = await searchWine('Zamuner blanc', 'key', fetchImpl);
+    expect(result?.candidates.map((c) => c.title)).toEqual(['Zamuner Blanc de Noirs']);
+  });
+
+  it('keeps every candidate when filtering would drop them all (a loose guess beats nothing)', async () => {
+    const fetchImpl = fakeFetch(200, {
+      results: [
+        { title: 'Sauvignon Blanc | Uve da vino', content: 'n/a', url: 'https://vivino.com/grapes/sauvignon-blanc' },
+        { title: 'Muscat Blanc | Uve da vino', content: 'n/a', url: 'https://vivino.com/grapes/muscat-blanc' },
+      ],
+      images: [],
+    });
+    const result = await searchWine('Zamuner blanc', 'key', fetchImpl);
+    expect(result?.candidates).toHaveLength(2);
+  });
+
+  it('cleans markdown-separator noise and long boilerplate out of the snippet', async () => {
+    const fetchImpl = fakeFetch(200, {
+      results: [
+        {
+          title: 'Zamuner',
+          content:
+            'Title: Sauvignon Blanc ##### wine types. ##### price range(EUR). ##### vivino average rating. ## grapes. ## regions. ## countries. ## foods. showing 1-24 of 673 wines. Lail Vineyards Georgia Sauvignon Blanc 2017. Terlan Quarz Sauvignon 2024. Henri Bourgeois Sancerre Jadis 2017.',
+          url: 'https://vivino.com/wines/zamuner',
+        },
+      ],
+      images: [],
+    });
+    const result = await searchWine('Zamuner', 'key', fetchImpl);
+    const snippet = result?.candidates[0]?.snippet ?? '';
+    expect(snippet).not.toContain('#');
+    expect(snippet.length).toBeLessThanOrEqual(181); // 180 + the ellipsis char
   });
 
   it('keeps stable Tavily order among candidates that tie on URL-match score', async () => {
