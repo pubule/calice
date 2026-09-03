@@ -123,10 +123,16 @@ function rankScore(words: string[], candidate: WineCandidate): number {
 // URL-match re-sort below so each candidate keeps its own paired image when
 // candidates get reordered.
 export async function searchWine(query: string, apiKey: string, fetchImpl: typeof fetch = fetch): Promise<TavilySearchResult | null> {
+  // The query used to get a " vino" suffix appended to steer Tavily's
+  // open-web ranking toward wine-related pages. Now that include_domains
+  // restricts the search to wine sites only, that suffix is dead weight —
+  // worse, Tavily's relevance ranking treats it as a real search term,
+  // diluting the weight given to the actual distinctive words (a producer
+  // name) against a generic term every result on these domains matches.
   const res = await fetchWithTimeout('https://api.tavily.com/search', 8000, fetchImpl, {
     method: 'POST',
     headers: { 'content-type': 'application/json', authorization: `Bearer ${apiKey}` },
-    body: JSON.stringify({ query: `${query} vino`, max_results: FETCH_POOL, include_images: true, include_domains: TRUSTED_DOMAINS }),
+    body: JSON.stringify({ query, max_results: FETCH_POOL, include_images: true, include_domains: TRUSTED_DOMAINS }),
   });
   if (!res || !res.ok) return null;
 

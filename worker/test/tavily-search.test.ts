@@ -13,6 +13,7 @@ describe('searchWine', () => {
       return new Response(JSON.stringify({ results: [], images: [] }), { status: 200 });
     }) as typeof fetch;
     await searchWine('Barolo DOCG', 'key', fetchImpl);
+    expect(capturedBody.query).toBe('Barolo DOCG'); // sent as-is — no " vino" suffix diluting relevance
     expect(capturedBody.include_domains).toEqual([
       'vivino.com',
       'wine-searcher.com',
