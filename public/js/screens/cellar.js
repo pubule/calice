@@ -393,9 +393,9 @@ function renderElementDetail(id) {
           ? items.map((b) => `<div class="box-item">${photoHtml(b, 'bphoto')}<div class="bname">${escapeHtml(b.name)}</div><div class="elem-count">×${b.quantity}</div></div>`).join('')
           : '<div class="empty-note">Scatolone vuoto.</div>'
       }</div>
-      ${picker ? `<div class="primary-btn" id="assign-box-btn" style="margin-top:14px;">Metti "${escapeHtml(picker.bottle.name)}" qui</div>` : ''}`;
+      <div class="primary-btn" id="assign-box-btn" style="margin-top:14px;">${picker ? `Metti "${escapeHtml(picker.bottle.name)}" qui` : 'Aggiungi bottiglia'}</div>`;
     document.getElementById('delete-element-btn').addEventListener('click', () => deleteCurrentElement());
-    document.getElementById('assign-box-btn')?.addEventListener('click', () => placeBottle(id, null, null, null));
+    document.getElementById('assign-box-btn').addEventListener('click', () => placeBottle(id, null, null, null));
     return;
   }
 
@@ -447,9 +447,7 @@ function showBottlePopup(b) {
   });
 }
 
-async function placeBottle(elId, tier, col, depth) {
-  const bottle = picker ? picker.bottle : null;
-  if (!bottle) return; // browsing an empty slot outside picker mode is a no-op
+async function assignBottleToSlot(bottle, elId, tier, col, depth) {
   const updated = await api.patch(`/api/bottles/${bottle.id}/location`, { elementId: elId, tier, col, depth });
   const el = currentElements.find((e) => e.id === elId);
   bottle.element_id = updated.element_id;
@@ -458,10 +456,54 @@ async function placeBottle(elId, tier, col, depth) {
   bottle.slot_depth = updated.slot_depth;
   bottle.element_name = el?.name;
   bottle.element_kind = el?.kind;
-  const onPicked = picker.onPicked;
-  closeElementsOverlay();
-  onPicked?.(bottle);
   applyFilters();
+}
+
+async function placeBottle(elId, tier, col, depth) {
+  if (picker) {
+    const bottle = picker.bottle;
+    await assignBottleToSlot(bottle, elId, tier, col, depth);
+    const onPicked = picker.onPicked;
+    closeElementsOverlay();
+    onPicked?.(bottle);
+    return;
+  }
+  // Browsing an empty slot outside picker mode: let the user choose which
+  // bottle goes here instead of requiring them to start from that bottle's
+  // own detail screen every time.
+  renderBottlePickerForSlot(elId, tier, col, depth);
+}
+
+function renderBottlePickerForSlot(elId, tier, col, depth) {
+  elementsMode = 'pick-bottle';
+  document.getElementById('elements-back-btn').style.visibility = 'visible';
+  document.getElementById('elements-title').textContent = 'Scegli la bottiglia';
+
+  const slotLabel = tier == null ? 'questo elemento' : `Livello ${tier} · ${colLetter(col)}.${depth}`;
+  const body = document.getElementById('elements-body');
+  body.innerHTML = `
+    <p class="page-sub" style="margin:0 0 4px; font-size:11.5px; color:#8f8474;">${slotLabel} — scegli quale bottiglia mettere qui:</p>
+    <div id="pick-bottle-list" style="display:flex; flex-direction:column; gap:9px;">${
+      currentBottles.length
+        ? currentBottles
+            .map(
+              (b) => `
+        <div class="elem-row" data-id="${b.id}">
+          ${photoHtml(b, 'cphoto')}
+          <div class="elem-body"><div class="elem-name">${escapeHtml(b.name)}</div>${locationLabel(b) ? `<div class="elem-sub">${escapeHtml(locationLabel(b))}</div>` : ''}</div>
+        </div>`,
+            )
+            .join('')
+        : '<div class="empty-note">Nessuna bottiglia in questa cantina.</div>'
+    }</div>`;
+  document.querySelectorAll('#pick-bottle-list .elem-row').forEach((row) =>
+    row.addEventListener('click', async () => {
+      const bottle = currentBottles.find((b) => b.id === Number(row.dataset.id));
+      if (!bottle) return;
+      await assignBottleToSlot(bottle, elId, tier, col, depth);
+      renderElementDetail(elId);
+    }),
+  );
 }
 
 async function deleteCurrentElement() {
@@ -584,6 +626,7 @@ function wireStaticControls() {
   document.getElementById('elements-close')?.addEventListener('click', closeElementsOverlay);
   document.getElementById('elements-back-btn')?.addEventListener('click', () => {
     if (elementsMode === 'list') closeElementsOverlay();
+    else if (elementsMode === 'pick-bottle') renderElementDetail(currentElementId);
     else renderElementsList();
   });
 }
