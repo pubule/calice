@@ -63,9 +63,11 @@ function rankScore(isVivino: boolean, tavilyScore: number): number {
 // grape listing on vivino.com for a "Zamuner Blanc" query, instead of the
 // real Zamuner product page that exists on the OPEN web), and a hand-rolled
 // word-match filter is a much weaker relevance signal than Tavily's own
-// `score`. search_depth: 'advanced' costs 2 credits instead of basic's 1,
-// but returns meaningfully better matches (confirmed against Tavily's own
-// playground for a real query this app was failing on).
+// `score`. Basic search_depth (the default — no override sent) turned out
+// to already be good enough once those two problems were fixed; advanced
+// depth was tried too and costs 2 credits instead of basic's 1 for
+// results that weren't meaningfully better on top of the domain/filter
+// fix, so it wasn't worth keeping.
 //
 // Images and results are paired by index — Tavily doesn't tie a specific
 // image to a specific result, so this is a best-effort zip, good enough
@@ -76,7 +78,7 @@ export async function searchWine(query: string, apiKey: string, fetchImpl: typeo
   const res = await fetchWithTimeout('https://api.tavily.com/search', 8000, fetchImpl, {
     method: 'POST',
     headers: { 'content-type': 'application/json', authorization: `Bearer ${apiKey}` },
-    body: JSON.stringify({ query, max_results: FETCH_POOL, include_images: true, search_depth: 'advanced' }),
+    body: JSON.stringify({ query, max_results: FETCH_POOL, include_images: true }),
   });
   if (!res || !res.ok) return null;
 
@@ -109,11 +111,11 @@ export async function searchWine(query: string, apiKey: string, fetchImpl: typeo
   // relevance order relative to each other.
   ranked.sort((a, b) => b.score - a.score);
 
-  // search_depth: 'advanced' is a flat 2 credits per Tavily's docs,
-  // regardless of max_results; the response itself carries no usage field
-  // to read it back from (confirmed against a live call). Counted even
-  // when the search comes up empty — the credit is spent either way, and
-  // the usage tracker (worker/src/cron.ts) needs every call counted to
-  // warn before the monthly quota runs out.
-  return { candidates: ranked.slice(0, MAX_CANDIDATES).map((r) => r.candidate), creditsUsed: 2 };
+  // A basic search (what this sends — no search_depth override) is a flat
+  // 1 credit per Tavily's docs, regardless of max_results; the response
+  // itself carries no usage field to read it back from (confirmed against
+  // a live call). Counted even when the search comes up empty — the
+  // credit is spent either way, and the usage tracker (worker/src/cron.ts)
+  // needs every call counted to warn before the monthly quota runs out.
+  return { candidates: ranked.slice(0, MAX_CANDIDATES).map((r) => r.candidate), creditsUsed: 1 };
 }

@@ -6,7 +6,7 @@ function fakeFetch(status: number, body: unknown): typeof fetch {
 }
 
 describe('searchWine', () => {
-  it('sends the query as-is with advanced search depth, no domain restriction', async () => {
+  it('sends the query as-is with basic search depth (default), no domain restriction', async () => {
     let capturedBody: any;
     const fetchImpl = (async (_url: string, init: RequestInit) => {
       capturedBody = JSON.parse(init.body as string);
@@ -14,11 +14,11 @@ describe('searchWine', () => {
     }) as typeof fetch;
     await searchWine('Zamuner blanc', 'key', fetchImpl);
     expect(capturedBody.query).toBe('Zamuner blanc');
-    expect(capturedBody.search_depth).toBe('advanced');
+    expect(capturedBody.search_depth).toBeUndefined();
     expect(capturedBody.include_domains).toBeUndefined();
   });
 
-  it('zips results and images by index into candidates, and counts two credits spent (advanced depth)', async () => {
+  it('zips results and images by index into candidates, and counts one credit spent', async () => {
     const fetchImpl = fakeFetch(200, {
       results: [
         { title: 'Barolo DOCG - Wine Searcher', content: 'Rosso piemontese.', url: 'https://wine-searcher.com/p/1', score: 0.8 },
@@ -28,7 +28,7 @@ describe('searchWine', () => {
     });
     const result = await searchWine('Barolo DOCG', 'key', fetchImpl);
     expect(result).toEqual({
-      creditsUsed: 2,
+      creditsUsed: 1,
       candidates: [
         { title: 'Barolo DOCG - Wine Searcher', snippet: 'Rosso piemontese.', sourceUrl: 'https://wine-searcher.com/p/1', imageUrl: 'https://wine-searcher.com/bottiglia.jpg' },
         { title: 'Barolo DOCG - Decanter', snippet: 'Vino corposo.', sourceUrl: 'https://decanter.com/p/2', imageUrl: 'https://decanter.com/bottiglia.jpg' },
@@ -153,7 +153,7 @@ describe('searchWine', () => {
   it('returns an empty candidate list (not null) when there are no results — the call still cost credits', async () => {
     const fetchImpl = fakeFetch(200, { results: [], images: [] });
     const result = await searchWine('nothing found', 'key', fetchImpl);
-    expect(result).toEqual({ candidates: [], creditsUsed: 2 });
+    expect(result).toEqual({ candidates: [], creditsUsed: 1 });
   });
 
   it('returns null (no credit counted) on a non-200 response', async () => {
