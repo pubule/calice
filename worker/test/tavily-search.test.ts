@@ -95,17 +95,19 @@ describe('searchWine', () => {
   });
 
   it('does not treat a URL that merely contains "vivino.com" as a real Vivino hostname', async () => {
+    // All three mention "zamuner" (the distinctive word) so none trips the
+    // relevance filter — only the hostname check should differ.
     const fetchImpl = fakeFetch(200, {
       results: [
         // Spoofed: neither is actually on vivino.com.
-        { title: 'Fake 1', content: 'n/a', url: 'https://evil.example/?x=vivino.com', score: 0.5 },
-        { title: 'Fake 2', content: 'n/a', url: 'https://vivino.com.evil.example/p/1', score: 0.5 },
+        { title: 'Zamuner Fake 1', content: 'n/a', url: 'https://evil.example/?x=vivino.com', score: 0.5 },
+        { title: 'Zamuner Fake 2', content: 'n/a', url: 'https://vivino.com.evil.example/p/1', score: 0.5 },
         // Real, and scores lower on Tavily's own relevance too — still wins on the Vivino boost alone.
-        { title: 'Real', content: 'n/a', url: 'https://vivino.com/wines/1', score: 0.1 },
+        { title: 'Zamuner Real', content: 'n/a', url: 'https://vivino.com/wines/1', score: 0.1 },
       ],
       images: [],
     });
-    const result = await searchWine('query', 'key', fetchImpl);
+    const result = await searchWine('Zamuner', 'key', fetchImpl);
     expect(result?.candidates.map((c) => c.sourceUrl)).toEqual([
       'https://vivino.com/wines/1',
       'https://evil.example/?x=vivino.com',
@@ -131,22 +133,26 @@ describe('searchWine', () => {
   });
 
   it('keeps stable Tavily order among candidates that tie on score (missing score defaults to 0)', async () => {
+    // All three mention "barolo" (the distinctive word) so none trips the
+    // relevance filter.
     const fetchImpl = fakeFetch(200, {
       results: [
-        { title: 'A', content: 'a', url: 'https://a.example/x' },
-        { title: 'B', content: 'b', url: 'https://b.example/x' },
-        { title: 'C', content: 'c', url: 'https://c.example/x' },
+        { title: 'Barolo A', content: 'a', url: 'https://a.example/x' },
+        { title: 'Barolo B', content: 'b', url: 'https://b.example/x' },
+        { title: 'Barolo C', content: 'c', url: 'https://c.example/x' },
       ],
       images: [],
     });
     const result = await searchWine('Barolo DOCG', 'key', fetchImpl);
-    expect(result?.candidates.map((c) => c.title)).toEqual(['A', 'B', 'C']);
+    expect(result?.candidates.map((c) => c.title)).toEqual(['Barolo A', 'Barolo B', 'Barolo C']);
   });
 
   it('requests a bigger pool from Tavily than it shows, then caps the (re-sorted) result at 10', async () => {
+    // A stopword-only query has no distinctive word, so the relevance
+    // filter is skipped entirely — this test is only about pool/cap size.
     const results = Array.from({ length: 15 }, (_, i) => ({ title: String(i), content: String(i), url: `https://${i}.example`, score: i / 15 }));
     const fetchImpl = fakeFetch(200, { results, images: [] });
-    const result = await searchWine('query', 'key', fetchImpl);
+    const result = await searchWine('il', 'key', fetchImpl);
     expect(result?.candidates).toHaveLength(10);
   });
 
@@ -176,6 +182,21 @@ describe('searchWine', () => {
     const snippet = result?.candidates[0]?.snippet ?? '';
     expect(snippet).not.toContain('#');
     expect(snippet.length).toBeLessThanOrEqual(181); // 180 + the ellipsis char
+  });
+
+  it('returns an empty list rather than falling back to off-topic candidates when none mention the distinctive word', async () => {
+    // On an unlucky Tavily draw, every returned result can miss the
+    // distinctive query term — an honest "nothing found" beats resurrecting
+    // candidates that merely look plausible.
+    const fetchImpl = fakeFetch(200, {
+      results: [
+        { title: 'Sauvignon Blanc | Uve da vino', content: 'n/a', url: 'https://vivino.com/grapes/sauvignon-blanc', score: 0.8 },
+        { title: 'Muscat Blanc | Uve da vino', content: 'n/a', url: 'https://vivino.com/grapes/muscat-blanc', score: 0.7 },
+      ],
+      images: [],
+    });
+    const result = await searchWine('Zamuner blanc', 'key', fetchImpl);
+    expect(result?.candidates).toEqual([]);
   });
 
   it('returns an empty candidate list (not null) when there are no results — the call still cost credits', async () => {

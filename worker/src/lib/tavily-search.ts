@@ -56,8 +56,8 @@ function keyWord(words: string[]): string | undefined {
 // content can enumerate hundreds of wines, so it will often contain the
 // search term somewhere by sheer coincidence even though the page isn't
 // about that wine. Drops anything that doesn't mention the distinctive
-// query term in either, unless that would wipe out every candidate (a
-// loose guess beats nothing).
+// query term in either — including, deliberately, every candidate at
+// once on an unlucky draw (see the caller for why there's no fallback).
 function isRelevant(word: string, candidate: WineCandidate): boolean {
   const haystack = `${candidate.title ?? ''} ${candidate.sourceUrl ?? ''}`.toLowerCase();
   return haystack.includes(word);
@@ -162,9 +162,16 @@ export async function searchWine(query: string, apiKey: string, fetchImpl: typeo
     }
   }
 
+  // No fallback to the unfiltered set when this comes up empty: Tavily's
+  // own result quality varies run to run for the identical query (the same
+  // "Zamuner blanc" search has come back both excellent and all-irrelevant
+  // across repeated test calls), so on an unlucky draw the "safer" choice
+  // is an honest empty list — the caller already renders "nessun risultato"
+  // for that — rather than resurrecting off-topic candidates that looked
+  // enough like a real Zamuner bottle to fool someone into saving the
+  // wrong wine.
   const distinctiveWord = keyWord(queryWords(query));
-  const relevant = distinctiveWord ? built.filter((b) => isRelevant(distinctiveWord, b.candidate)) : built;
-  const filtered = relevant.length ? relevant : built;
+  const filtered = distinctiveWord ? built.filter((b) => isRelevant(distinctiveWord, b.candidate)) : built;
 
   // Stable sort: candidates that tie on rank score keep Tavily's own
   // relevance order relative to each other.
