@@ -29,6 +29,17 @@ function urlMatchScore(words: string[], sourceUrl?: string): number {
   return words.reduce((score, word) => score + (url.includes(word) ? 1 : 0), 0);
 }
 
+// Vivino has crowd-sourced photos/vintages/ratings for far more wines than
+// any single retailer, so a Vivino hit is trusted over URL-match alone — the
+// boost dwarfs urlMatchScore's small integer range, guaranteeing every
+// Vivino candidate sorts above every non-Vivino one while still using
+// urlMatchScore to order candidates within each group.
+const VIVINO_BOOST = 1000;
+function rankScore(words: string[], candidate: WineCandidate): number {
+  const isVivino = candidate.sourceUrl?.toLowerCase().includes('vivino.com') ?? false;
+  return (isVivino ? VIVINO_BOOST : 0) + urlMatchScore(words, candidate.sourceUrl);
+}
+
 // One call, not two like the old Google integration: Tavily returns web
 // results (title/content/url) and images in the same response when
 // include_images is set. Requesting several results instead of committing to
@@ -72,10 +83,10 @@ export async function searchWine(query: string, apiKey: string, fetchImpl: typeo
     if (Object.keys(candidate).length) candidates.push(candidate);
   }
 
-  // Stable sort: candidates that tie on URL-match score (the common case —
-  // most score 0) keep Tavily's own relevance order relative to each other.
+  // Stable sort: candidates that tie on rank score (the common case — most
+  // score 0) keep Tavily's own relevance order relative to each other.
   const words = queryWords(query);
-  candidates.sort((a, b) => urlMatchScore(words, b.sourceUrl) - urlMatchScore(words, a.sourceUrl));
+  candidates.sort((a, b) => rankScore(words, b) - rankScore(words, a));
 
   // A basic search (what this always sends — no search_depth override) is a
   // flat 1 credit per Tavily's docs, regardless of max_results; the response

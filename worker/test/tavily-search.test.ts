@@ -24,23 +24,53 @@ describe('searchWine', () => {
     });
   });
 
-  it('reorders candidates so more query words matched in the URL rank first', async () => {
+  it('reorders candidates so more query words matched in the URL rank first, among non-Vivino results', async () => {
     // Neither URL contains "riserva" or "fondatore" as literally as the
     // producer's own domain contains "zamuner" — zamuner.it should outrank
     // a generic retailer URL even though Tavily listed it second.
     const fetchImpl = fakeFetch(200, {
       results: [
-        { title: 'Zamuner Riserva del Fondatore - Vivino', content: 'Bollicine venete.', url: 'https://vivino.com/p/98765' },
-        { title: 'Zamuner | Sito ufficiale', content: 'Cantina Zamuner.', url: 'https://www.zamuner.it/riserva-del-fondatore' },
         { title: 'Unrelated result', content: 'n/a', url: 'https://example.com/other' },
+        { title: 'Zamuner | Sito ufficiale', content: 'Cantina Zamuner.', url: 'https://www.zamuner.it/riserva-del-fondatore' },
       ],
       images: [],
     });
     const result = await searchWine('Zamuner Riserva del Fondatore', 'key', fetchImpl);
     expect(result?.candidates.map((c) => c.sourceUrl)).toEqual([
       'https://www.zamuner.it/riserva-del-fondatore',
-      'https://vivino.com/p/98765',
       'https://example.com/other',
+    ]);
+  });
+
+  it('always ranks a Vivino result first, even over a stronger URL-match elsewhere', async () => {
+    const fetchImpl = fakeFetch(200, {
+      results: [
+        // Zero URL-match words, but it's Vivino — should still win.
+        { title: 'Zamuner Riserva del Fondatore - Vivino', content: 'Bollicine venete.', url: 'https://vivino.com/p/98765' },
+        // Every query word literally in the URL — would win without the boost.
+        { title: 'Zamuner | Sito ufficiale', content: 'Cantina Zamuner.', url: 'https://www.zamuner.it/riserva-del-fondatore' },
+      ],
+      images: [],
+    });
+    const result = await searchWine('Zamuner Riserva del Fondatore', 'key', fetchImpl);
+    expect(result?.candidates.map((c) => c.sourceUrl)).toEqual([
+      'https://vivino.com/p/98765',
+      'https://www.zamuner.it/riserva-del-fondatore',
+    ]);
+  });
+
+  it('orders multiple Vivino results between themselves by URL-match score', async () => {
+    const fetchImpl = fakeFetch(200, {
+      results: [
+        { title: 'Generic Vivino hit', content: 'n/a', url: 'https://vivino.com/wines/1' },
+        { title: 'Zamuner Vivino hit', content: 'n/a', url: 'https://vivino.com/wines/zamuner-riserva' },
+      ],
+      images: [],
+    });
+    const result = await searchWine('Zamuner Riserva', 'key', fetchImpl);
+    expect(result?.candidates.map((c) => c.sourceUrl)).toEqual([
+      'https://vivino.com/wines/zamuner-riserva',
+      'https://vivino.com/wines/1',
     ]);
   });
 
