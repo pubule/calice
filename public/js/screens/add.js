@@ -147,8 +147,16 @@ async function runSearch(query) {
   const wines = await api.get(`/api/wines/search?q=${encodeURIComponent(query)}`);
   if (countEl) countEl.textContent = `Risultati (${wines.length})`;
   if (wines.length) {
-    results.innerHTML = wines.map(resultRowHtml).join('');
+    // A local hit skips the (paid) web search by default — but the local
+    // record's photo/data might be poor or missing, so leave a way to pull
+    // web candidates (Vivino-prioritized) anyway instead of only falling
+    // back to the web on a local miss.
+    results.innerHTML = wines.map(resultRowHtml).join('') + `<div class="manual-link" id="force-web-search-link">Cerca comunque "${escapeHtml(query)}" sul web</div>`;
     wireResults(results);
+    document.getElementById('force-web-search-link')?.addEventListener('click', () => {
+      results.innerHTML = `<p class="sub">Cerco "${escapeHtml(query)}" sul web <span class="loading-dots"><span></span><span></span><span></span></span></p>`;
+      searchWeb(query);
+    });
     return;
   }
   // Local catalog miss: search the web (Tavily) for a real bottle photo,
