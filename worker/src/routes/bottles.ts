@@ -11,7 +11,7 @@ cellarBottleRoutes.get('/:cellarId/bottles', async (c) => {
   if (!(await isCellarMember(c.env.DB, cellarId, c.get('userId')))) return c.json({ error: 'not a member' }, 403);
   const rows = await c.env.DB
     .prepare(
-      `select bottles.*, wines.name, wines.producer, wines.region, wines.country, wines.type, wines.vintage,
+      `select bottles.*, wines.name, wines.producer, wines.region, wines.country, wines.type, wines.vintage, wines.image_url,
               (select avg(rating) from tasting_notes where tasting_notes.bottle_id = bottles.id) as score,
               cellar_elements.name as element_name, cellar_elements.kind as element_kind
        from bottles

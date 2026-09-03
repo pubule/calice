@@ -18,7 +18,7 @@ beforeEach(async () => {
     'DELETE FROM activity_feed; DELETE FROM photos; DELETE FROM tasting_notes; DELETE FROM bottles; DELETE FROM wines; DELETE FROM cellar_members; DELETE FROM cellars; DELETE FROM users;',
   );
   const wine = await env.DB
-    .prepare(`insert into wines (name, producer, country, type, source) values ('Barolo DOCG', 'Elio Altare', 'Italia', 'rosso', 'catalog') returning id`)
+    .prepare(`insert into wines (name, producer, country, type, source, image_url) values ('Barolo DOCG', 'Elio Altare', 'Italia', 'rosso', 'catalog', 'https://x/barolo.jpg') returning id`)
     .first<{ id: number }>();
   wineId = wine!.id;
 });
@@ -40,6 +40,7 @@ describe('bottles', () => {
     expect(bottles).toHaveLength(1);
     expect(bottles[0].score).toBeNull();
     expect(bottles[0].name).toBe('Barolo DOCG');
+    expect(bottles[0].image_url).toBe('https://x/barolo.jpg');
 
     const feed = await env.DB.prepare('select count(*) as n from activity_feed where action = ?').bind('added').first<{ n: number }>();
     expect(feed!.n).toBe(1);

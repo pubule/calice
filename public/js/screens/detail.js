@@ -24,6 +24,9 @@ function noteHtml(n) {
 function renderHero(bottle) {
   const hero = document.querySelector('#detail-overlay .detail-hero');
   hero.className = 'detail-hero photo ' + photoClass(bottle.type);
+  // A real product photo (saved from a web-search candidate) overrides the
+  // generic type-tinted gradient set by the class above.
+  hero.style.backgroundImage = bottle.image_url ? `url('${bottle.image_url.replace(/'/g, "\\'")}')` : '';
   document.querySelector('#detail-overlay .info .name').textContent = bottle.name;
   document.querySelector('#detail-overlay .info .sub').textContent =
     `${bottle.producer} · ${bottle.region ?? bottle.country}${bottle.vintage ? ' · ' + bottle.vintage : ''}`;

@@ -35,6 +35,14 @@ function colLetter(i) {
   return String.fromCharCode(65 + i);
 }
 
+// A real product photo (saved from a web-search candidate) beats the
+// generic type-tinted placeholder whenever one is on file.
+function photoHtml(b, className) {
+  return b.image_url
+    ? `<img class="${className} photo" src="${escapeHtml(b.image_url)}" alt="">`
+    : `<div class="${className} photo ${photoClass(b.type)}"></div>`;
+}
+
 export function locationLabel(b) {
   if (!b.element_name) return '';
   if (b.slot_tier == null) return b.element_name;
@@ -52,7 +60,7 @@ function rowHtml(b) {
   return `
     <div class="cellar-row" data-id="${b.id}" data-photo="${photo}" data-name="${name}" data-sub="${sub}" data-price="${price}" data-score="${score}">
       <div class="rowcheck"><svg class="check-ic" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 12 9 17 20 6"/></svg></div>
-      <div class="cphoto photo ${photo}"></div>
+      ${photoHtml(b, 'cphoto')}
       <div class="cinfo"><div class="name">${name}</div><div class="sub">${sub} · ×${quantity}${loc ? ' · ' + escapeHtml(loc) : ''}</div></div>
       <div class="cprice">${price}<small>a bottiglia</small></div>
       <div class="row-actions">
@@ -365,7 +373,7 @@ function renderElementDetail(id) {
       <p class="box-note">Gli scatoloni non hanno slot: è solo un elenco di cosa c'è dentro.</p>
       <div class="box-contents">${
         items.length
-          ? items.map((b) => `<div class="box-item"><div class="bphoto photo ${photoClass(b.type)}"></div><div class="bname">${escapeHtml(b.name)}</div><div class="elem-count">×${b.quantity}</div></div>`).join('')
+          ? items.map((b) => `<div class="box-item">${photoHtml(b, 'bphoto')}<div class="bname">${escapeHtml(b.name)}</div><div class="elem-count">×${b.quantity}</div></div>`).join('')
           : '<div class="empty-note">Scatolone vuoto.</div>'
       }</div>
       ${picker ? `<div class="primary-btn" id="assign-box-btn" style="margin-top:14px;">Metti "${escapeHtml(picker.bottle.name)}" qui</div>` : ''}`;
@@ -412,7 +420,7 @@ function renderElementDetail(id) {
 function showBottlePopup(b) {
   const popup = document.getElementById('bottle-popup');
   popup.innerHTML = `
-    <div class="bphoto photo ${photoClass(b.type)}"></div>
+    ${photoHtml(b, 'bphoto')}
     <div class="binfo"><div class="bname">${escapeHtml(b.name)}</div><div class="bsub">${escapeHtml(b.producer)}${b.vintage ? ' · ' + b.vintage : ''}</div></div>
     <div class="bgo" id="popup-open-btn">Apri ›</div>`;
   popup.classList.add('show');
