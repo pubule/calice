@@ -2,6 +2,7 @@ import { api } from '../api-client.js';
 import { escapeHtml, photoClass } from '../util.js';
 import { openDetail } from './detail.js';
 import { me } from '../auth.js';
+import { confirmModal, promptModal } from '../modal.js';
 
 const ICON_COMPARE =
   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v18"/><path d="M16 3v18"/><path d="M3 8h4"/><path d="M17 8h4"/><path d="M3 16h4"/><path d="M17 16h4"/></svg> Confronta due vini';
@@ -140,6 +141,13 @@ function renderList(bottles) {
   list.querySelectorAll('.delete-btn').forEach((btn) =>
     btn.addEventListener('click', async (e) => {
       e.stopPropagation();
+      const bottle = currentBottles.find((b) => b.id === Number(btn.dataset.id));
+      const ok = await confirmModal(`Eliminare "${bottle?.name ?? 'questa bottiglia'}" dalla cantina?`, {
+        title: 'Elimina bottiglia',
+        confirmLabel: 'Elimina',
+        danger: true,
+      });
+      if (!ok) return;
       await api.del(`/api/bottles/${btn.dataset.id}`);
       currentBottles = await api.get(`/api/cellars/${currentCellarId}/bottles`);
       renderChips();
@@ -204,8 +212,8 @@ function renderCellarRows() {
     btn.addEventListener('click', async (e) => {
       e.stopPropagation();
       const cellar = cellars[Number(btn.dataset.i)];
-      const name = prompt('Nuovo nome:', cellar.name);
-      if (!name || name === cellar.name) return;
+      const name = await promptModal('Nuovo nome:', { title: 'Rinomina cantina', defaultValue: cellar.name, confirmLabel: 'Rinomina' });
+      if (!name?.trim() || name === cellar.name) return;
       cellars[Number(btn.dataset.i)] = await api.patch(`/api/cellars/${cellar.id}`, { name });
       renderCellarRows();
       if (cellar.id === currentCellarId) document.getElementById('active-cellar-name').textContent = name;
@@ -457,7 +465,12 @@ async function placeBottle(elId, tier, col, depth) {
 }
 
 async function deleteCurrentElement() {
-  if (!confirm('Eliminare questo elemento? Le bottiglie al suo interno resteranno senza posizione.')) return;
+  const ok = await confirmModal('Le bottiglie al suo interno resteranno senza posizione.', {
+    title: 'Eliminare questo elemento?',
+    confirmLabel: 'Elimina',
+    danger: true,
+  });
+  if (!ok) return;
   await api.del(`/api/elements/${currentElementId}`);
   currentElements = currentElements.filter((e) => e.id !== currentElementId);
   currentBottles.forEach((b) => {
@@ -557,8 +570,8 @@ function wireStaticControls() {
   document.getElementById('cellar-filter-btn')?.addEventListener('click', () => openSheet('filter-sheet'));
   document.getElementById('filter-sheet-close')?.addEventListener('click', () => closeSheet('filter-sheet'));
   document.getElementById('new-cellar-btn')?.addEventListener('click', async () => {
-    const name = prompt('Nome della nuova cantina:', 'Nuova cantina');
-    if (!name) return;
+    const name = await promptModal('Nome della nuova cantina:', { title: 'Nuova cantina', defaultValue: 'Nuova cantina', confirmLabel: 'Crea' });
+    if (!name?.trim()) return;
     const cellar = await api.post('/api/cellars', { name });
     cellars.push(cellar);
     renderCellarRows();

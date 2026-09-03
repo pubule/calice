@@ -407,3 +407,14 @@
   /* sit above .detail-overlay (20) — a location edit opens this from inside
      the bottle detail sheet and must sit on top of it */
   #elements-overlay, #cellar-sheet{z-index:22;}
+
+  /* ---- custom alert/confirm/prompt, replaces the browser's native dialogs ---- */
+  #app-modal{z-index:40;}
+  .modal-sheet{max-height:none;}
+  .modal-title{font-family:'Newsreader',serif; font-weight:500; font-size:17px; margin:0;}
+  .modal-message{font-size:13px; color:#5a5044; line-height:1.5; margin:0;}
+  .modal-input{display:none;}
+  .modal-actions{display:flex; gap:10px; margin-top:4px;}
+  .modal-actions .modal-btn-cancel{flex:1; background:none; border:1px solid #e2e0d8; border-radius:9999px; padding:11px; font-size:12.5px; font-weight:600; color:#756b60; cursor:pointer; font-family:'Archivo',sans-serif;}
+  .modal-actions .primary-btn{flex:1; margin-top:0;}
+  .modal-actions .primary-btn.danger{background:#8a3244;}

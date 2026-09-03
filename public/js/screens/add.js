@@ -1,5 +1,6 @@
 import { api } from '../api-client.js';
 import { escapeHtml, photoClass } from '../util.js';
+import { alertModal, promptModal } from '../modal.js';
 
 let currentCellarId = null;
 
@@ -26,11 +27,11 @@ function resultRowHtml(w) {
 }
 
 async function addWineToCellar(wineId) {
-  const raw = prompt('Quante bottiglie?', '1');
-  if (raw === null) return null; // user pressed Cancel — abort, don't default to adding 1
+  const raw = await promptModal('Quante bottiglie?', { title: 'Aggiungi alla cantina', defaultValue: '1', inputType: 'number', confirmLabel: 'Aggiungi' });
+  if (raw === null) return null; // user pressed Annulla — abort, don't default to adding 1
   const quantity = Number(raw) || 1;
   const bottle = await api.post(`/api/cellars/${currentCellarId}/bottles`, { wineId, quantity });
-  alert('Aggiunto alla cantina');
+  await alertModal('Aggiunto alla cantina');
   return bottle;
 }
 
@@ -236,7 +237,7 @@ function scanBarcode(video) {
 
 async function runBarcodeScan() {
   if (!('BarcodeDetector' in window)) {
-    alert('Scansione barcode non supportata su questo browser, usa la ricerca testuale.');
+    await alertModal('Scansione barcode non supportata su questo browser, usa la ricerca testuale.');
     return;
   }
   document.getElementById('camera-shutter-wrap')?.classList.add('hidden'); // continuous auto-detect, no shutter
@@ -245,7 +246,7 @@ async function runBarcodeScan() {
     video = await openCamera('Inquadra il codice a barre da vicino, più dritto possibile');
   } catch (err) {
     console.error(err);
-    alert('Impossibile accedere alla fotocamera');
+    await alertModal('Impossibile accedere alla fotocamera');
     return;
   }
 
@@ -294,7 +295,7 @@ async function runBarcodeScan() {
   } catch (err) {
     console.error(err);
     closeCamera();
-    alert('Errore durante la ricerca del codice a barre');
+    await alertModal('Errore durante la ricerca del codice a barre');
   }
 }
 
@@ -305,7 +306,7 @@ async function runLabelScan() {
     video = await openCamera("Inquadra l'etichetta e scatta");
   } catch (err) {
     console.error(err);
-    alert('Impossibile accedere alla fotocamera');
+    await alertModal('Impossibile accedere alla fotocamera');
     return;
   }
 
@@ -332,7 +333,7 @@ async function runLabelScan() {
   } catch (err) {
     console.error(err);
     closeCamera();
-    alert("Errore durante il riconoscimento dell'etichetta");
+    await alertModal("Errore durante il riconoscimento dell'etichetta");
   }
 }
 
@@ -390,7 +391,7 @@ function closeRecognizeSheet() {
 async function saveRecognizedWine() {
   const name = document.getElementById('rec-name').value.trim();
   if (!name) {
-    alert('Il nome del vino è obbligatorio');
+    await alertModal('Il nome del vino è obbligatorio');
     return;
   }
   const producer = document.getElementById('rec-producer').value.trim() || 'Produttore sconosciuto';
@@ -417,12 +418,12 @@ async function saveRecognizedWine() {
         await uploadBottlePhoto(bottle.id, pendingPhotoFile);
       } catch (err) {
         console.error(err);
-        alert('Vino salvato, ma il caricamento della foto è fallito.');
+        await alertModal('Vino salvato, ma il caricamento della foto è fallito.');
       }
     }
   } catch (err) {
     console.error(err);
-    alert('Impossibile aggiungere il vino: controlla i dati inseriti e riprova.');
+    await alertModal('Impossibile aggiungere il vino: controlla i dati inseriti e riprova.');
   }
 }
 

@@ -1,7 +1,7 @@
-const CACHE = 'calice-shell-v50';
+const CACHE = 'calice-shell-v51';
 const SHELL_FILES = [
   '/', '/index.html', '/css/app.css',
-  '/js/main.js', '/js/api-client.js', '/js/router.js', '/js/auth.js', '/js/util.js',
+  '/js/main.js', '/js/api-client.js', '/js/router.js', '/js/auth.js', '/js/util.js', '/js/modal.js',
   '/js/screens/home.js', '/js/screens/cellar.js', '/js/screens/add.js',
   '/js/screens/stats.js', '/js/screens/profile.js', '/js/screens/detail.js', '/js/screens/invite.js',
   '/manifest.webmanifest', '/icon-192.png', '/icon-512.png',
