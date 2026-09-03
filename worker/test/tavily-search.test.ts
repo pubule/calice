@@ -46,9 +46,11 @@ describe('searchWine', () => {
   });
 
   it('reorders candidates by Tavily\'s own relevance score', async () => {
+    // Both mention "fondatore" (the distinctive word) so neither trips the
+    // relevance filter — only their Tavily score should differ.
     const fetchImpl = fakeFetch(200, {
       results: [
-        { title: 'Weak match', content: 'n/a', url: 'https://example.com/other', score: 0.3 },
+        { title: 'Trovato: Fondatore', content: 'n/a', url: 'https://example.com/other', score: 0.3 },
         { title: 'Zamuner | Sito ufficiale', content: 'Cantina Zamuner.', url: 'https://www.zamuner.it/riserva-del-fondatore', score: 0.9 },
       ],
       images: [],
@@ -77,6 +79,21 @@ describe('searchWine', () => {
     ]);
   });
 
+  it('drops an off-topic Vivino result instead of letting the boost promote it purely for being on-domain', async () => {
+    // Reproduces a real failure: "Zamuner blanc" surfaced "Don de Dar ...
+    // Sauvignon Blanc", a completely unrelated Spanish wine, which the
+    // unconditional Vivino boost then shoved to the top of the list.
+    const fetchImpl = fakeFetch(200, {
+      results: [
+        { title: 'Don de Dar Vino De La Tierra De Castilla Sauvignon Blanc | Vivino Español', content: 'n/a', url: 'https://vivino.com/es/don-de-dar/w/1', score: 0.6 },
+        { title: 'Zamuner Blanc de Noirs Brut | Vivino English', content: 'n/a', url: 'https://vivino.com/en/zamuner-blanc-de-noirs-brut/w/2', score: 0.5 },
+      ],
+      images: [],
+    });
+    const result = await searchWine('Zamuner blanc', 'key', fetchImpl);
+    expect(result?.candidates.map((c) => c.title)).toEqual(['Zamuner Blanc de Noirs Brut | Vivino English']);
+  });
+
   it('does not treat a URL that merely contains "vivino.com" as a real Vivino hostname', async () => {
     const fetchImpl = fakeFetch(200, {
       results: [
@@ -97,9 +114,11 @@ describe('searchWine', () => {
   });
 
   it('orders multiple Vivino results between themselves by Tavily score', async () => {
+    // Both mention "zamuner" (the distinctive word) so neither trips the
+    // relevance filter — only their Tavily score should differ.
     const fetchImpl = fakeFetch(200, {
       results: [
-        { title: 'Generic Vivino hit', content: 'n/a', url: 'https://vivino.com/wines/1', score: 0.4 },
+        { title: 'Zamuner - lista vini', content: 'n/a', url: 'https://vivino.com/wines/1', score: 0.4 },
         { title: 'Zamuner Vivino hit', content: 'n/a', url: 'https://vivino.com/wines/zamuner-riserva', score: 0.8 },
       ],
       images: [],
