@@ -59,6 +59,25 @@ describe('searchWine', () => {
     ]);
   });
 
+  it('does not treat a URL that merely contains "vivino.com" as a real Vivino hostname', async () => {
+    const fetchImpl = fakeFetch(200, {
+      results: [
+        // Spoofed: neither is actually on vivino.com.
+        { title: 'Fake 1', content: 'n/a', url: 'https://evil.example/?x=vivino.com' },
+        { title: 'Fake 2', content: 'n/a', url: 'https://vivino.com.evil.example/p/1' },
+        // Real, but scores 0 on URL-match too — order should be Tavily's own (stable).
+        { title: 'Real', content: 'n/a', url: 'https://vivino.com/wines/1' },
+      ],
+      images: [],
+    });
+    const result = await searchWine('query', 'key', fetchImpl);
+    expect(result?.candidates.map((c) => c.sourceUrl)).toEqual([
+      'https://vivino.com/wines/1',
+      'https://evil.example/?x=vivino.com',
+      'https://vivino.com.evil.example/p/1',
+    ]);
+  });
+
   it('orders multiple Vivino results between themselves by URL-match score', async () => {
     const fetchImpl = fakeFetch(200, {
       results: [

@@ -29,6 +29,20 @@ function urlMatchScore(words: string[], sourceUrl?: string): number {
   return words.reduce((score, word) => score + (url.includes(word) ? 1 : 0), 0);
 }
 
+// Checks the actual hostname, not a raw substring match — sourceUrl comes
+// from Tavily's (third-party) search results, and `.includes('vivino.com')`
+// would let a spoofed URL like "evil.com/?x=vivino.com" or
+// "vivino.com.evil.com" claim the trust boost below without being Vivino.
+function isVivinoUrl(sourceUrl?: string): boolean {
+  if (!sourceUrl) return false;
+  try {
+    const host = new URL(sourceUrl).hostname.toLowerCase();
+    return host === 'vivino.com' || host.endsWith('.vivino.com');
+  } catch {
+    return false;
+  }
+}
+
 // Vivino has crowd-sourced photos/vintages/ratings for far more wines than
 // any single retailer, so a Vivino hit is trusted over URL-match alone — the
 // boost dwarfs urlMatchScore's small integer range, guaranteeing every
@@ -36,8 +50,7 @@ function urlMatchScore(words: string[], sourceUrl?: string): number {
 // urlMatchScore to order candidates within each group.
 const VIVINO_BOOST = 1000;
 function rankScore(words: string[], candidate: WineCandidate): number {
-  const isVivino = candidate.sourceUrl?.toLowerCase().includes('vivino.com') ?? false;
-  return (isVivino ? VIVINO_BOOST : 0) + urlMatchScore(words, candidate.sourceUrl);
+  return (isVivinoUrl(candidate.sourceUrl) ? VIVINO_BOOST : 0) + urlMatchScore(words, candidate.sourceUrl);
 }
 
 // One call, not two like the old Google integration: Tavily returns web
