@@ -9,6 +9,23 @@ const MAX_CANDIDATES = 10;
 // actually displayed. 15 is under Tavily's max_results cap of 20.
 const FETCH_POOL = 15;
 
+// Wine-only retailer/rating sites. Confirmed via a real playground call
+// (query "Zamuner vino", basic depth, these 8 domains): 8 of 10 results
+// were genuine bottle pages (title names a specific wine), the 2 that
+// weren't (a brand-landing page) still ranked below every Vivino result
+// thanks to the boost below — no hotel/tourism content is possible since
+// none of these domains host any.
+const TRUSTED_DOMAINS = [
+  'vivino.com',
+  'wine-searcher.com',
+  'tannico.it',
+  'oltrebolla20.com',
+  'callmewine.com',
+  'bernabei.it',
+  'vino.com',
+  'xtrawine.com',
+];
+
 // Tavily's scraped `content` is raw page text — often littered with
 // markdown-style "#####" section separators and long runs of unrelated
 // site chrome (nav labels, marketing copy). Strip the separator noise and
@@ -55,19 +72,18 @@ function rankScore(isVivino: boolean, tavilyScore: number): number {
 // principle as every other suggestion in this feature: nothing is trusted
 // without a human confirming it.
 //
-// This intentionally does NOT restrict the search to a fixed domain list
-// (include_domains) or re-derive relevance from word-matching — an earlier
-// version tried both and both actively hurt results: forcing the search
-// onto specific domains meant Tavily sometimes had nothing better than a
-// generic category page to offer on that domain (e.g. a "Sauvignon Blanc"
-// grape listing on vivino.com for a "Zamuner Blanc" query, instead of the
-// real Zamuner product page that exists on the OPEN web), and a hand-rolled
-// word-match filter is a much weaker relevance signal than Tavily's own
-// `score`. Basic search_depth (the default — no override sent) turned out
-// to already be good enough once those two problems were fixed; advanced
-// depth was tried too and costs 2 credits instead of basic's 1 for
-// results that weren't meaningfully better on top of the domain/filter
-// fix, so it wasn't worth keeping.
+// This does NOT re-derive relevance from hand-rolled word-matching — an
+// earlier version tried that and it actively hurt results: it's a much
+// weaker relevance signal than Tavily's own `score`, and it once dropped
+// a real bottle result over a false negative. include_domains restricts
+// to a curated wine-retailer list (see TRUSTED_DOMAINS) rather than the
+// open web — a version without it did find results, but with no way to
+// exclude company/tourism pages that happen to rank well; the domain list
+// already excludes those by construction (none of these sites host that
+// kind of content), and Tavily's score plus the Vivino boost handles the
+// rest. Basic search_depth (no override sent) is enough — advanced depth
+// was tried too and costs 2 credits instead of basic's 1 for results that
+// weren't meaningfully better, so it wasn't worth keeping.
 //
 // Images and results are paired by index — Tavily doesn't tie a specific
 // image to a specific result, so this is a best-effort zip, good enough
@@ -81,7 +97,7 @@ export async function searchWine(query: string, apiKey: string, fetchImpl: typeo
   const res = await fetchWithTimeout('https://api.tavily.com/search', 8000, fetchImpl, {
     method: 'POST',
     headers: { 'content-type': 'application/json', authorization: `Bearer ${apiKey}` },
-    body: JSON.stringify({ query: `${query} vino`, max_results: FETCH_POOL, include_images: true }),
+    body: JSON.stringify({ query: `${query} vino`, max_results: FETCH_POOL, include_images: true, include_domains: TRUSTED_DOMAINS }),
   });
   if (!res || !res.ok) return null;
 
