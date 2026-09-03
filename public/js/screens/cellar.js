@@ -107,10 +107,18 @@ function renderChips() {
         el.querySelectorAll('.chip').forEach((c) => c.classList.remove('active'));
         chip.classList.add('active');
         activeChips[g.key] = chip.dataset.v || null;
+        updateFilterBadge();
         applyFilters();
       }),
     );
   }
+}
+
+function updateFilterBadge() {
+  const count = Object.values(activeChips).filter(Boolean).length;
+  const badge = document.getElementById('cellar-filter-badge');
+  badge.textContent = count;
+  badge.classList.toggle('show', count > 0);
 }
 
 function applyFilters() {
@@ -216,6 +224,7 @@ async function loadCellarData() {
   currentBottles = await api.get(`/api/cellars/${currentCellarId}/bottles`);
   currentElements = await api.get(`/api/cellars/${currentCellarId}/elements`);
   activeChips = { type: null, country: null, region: null };
+  updateFilterBadge();
   document.getElementById('cellar-search-input').value = '';
   renderChips();
   applyFilters();
@@ -545,6 +554,8 @@ function wireStaticControls() {
     openSheet('cellar-sheet');
   });
   document.getElementById('cellar-sheet-close')?.addEventListener('click', () => closeSheet('cellar-sheet'));
+  document.getElementById('cellar-filter-btn')?.addEventListener('click', () => openSheet('filter-sheet'));
+  document.getElementById('filter-sheet-close')?.addEventListener('click', () => closeSheet('filter-sheet'));
   document.getElementById('new-cellar-btn')?.addEventListener('click', async () => {
     const name = prompt('Nome della nuova cantina:', 'Nuova cantina');
     if (!name) return;

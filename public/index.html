@@ -52,10 +52,13 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="7" height="7" rx="1"/><rect x="13" y="4" width="7" height="7" rx="1"/><rect x="4" y="13" width="7" height="7" rx="1"/><rect x="13" y="13" width="7" height="7" rx="1"/></svg>
         Elementi cantina
       </div>
-      <input id="cellar-search-input" class="search" placeholder="Cerca per nome, produttore, annata…" type="text">
-      <div><div class="chip-label">Tipo</div><div class="chips" id="cellar-chips-type"></div></div>
-      <div><div class="chip-label">Paese</div><div class="chips" id="cellar-chips-country"></div></div>
-      <div><div class="chip-label">Regione</div><div class="chips" id="cellar-chips-region"></div></div>
+      <div class="search-row">
+        <input id="cellar-search-input" class="search" placeholder="Cerca per nome, produttore, annata…" type="text">
+        <div class="filter-btn" id="cellar-filter-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="7" x2="20" y2="7"/><circle cx="9" cy="7" r="2.3"/><line x1="4" y1="17" x2="20" y2="17"/><circle cx="16" cy="17" r="2.3"/></svg>
+          <span class="filter-badge" id="cellar-filter-badge">0</span>
+        </div>
+      </div>
     </div>
 
     <div class="cellar-body">
@@ -86,6 +89,16 @@
           <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
           Nuova cantina
         </div>
+      </div>
+    </div>
+
+    <!-- SHEET: filtri (tipo, paese, regione) -->
+    <div class="compare-overlay" id="filter-sheet">
+      <div class="compare-sheet">
+        <div class="compare-head"><h3>Filtri</h3><div class="close" id="filter-sheet-close"><svg viewBox="0 0 24 24" style="width:14px;height:14px;" fill="none" stroke="#241e1a" stroke-width="1.8" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="6" y1="18" x2="18" y2="6"/></svg></div></div>
+        <div><div class="chip-label">Tipo</div><div class="chips" id="cellar-chips-type"></div></div>
+        <div><div class="chip-label">Paese</div><div class="chips" id="cellar-chips-country"></div></div>
+        <div><div class="chip-label">Regione</div><div class="chips" id="cellar-chips-region"></div></div>
       </div>
     </div>
 

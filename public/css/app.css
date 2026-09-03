@@ -317,8 +317,15 @@
   #view-cellar .cellar-body{flex:1; overflow-y:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; display:flex; flex-direction:column; gap:16px; padding:16px 20px 20px;}
   /* Tre gruppi di chip impilati in cantina/elementi: la spaziatura negativa
      globale di .chip-label li fa sovrapporre — qui basta più margine. */
-  #view-cellar .chip-label, #elements-overlay .chip-label{margin:0 0 6px;}
+  #view-cellar .chip-label, #elements-overlay .chip-label, #filter-sheet .chip-label{margin:0 0 6px;}
   .results-count{font-family:'JetBrains Mono',monospace; font-size:9.5px; letter-spacing:.06em; text-transform:uppercase; color:#a89b89;}
+
+  .search-row{display:flex; align-items:center; gap:9px;}
+  .search-row .search{flex:1;}
+  .filter-btn{position:relative; width:41px; height:41px; border-radius:10px; background:#ffffff; border:1px solid #e2e0d8; display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0;}
+  .filter-btn svg{width:17px; height:17px; stroke:#756b60;}
+  .filter-badge{display:none; position:absolute; top:-5px; right:-5px; min-width:16px; height:16px; padding:0 4px; border-radius:9999px; background:#5b2333; color:#f7f5f0; font-family:'JetBrains Mono',monospace; font-size:9px; font-weight:600; align-items:center; justify-content:center;}
+  .filter-badge.show{display:flex;}
   .search-clear{font-size:11px; color:#5b2333; font-weight:600; cursor:pointer; flex-shrink:0; display:none;}
   .search-clear.show{display:block;}
   .empty-note{text-align:center; color:#8f8474; font-size:12.5px; padding:28px 10px;}
