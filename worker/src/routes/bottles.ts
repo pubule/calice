@@ -12,8 +12,11 @@ cellarBottleRoutes.get('/:cellarId/bottles', async (c) => {
   const rows = await c.env.DB
     .prepare(
       `select bottles.*, wines.name, wines.producer, wines.region, wines.country, wines.type, wines.vintage,
-              (select avg(rating) from tasting_notes where tasting_notes.bottle_id = bottles.id) as score
-       from bottles join wines on wines.id = bottles.wine_id
+              (select avg(rating) from tasting_notes where tasting_notes.bottle_id = bottles.id) as score,
+              cellar_elements.name as element_name, cellar_elements.kind as element_kind
+       from bottles
+         join wines on wines.id = bottles.wine_id
+         left join cellar_elements on cellar_elements.id = bottles.element_id
        where bottles.cellar_id = ?
        order by bottles.added_at desc`,
     )
@@ -65,6 +68,25 @@ bottleRoutes.patch('/:id', async (c) => {
        where id = ? returning *`,
     )
     .bind(body.quantity ?? null, body.pricePaid ?? null, body.shelfLocation ?? null, body.drinkFrom ?? null, body.drinkUntil ?? null, id)
+    .first();
+  return c.json(bottle);
+});
+
+// Full overwrite (nulls included) rather than the coalesce pattern above —
+// unassigning an element or clearing a slot is a real, valid state, not an
+// omitted field.
+bottleRoutes.patch('/:id/location', async (c) => {
+  const id = Number(c.req.param('id'));
+  if (!(await assertBottleAccess(c.env, id, c.get('userId')))) return c.json({ error: 'not found' }, 404);
+  const body = await c.req.json<{ elementId: number | null; tier?: number | null; col?: number | null; depth?: number | null }>();
+  if (body.elementId != null) {
+    const bottleCellar = await c.env.DB.prepare('select cellar_id from bottles where id = ?').bind(id).first<{ cellar_id: number }>();
+    const element = await c.env.DB.prepare('select cellar_id from cellar_elements where id = ?').bind(body.elementId).first<{ cellar_id: number }>();
+    if (!element || element.cellar_id !== bottleCellar!.cellar_id) return c.json({ error: 'element not in this cellar' }, 400);
+  }
+  const bottle = await c.env.DB
+    .prepare('update bottles set element_id = ?, slot_tier = ?, slot_col = ?, slot_depth = ? where id = ? returning *')
+    .bind(body.elementId, body.tier ?? null, body.col ?? null, body.depth ?? null, id)
     .first();
   return c.json(bottle);
 });

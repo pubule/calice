@@ -131,4 +131,85 @@ describe('bottles', () => {
     expect(notesAfter!.n).toBe(0);
     expect(photosAfter!.n).toBe(0);
   });
+
+  it('assigns a bottle to a cellar element slot, and the list join surfaces the element name/kind', async () => {
+    const auth = signup('b5@b.com');
+    const cellarId = await myCellarId(auth);
+    const created = await (
+      await app.request(
+        `/api/cellars/${cellarId}/bottles`,
+        { method: 'POST', body: JSON.stringify({ wineId, quantity: 1 }), headers: { ...auth, 'content-type': 'application/json' } },
+        env,
+      )
+    ).json<{ id: number }>();
+    const element = await (
+      await app.request(
+        `/api/cellars/${cellarId}/elements`,
+        { method: 'POST', body: JSON.stringify({ kind: 'Scaffale', name: 'Scaffale A', tiers: 3, cols: 5, depth: 1 }), headers: { ...auth, 'content-type': 'application/json' } },
+        env,
+      )
+    ).json<{ id: number }>();
+
+    const patchRes = await app.request(
+      `/api/bottles/${created.id}/location`,
+      { method: 'PATCH', body: JSON.stringify({ elementId: element.id, tier: 1, col: 2, depth: 1 }), headers: { ...auth, 'content-type': 'application/json' } },
+      env,
+    );
+    expect(patchRes.status).toBe(200);
+    const patched = await patchRes.json<any>();
+    expect(patched.element_id).toBe(element.id);
+    expect(patched.slot_col).toBe(2);
+
+    const bottles = await (await app.request(`/api/cellars/${cellarId}/bottles`, { headers: auth }, env)).json<any[]>();
+    expect(bottles[0].element_name).toBe('Scaffale A');
+    expect(bottles[0].element_kind).toBe('Scaffale');
+  });
+
+  it('rejects assigning a bottle to an element from a different cellar', async () => {
+    const authA = signup('b7@b.com');
+    const cellarA = await myCellarId(authA);
+    const created = await (
+      await app.request(
+        `/api/cellars/${cellarA}/bottles`,
+        { method: 'POST', body: JSON.stringify({ wineId, quantity: 1 }), headers: { ...authA, 'content-type': 'application/json' } },
+        env,
+      )
+    ).json<{ id: number }>();
+
+    const authB = signup('b8@b.com');
+    const cellarB = await myCellarId(authB);
+    const foreignElement = await (
+      await app.request(
+        `/api/cellars/${cellarB}/elements`,
+        { method: 'POST', body: JSON.stringify({ kind: 'Scatolone', name: 'Altrui' }), headers: { ...authB, 'content-type': 'application/json' } },
+        env,
+      )
+    ).json<{ id: number }>();
+
+    const res = await app.request(
+      `/api/bottles/${created.id}/location`,
+      { method: 'PATCH', body: JSON.stringify({ elementId: foreignElement.id }), headers: { ...authA, 'content-type': 'application/json' } },
+      env,
+    );
+    expect(res.status).toBe(400);
+  });
+
+  it('clears a slot back to unassigned by sending elementId null', async () => {
+    const auth = signup('b6@b.com');
+    const cellarId = await myCellarId(auth);
+    const created = await (
+      await app.request(
+        `/api/cellars/${cellarId}/bottles`,
+        { method: 'POST', body: JSON.stringify({ wineId, quantity: 1 }), headers: { ...auth, 'content-type': 'application/json' } },
+        env,
+      )
+    ).json<{ id: number }>();
+    await app.request(
+      `/api/bottles/${created.id}/location`,
+      { method: 'PATCH', body: JSON.stringify({ elementId: null }), headers: { ...auth, 'content-type': 'application/json' } },
+      env,
+    );
+    const bottles = await (await app.request(`/api/cellars/${cellarId}/bottles`, { headers: auth }, env)).json<any[]>();
+    expect(bottles[0].element_id).toBeNull();
+  });
 });

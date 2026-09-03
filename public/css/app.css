@@ -5,7 +5,7 @@
   *{box-sizing:border-box;}
   html{ background:#f7f5f0; color-scheme:light; height:100%; height:-webkit-fill-available; overflow:hidden; overscroll-behavior-y:none; }
   body{ margin:0; height:100%; height:-webkit-fill-available; overflow:hidden; background:var(--page-bg); overscroll-behavior-y:none; }
-  .screen{ position:relative; width:100%; max-width:480px; margin:0 auto; height:100dvh; overflow:hidden; background:#f7f5f0; color:#241e1a; font-family:'Archivo',sans-serif; display:flex; flex-direction:column; padding-top:env(safe-area-inset-top); }
+  .screen{ position:fixed; top:var(--app-top, 0px); left:50%; transform:translateX(-50%); width:100%; max-width:480px; height:var(--app-height, 100dvh); overflow:hidden; background:#f7f5f0; color:#241e1a; font-family:'Archivo',sans-serif; display:flex; flex-direction:column; padding-top:env(safe-area-inset-top); }
   svg.ic{width:19px; height:19px; stroke:currentColor; stroke-width:1.6; fill:none; stroke-linecap:round; stroke-linejoin:round; flex-shrink:0;}
 
   /* .navbar is a normal flex child (flex:none, last in DOM order), never
@@ -115,15 +115,20 @@
   .chip-label{font-family:'JetBrains Mono',monospace; font-size:9.5px; letter-spacing:.08em; text-transform:uppercase; color:#a89b89; margin:2px 0 -4px;}
 
   /* ---- aggiungi ---- */
-  .scan-tiles{display:flex; gap:10px;}
-  .scan-tile{ flex:1; background:#ffffff; border:1px solid #e2e0d8; border-radius:12px; padding:18px 10px; display:flex; flex-direction:column; align-items:center; gap:9px; text-align:center; }
-  .scan-tile .ic-wrap{width:38px; height:38px; border-radius:50%; background:#f3e6ea; display:flex; align-items:center; justify-content:center;}
-  .scan-tile .ic-wrap svg{stroke:#5b2333;}
+  .scan-tiles{display:flex; gap:8px;}
+  .scan-tile{ flex:1; background:#ffffff; border:1px solid #e2e0d8; border-radius:12px; padding:8px 10px; display:flex; flex-direction:row; align-items:center; gap:8px; text-align:left; }
+  .scan-tile .ic-wrap{flex:none; width:28px; height:28px; border-radius:50%; background:#f3e6ea; display:flex; align-items:center; justify-content:center;}
+  .scan-tile .ic-wrap svg{width:16px; height:16px; stroke:#5b2333;}
   .scan-tile .t{font-weight:600; font-size:12px;}
   .scan-tile .s{font-size:10px; color:#8f8474;}
   .manual-link{ text-align:center; font-size:12px; color:#5b2333; border-bottom:1px solid #e0c7cd; align-self:center; padding-bottom:2px; }
+  .loading-dots{display:inline-flex; gap:4px; vertical-align:middle;}
+  .loading-dots span{width:5px; height:5px; border-radius:50%; background:#8f8474; animation:loading-dots-bounce 1.1s infinite ease-in-out both;}
+  .loading-dots span:nth-child(2){animation-delay:.15s;}
+  .loading-dots span:nth-child(3){animation-delay:.3s;}
+  @keyframes loading-dots-bounce{0%,80%,100%{opacity:.25; transform:scale(.7);} 40%{opacity:1; transform:scale(1);}}
   .result-row{display:flex; gap:12px; align-items:center; background:#ffffff; border:1px solid #e2e0d8; border-radius:12px; padding:10px;}
-  .result-photo{width:34px; height:48px; border-radius:4px; flex-shrink:0;}
+  .result-photo{width:34px; height:48px; border-radius:4px; flex-shrink:0; object-fit:cover;}
   .result-body{flex:1; min-width:0;}
   .result-body .name{font-weight:600; font-size:12.5px;}
   .result-body .sub{font-size:10.5px; color:#8f8474; margin-top:1px;}
@@ -185,13 +190,6 @@
   .loc-row .loc-text{flex:1; font-size:12px;}
   .loc-row .loc-text b{display:block; font-size:10.5px; color:#8f8474; font-weight:600; margin-bottom:1px;}
   .loc-edit{font-size:11px; color:#5b2333; font-weight:600; border-bottom:1px solid #e0c7cd; cursor:pointer; flex-shrink:0;}
-  .rack{display:none; background:#ffffff; border:1px solid #e2e0d8; border-radius:12px; padding:14px;}
-  .rack.open{display:block;}
-  .rack-grid{display:grid; grid-template-columns:repeat(6,1fr); gap:6px; margin:10px 0 12px;}
-  .rack-slot{aspect-ratio:1; border-radius:5px; background:#f0ede4; border:1px solid #e2e0d8; cursor:pointer;}
-  .rack-slot.taken{background:#e7ddd0; cursor:default;}
-  .rack-slot.sel{background:#5b2333; border-color:#5b2333;}
-  .rack-save{width:100%; background:#5b2333; color:#f7f5f0; border-radius:9999px; padding:10px; text-align:center; font-size:12px; font-weight:600; cursor:pointer;}
   .rev-tabs{display:flex; gap:8px;}
   .rev-tab{flex:1; text-align:center; padding:8px; border-radius:9999px; font-size:11.5px; border:1px solid #e2e0d8; color:#756b60; cursor:pointer;}
   .rev-tab.active{background:#5b2333; border-color:#5b2333; color:#f7f5f0;}
@@ -288,6 +286,21 @@
   .compare-head{display:flex; align-items:center; justify-content:space-between;}
   .compare-head h3{font-family:'Newsreader',serif; font-weight:500; font-size:17px; margin:0;}
   .compare-head .close{width:28px; height:28px; border-radius:50%; background:#efece3; display:flex; align-items:center; justify-content:center; cursor:pointer;}
+
+  /* ---- anteprima fotocamera (scansiona etichetta / codice a barre) ---- */
+  .camera-overlay{position:absolute; inset:0; background:#000; z-index:30; display:none; align-items:center; justify-content:center;}
+  .camera-overlay.open{display:flex;}
+  .camera-overlay video{width:100%; height:100%; object-fit:cover;}
+  .camera-close{position:absolute; top:calc(env(safe-area-inset-top) + 14px); left:14px; width:34px; height:34px; border-radius:50%; background:rgba(20,15,12,.5); display:flex; align-items:center; justify-content:center; cursor:pointer;}
+  .camera-hint{position:absolute; top:calc(env(safe-area-inset-top) + 20px); left:0; right:0; text-align:center; color:#fff; font-size:12.5px; font-weight:600; text-shadow:0 1px 3px rgba(0,0,0,.5);}
+  .camera-shutter-wrap{position:absolute; bottom:calc(env(safe-area-inset-bottom) + 28px); left:0; right:0; display:flex; justify-content:center;}
+  .camera-shutter{width:64px; height:64px; border-radius:50%; background:#fff; border:4px solid rgba(255,255,255,.4); cursor:pointer;}
+  .camera-shutter-wrap.hidden{display:none;}
+  .camera-spinner{display:none; width:42px; height:42px; border-radius:50%; border:4px solid rgba(255,255,255,.25); border-top-color:#fff; animation:camera-spin .8s linear infinite;}
+  @keyframes camera-spin{to{transform:rotate(360deg);}}
+  /* While loading: hide the (now-stopped) video feed and controls, show only the spinner. */
+  .camera-overlay.loading video, .camera-overlay.loading .camera-hint, .camera-overlay.loading .camera-shutter-wrap{display:none;}
+  .camera-overlay.loading .camera-spinner{display:block;}
   .compare-cols{display:flex; gap:12px;}
   .compare-col{flex:1; background:#ffffff; border:1px solid #e2e0d8; border-radius:12px; overflow:hidden;}
   .compare-photo{height:80px;}
@@ -296,3 +309,93 @@
   .compare-col .stat-line{display:flex; justify-content:space-between; align-items:center; padding:7px 10px; border-top:1px solid #eee9df; font-size:10px; color:#8f8474; margin-top:8px;}
   .compare-col .stat-line:first-of-type{margin-top:10px;}
   .compare-col .stat-line b{font-family:'JetBrains Mono',monospace; font-weight:600; color:#241e1a; font-size:10.5px;}
+
+  /* ---- cantina: header fisso + solo lista scrolla, stesso fix di #view-add ---- */
+  #view-cellar{overflow:hidden; padding:0;}
+  #view-cellar .cellar-header{flex:none; display:flex; flex-direction:column; gap:16px; padding:10px 20px 0;}
+  #view-cellar .cellar-body{flex:1; overflow-y:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; display:flex; flex-direction:column; gap:16px; padding:16px 20px 20px;}
+  /* Tre gruppi di chip impilati in cantina/elementi: la spaziatura negativa
+     globale di .chip-label li fa sovrapporre — qui basta più margine. */
+  #view-cellar .chip-label, #elements-overlay .chip-label{margin:0 0 6px;}
+  .results-count{font-family:'JetBrains Mono',monospace; font-size:9.5px; letter-spacing:.06em; text-transform:uppercase; color:#a89b89;}
+  .search-clear{font-size:11px; color:#5b2333; font-weight:600; cursor:pointer; flex-shrink:0; display:none;}
+  .search-clear.show{display:block;}
+  .empty-note{text-align:center; color:#8f8474; font-size:12.5px; padding:28px 10px;}
+
+  /* labeled inline action, mirrors .compare-btn so it's actually discoverable */
+  .elements-link{display:inline-flex; align-items:center; gap:6px; font-size:11.5px; font-weight:600; color:#5b2333; cursor:pointer;}
+  .elements-link svg{width:14px; height:14px; stroke:#5b2333;}
+
+  /* ---- selettore cantina + elementi: bottom sheet, mirrors .compare-overlay/-sheet ---- */
+  .back-btn{width:28px; height:28px; border-radius:50%; background:#f2f0e9; display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0;}
+  .back-btn svg{width:13px; height:13px; stroke:#241e1a;}
+  .list-row{display:flex; align-items:center; gap:11px; padding:11px 2px; border-bottom:1px solid #ece8de;}
+  .list-row:last-of-type{border-bottom:none;}
+  .list-row .radio{width:18px; height:18px; border-radius:50%; border:1.5px solid #d8ceb8; flex-shrink:0; position:relative; cursor:pointer;}
+  .list-row.active .radio{border-color:#5b2333;}
+  .list-row.active .radio::after{content:''; position:absolute; inset:3.5px; border-radius:50%; background:#5b2333;}
+  .list-row .lbody{flex:1; min-width:0; cursor:pointer;}
+  .list-row .lname{font-size:13.5px; font-weight:600;}
+  .list-row .lsub{font-size:10.5px; color:#8f8474; margin-top:2px;}
+  .add-row-btn{display:flex; align-items:center; justify-content:center; gap:7px; padding:12px; border-radius:12px; border:1.5px dashed #d8ceb8; color:#5b2333; font-weight:600; font-size:12.5px; cursor:pointer;}
+  .add-row-btn svg{width:13px; height:13px; stroke:#5b2333;}
+  .primary-btn{width:100%; background:#5b2333; color:#f7f5f0; border:none; border-radius:9999px; padding:11px; text-align:center; font-size:12.5px; font-weight:600; cursor:pointer; font-family:'Archivo',sans-serif;}
+
+  /* ---- elementi cantina: lista ---- */
+  .elem-row{display:flex; gap:12px; align-items:center; background:#ffffff; border:1px solid #e2e0d8; border-radius:12px; padding:12px; cursor:pointer;}
+  .elem-icon{width:38px; height:38px; border-radius:9px; background:#f3e6ea; display:flex; align-items:center; justify-content:center; flex-shrink:0;}
+  .elem-icon svg{width:18px; height:18px; stroke:#5b2333;}
+  .elem-body{flex:1; min-width:0;}
+  .elem-name{font-weight:600; font-size:13px;}
+  .elem-sub{font-size:10.5px; color:#8f8474; margin-top:2px;}
+  .elem-count{font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:600; color:#a89b89; flex-shrink:0;}
+
+  /* ---- nuovo elemento: scelta tipo + dimensioni ---- */
+  .kind-grid{display:grid; grid-template-columns:repeat(2,1fr); gap:9px;}
+  .kind-opt{border:1.5px solid #e2e0d8; border-radius:12px; padding:12px; display:flex; flex-direction:column; align-items:flex-start; gap:7px; cursor:pointer; background:#fff;}
+  .kind-opt.active{border-color:#5b2333; background:#fbf3f5;}
+  .kind-opt .elem-icon{margin-bottom:1px;}
+  .kind-opt .kname{font-size:12.5px; font-weight:600;}
+  .kind-opt .kdesc{font-size:10px; color:#8f8474; line-height:1.4;}
+  .field-label{font-family:'JetBrains Mono',monospace; font-size:9.5px; letter-spacing:.08em; text-transform:uppercase; color:#a89b89;}
+  .text-input{border:1px solid #e2e0d8; border-radius:9999px; padding:10px 14px; font-size:16px; font-family:'Archivo',sans-serif; color:#241e1a; background:#fff; width:100%; outline:none;}
+  .dims-row{display:flex; align-items:center; gap:10px;}
+  .num-input{width:52px; text-align:center; border:1px solid #e2e0d8; border-radius:8px; padding:8px 4px; font-size:16px; font-family:'JetBrains Mono',monospace; background:#fff; color:#241e1a;}
+
+  /* ---- dettaglio elemento: vista a token circolari per livello, stile Vinocell ---- */
+  .elem-stats{display:flex; justify-content:space-around; background:#fff; border:1px solid #e2e0d8; border-radius:12px; padding:11px 6px;}
+  .elem-stats .stat{text-align:center;}
+  .elem-stats .stat b{display:block; font-family:'JetBrains Mono',monospace; font-size:15px; font-weight:600;}
+  .elem-stats .stat span{font-size:9px; letter-spacing:.05em; text-transform:uppercase; color:#a89b89;}
+  .elements-view{display:flex; flex-direction:column; gap:22px;}
+  .tier-block{display:flex; flex-direction:column; gap:9px;}
+  .tier-label{font-family:'JetBrains Mono',monospace; font-size:9.5px; letter-spacing:.06em; text-transform:uppercase; color:#a89b89; text-align:center;}
+  .tier-rows{display:flex; flex-direction:column; gap:9px;}
+  .slot-row{display:flex; justify-content:center; gap:10px; flex-wrap:wrap;}
+  .slot-circle{width:36px; height:36px; border-radius:50%; background:#e9e5da; border:3px solid #d8d2c2; display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0; position:relative;}
+  .slot-circle .slabel{font-family:'JetBrains Mono',monospace; font-size:8px; font-weight:600; color:#a89b89;}
+  .slot-circle.filled{border-color:#7a2436; background:#3d1420;}
+  .slot-circle.filled .slabel{color:rgba(255,255,255,.75);}
+  .slot-circle.filled.type-bianco{border-color:#a89550; background:#d9c98a;}
+  .slot-circle.filled.type-bianco .slabel{color:rgba(36,30,26,.6);}
+  .slot-circle.filled.type-bollicine{border-color:#b8ac74; background:#e0d9b8;}
+  .slot-circle.filled.type-bollicine .slabel{color:rgba(36,30,26,.6);}
+  .slot-circle.sel{outline:2.5px solid #5b2333; outline-offset:2px;}
+  .bottle-popup{display:none; background:#241e1a; color:#f7f5f0; border-radius:12px; padding:11px 13px; align-items:center; gap:10px;}
+  .bottle-popup.show{display:flex;}
+  .bottle-popup .bphoto{width:20px; height:30px; border-radius:3px; flex-shrink:0;}
+  .bottle-popup .binfo{flex:1; min-width:0;}
+  .bottle-popup .bname{font-size:12.5px; font-weight:600;}
+  .bottle-popup .bsub{font-size:10.5px; color:rgba(247,245,240,.65); margin-top:1px;}
+  .bottle-popup .bgo{font-size:11px; font-weight:600; color:#f0c8d3; flex-shrink:0; cursor:pointer;}
+
+  /* ---- scatolone: nessuno slot, solo elenco contenuto ---- */
+  .box-note{font-size:11.5px; color:#8f8474; line-height:1.5;}
+  .box-contents{display:flex; flex-direction:column; gap:8px; margin-top:4px;}
+  .box-item{display:flex; align-items:center; gap:10px; background:#fff; border:1px solid #e2e0d8; border-radius:10px; padding:9px 11px;}
+  .box-item .bphoto{width:20px; height:30px; border-radius:3px; flex-shrink:0;}
+  .box-item .bname{font-size:12px; font-weight:600; flex:1;}
+
+  /* sit above .detail-overlay (20) — a location edit opens this from inside
+     the bottle detail sheet and must sit on top of it */
+  #elements-overlay, #cellar-sheet{z-index:22;}

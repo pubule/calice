@@ -12,6 +12,31 @@ function showView(id) {
   document.getElementById(id)?.classList.add('active');
 }
 
+// iOS Safari (standalone PWA) doesn't reliably shrink 100dvh when the
+// keyboard opens — it pans the whole layout instead, dragging the navbar
+// into view above the keyboard. Track the real visible height ourselves via
+// visualViewport and drive .screen's height from it; also treat a shrunk
+// viewport as "keyboard open" to hide the navbar, which is more reliable
+// than a single input's focus/blur (covers any field, any screen).
+const vv = window.visualViewport;
+if (vv) {
+  const fullHeight = window.innerHeight;
+  const applyViewportHeight = () => {
+    // .screen is position:fixed and pinned to the ACTUAL visible rectangle
+    // (top + height from visualViewport), not the layout viewport — iOS
+    // pans the layout viewport to reveal a focused input above the
+    // keyboard regardless of any element's CSS height, so without this the
+    // panned-past area (below a merely-shortened .screen) shows through as
+    // unpainted black canvas.
+    document.documentElement.style.setProperty('--app-top', `${vv.offsetTop}px`);
+    document.documentElement.style.setProperty('--app-height', `${vv.height}px`);
+    document.querySelector('.navbar')?.classList.toggle('kb-hidden', vv.height < fullHeight - 100);
+  };
+  vv.addEventListener('resize', applyViewportHeight);
+  vv.addEventListener('scroll', applyViewportHeight);
+  applyViewportHeight();
+}
+
 registerRoute('#/home', async () => { showView('view-home'); await mountHome(); });
 registerRoute('#/cellar', async () => { showView('view-cellar'); await mountCellar(); });
 registerRoute('#/add', async () => { showView('view-add'); await mountAdd(); });

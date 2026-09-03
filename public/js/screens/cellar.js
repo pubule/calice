@@ -8,10 +8,38 @@ const ICON_COMPARE =
 const ICON_CANCEL =
   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="6" y1="18" x2="18" y2="6"/></svg> Annulla selezione';
 
+const KIND_ICON = {
+  Scaffale: '<svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round"><rect x="4" y="4" width="16" height="16" rx="1"/><line x1="4" y1="10" x2="20" y2="10"/><line x1="4" y1="15" x2="20" y2="15"/></svg>',
+  Rack: '<svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round"><path d="M4 4v16M12 4v16M20 4v16"/><path d="M4 9h16M4 15h16"/></svg>',
+  Cella: '<svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round"><rect x="5" y="3" width="14" height="18" rx="2"/><line x1="5" y1="10" x2="19" y2="10"/><line x1="5" y1="16" x2="19" y2="16"/></svg>',
+  Scatolone: '<svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round"><path d="M3 8l9-5 9 5-9 5-9-5Z"/><path d="M3 8v9l9 5 9-5V8"/><path d="M12 13v9"/></svg>',
+};
+const KINDS = ['Scaffale', 'Rack', 'Cella', 'Scatolone'];
+
+let cellars = [];
 let currentCellarId = null;
 let currentBottles = [];
+let currentElements = [];
 let compareMode = false;
 let compareSelected = [];
+let activeChips = { type: null, country: null, region: null };
+
+// picker state: set while the elements overlay was opened from a bottle's
+// "modifica posizione" link (detail.js), instead of the standalone
+// "Elementi cantina" browse entry point.
+let picker = null; // { bottle, onPicked }
+let elementsMode = 'list'; // 'list' | 'detail' | 'create'
+let currentElementId = null;
+
+function colLetter(i) {
+  return String.fromCharCode(65 + i);
+}
+
+export function locationLabel(b) {
+  if (!b.element_name) return '';
+  if (b.slot_tier == null) return b.element_name;
+  return `${b.element_name} · Livello ${b.slot_tier} · ${colLetter(b.slot_col)}.${b.slot_depth}`;
+}
 
 function rowHtml(b) {
   const photo = photoClass(b.type);
@@ -19,13 +47,13 @@ function rowHtml(b) {
   const sub = `${escapeHtml(b.producer)} · ${escapeHtml(b.region ?? b.country)}`;
   const price = b.price_paid != null ? `€${escapeHtml(b.price_paid)}` : '—';
   const score = b.score != null ? b.score.toFixed(1) : '—';
-  const shelf = b.shelf_location ? ' · ' + escapeHtml(b.shelf_location) : '';
+  const loc = locationLabel(b);
   const quantity = escapeHtml(b.quantity);
   return `
     <div class="cellar-row" data-id="${b.id}" data-photo="${photo}" data-name="${name}" data-sub="${sub}" data-price="${price}" data-score="${score}">
       <div class="rowcheck"><svg class="check-ic" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 12 9 17 20 6"/></svg></div>
       <div class="cphoto photo ${photo}"></div>
-      <div class="cinfo"><div class="name">${name}</div><div class="sub">${sub} · ×${quantity}${shelf}</div></div>
+      <div class="cinfo"><div class="name">${name}</div><div class="sub">${sub} · ×${quantity}${loc ? ' · ' + escapeHtml(loc) : ''}</div></div>
       <div class="cprice">${price}<small>a bottiglia</small></div>
       <div class="row-actions">
         <div class="icon-btn edit-btn" data-id="${b.id}" title="Modifica"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></div>
@@ -47,17 +75,59 @@ function wishRowHtml(w) {
     </div>`;
 }
 
-async function renderList() {
+function capitalize(s) {
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+// Chips are built from the values actually present in this cellar, not a
+// fixed hardcoded list — an empty/small cellar only ever shows filters that
+// mean something for it.
+function renderChips() {
+  const groups = [
+    { id: 'cellar-chips-type', key: 'type', field: 'type', allLabel: 'Tutti' },
+    { id: 'cellar-chips-country', key: 'country', field: 'country', allLabel: 'Tutti' },
+    { id: 'cellar-chips-region', key: 'region', field: 'region', allLabel: 'Tutte' },
+  ];
+  for (const g of groups) {
+    const values = [...new Set(currentBottles.map((b) => b[g.field]).filter(Boolean))].sort();
+    const el = document.getElementById(g.id);
+    el.innerHTML =
+      `<div class="chip active" data-v="">${g.allLabel}</div>` +
+      values.map((v) => `<div class="chip" data-v="${escapeHtml(v)}">${escapeHtml(capitalize(v))}</div>`).join('');
+    el.querySelectorAll('.chip').forEach((chip) =>
+      chip.addEventListener('click', () => {
+        el.querySelectorAll('.chip').forEach((c) => c.classList.remove('active'));
+        chip.classList.add('active');
+        activeChips[g.key] = chip.dataset.v || null;
+        applyFilters();
+      }),
+    );
+  }
+}
+
+function applyFilters() {
+  const q = document.getElementById('cellar-search-input').value.trim().toLowerCase();
+  const filtered = currentBottles.filter((b) => {
+    const mQ = !q || `${b.name} ${b.producer} ${b.vintage ?? ''}`.toLowerCase().includes(q);
+    const mType = !activeChips.type || b.type === activeChips.type;
+    const mCountry = !activeChips.country || b.country === activeChips.country;
+    const mRegion = !activeChips.region || b.region === activeChips.region;
+    return mQ && mType && mCountry && mRegion;
+  });
+  document.getElementById('cellar-results-count').textContent = filtered.length + (filtered.length === 1 ? ' bottiglia' : ' bottiglie');
+  renderList(filtered);
+}
+
+function renderList(bottles) {
   const list = document.getElementById('cellar-list');
-  list.innerHTML = currentBottles.map(rowHtml).join('');
+  list.innerHTML = bottles.map(rowHtml).join('') || '<div class="empty-note">Nessun vino trovato con questi filtri.</div>';
   list.querySelectorAll('.delete-btn').forEach((btn) =>
     btn.addEventListener('click', async (e) => {
       e.stopPropagation();
       await api.del(`/api/bottles/${btn.dataset.id}`);
-      // Re-fetch from the server rather than trusting the optimistic local
-      // removal, so the list reflects what actually persisted.
       currentBottles = await api.get(`/api/cellars/${currentCellarId}/bottles`);
-      renderList();
+      renderChips();
+      applyFilters();
     }),
   );
   list.querySelectorAll('.cellar-row').forEach((row) =>
@@ -98,12 +168,302 @@ function exitCompareMode() {
   if (compareBtn) compareBtn.innerHTML = ICON_COMPARE;
 }
 
-// Wire the controls that live in the static page shell (compare button/bar,
-// row-selection delegation, segmented toggle) exactly once — this module is
-// only ever evaluated a single time, whereas mountCellar() re-runs on every
-// visit to #/cellar, so listeners for anything not re-rendered by mountCellar
-// belong here, not there (attaching them per-visit would stack duplicate
-// handlers on every revisit of the screen).
+// ---- selettore cantina ----
+
+function renderCellarRows() {
+  document.getElementById('cellar-rows').innerHTML = cellars
+    .map(
+      (c, i) => `
+      <div class="list-row ${c.id === currentCellarId ? 'active' : ''}">
+        <div class="radio" data-i="${i}"></div>
+        <div class="lbody" data-i="${i}"><div class="lname">${escapeHtml(c.name)}</div></div>
+        <div class="icon-btn rename-cellar-btn" data-i="${i}" title="Rinomina"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></div>
+      </div>`,
+    )
+    .join('');
+  document.querySelectorAll('#cellar-rows .radio, #cellar-rows .lbody').forEach((el) =>
+    el.addEventListener('click', () => selectCellar(cellars[Number(el.dataset.i)].id)),
+  );
+  document.querySelectorAll('.rename-cellar-btn').forEach((btn) =>
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const cellar = cellars[Number(btn.dataset.i)];
+      const name = prompt('Nuovo nome:', cellar.name);
+      if (!name || name === cellar.name) return;
+      cellars[Number(btn.dataset.i)] = await api.patch(`/api/cellars/${cellar.id}`, { name });
+      renderCellarRows();
+      if (cellar.id === currentCellarId) document.getElementById('active-cellar-name').textContent = name;
+    }),
+  );
+}
+
+async function selectCellar(id) {
+  currentCellarId = id;
+  document.getElementById('active-cellar-name').textContent = cellars.find((c) => c.id === id).name;
+  closeSheet('cellar-sheet');
+  await loadCellarData();
+}
+
+async function loadCellarData() {
+  currentBottles = await api.get(`/api/cellars/${currentCellarId}/bottles`);
+  currentElements = await api.get(`/api/cellars/${currentCellarId}/elements`);
+  activeChips = { type: null, country: null, region: null };
+  document.getElementById('cellar-search-input').value = '';
+  renderChips();
+  applyFilters();
+  await renderWishlist();
+}
+
+function openSheet(id) {
+  document.getElementById(id).classList.add('open');
+}
+function closeSheet(id) {
+  document.getElementById(id).classList.remove('open');
+}
+
+// ---- elementi cantina ----
+
+function elemCapacity(el) {
+  return el.kind === 'Scatolone' ? null : el.tiers * el.cols * el.depth;
+}
+function elemCount(el) {
+  return currentBottles.filter((b) => b.element_id === el.id).length;
+}
+function elemSub(el) {
+  if (el.kind === 'Scatolone') return 'Nessuno slot — solo elenco';
+  return `${el.tiers} livelli × ${el.cols} col.${el.depth > 1 ? ' × prof.' + el.depth : ''}`;
+}
+
+function openElementsOverlay() {
+  elementsMode = 'list';
+  document.getElementById('elements-back-btn').style.visibility = 'hidden';
+  renderElementsList();
+  openSheet('elements-overlay');
+}
+
+function closeElementsOverlay() {
+  closeSheet('elements-overlay');
+  picker = null;
+}
+
+function renderElementsList() {
+  elementsMode = 'list';
+  document.getElementById('elements-back-btn').style.visibility = 'hidden';
+  const cellarName = cellars.find((c) => c.id === currentCellarId)?.name ?? '';
+  document.getElementById('elements-title').textContent = picker ? 'Scegli dove riporla' : `Elementi — ${cellarName}`;
+
+  const kindChipsHtml =
+    `<div class="chip active" data-v="">Tutti</div>` + KINDS.map((k) => `<div class="chip" data-v="${k}">${k}</div>`).join('');
+
+  const body = document.getElementById('elements-body');
+  body.innerHTML = `
+    <div class="chips" id="elements-kind-chips" style="margin-bottom:16px;">${kindChipsHtml}</div>
+    <div id="elements-list" style="display:flex; flex-direction:column; gap:9px;"></div>
+    <div class="add-row-btn" id="new-element-btn" style="margin-top:14px;">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      Nuovo elemento
+    </div>`;
+
+  let activeKind = '';
+  function renderFiltered() {
+    const list = currentElements.filter((el) => !activeKind || el.kind === activeKind);
+    document.getElementById('elements-list').innerHTML = list.length
+      ? list
+          .map(
+            (el) => `
+        <div class="elem-row" data-id="${el.id}">
+          <div class="elem-icon">${KIND_ICON[el.kind]}</div>
+          <div class="elem-body"><div class="elem-name">${escapeHtml(el.name)}</div><div class="elem-sub">${escapeHtml(el.kind)} · ${escapeHtml(elemSub(el))}</div></div>
+          <div class="elem-count">${elemCount(el)} bott.</div>
+        </div>`,
+          )
+          .join('')
+      : '<div class="empty-note">Nessun elemento di questo tipo. Creane uno con "Nuovo elemento".</div>';
+    document.querySelectorAll('#elements-list .elem-row').forEach((row) =>
+      row.addEventListener('click', () => renderElementDetail(Number(row.dataset.id))),
+    );
+  }
+  renderFiltered();
+
+  document.querySelectorAll('#elements-kind-chips .chip').forEach((chip) =>
+    chip.addEventListener('click', () => {
+      document.querySelectorAll('#elements-kind-chips .chip').forEach((c) => c.classList.remove('active'));
+      chip.classList.add('active');
+      activeKind = chip.dataset.v;
+      renderFiltered();
+    }),
+  );
+  document.getElementById('new-element-btn').addEventListener('click', renderElementCreateForm);
+}
+
+function renderElementCreateForm() {
+  elementsMode = 'create';
+  document.getElementById('elements-back-btn').style.visibility = 'visible';
+  document.getElementById('elements-title').textContent = 'Nuovo elemento';
+
+  const body = document.getElementById('elements-body');
+  body.innerHTML = `
+    <div class="field-label" style="margin-bottom:9px;">Tipo</div>
+    <div class="kind-grid" id="kind-grid">
+      ${KINDS.map(
+        (k, i) => `
+        <div class="kind-opt${i === 0 ? ' active' : ''}" data-kind="${k}">
+          <div class="elem-icon">${KIND_ICON[k]}</div>
+          <div class="kname">${k}</div>
+          <div class="kdesc">${k === 'Scatolone' ? 'Solo elenco contenuto, niente slot' : 'Griglia a slot, livelli × colonne'}</div>
+        </div>`,
+      ).join('')}
+    </div>
+    <div class="field-label" style="margin:14px 0 9px;">Nome</div>
+    <input class="text-input" id="new-elem-name" placeholder="es. Scaffale cucina, Frigo vini">
+    <div id="new-elem-dims" style="margin-top:14px;">
+      <div class="field-label" style="margin-bottom:9px;">Definisci gli slot</div>
+      <div class="dims-row" style="flex-wrap:wrap; row-gap:8px;">
+        Livelli <input type="number" class="num-input" id="new-elem-tiers" value="3" min="1">
+        × Colonne <input type="number" class="num-input" id="new-elem-cols" value="5" min="1">
+        × Profondità <input type="number" class="num-input" id="new-elem-depth" value="1" min="1" max="2">
+      </div>
+    </div>
+    <div class="primary-btn" id="create-element-btn" style="margin-top:16px;">Crea elemento</div>`;
+
+  document.querySelectorAll('#kind-grid .kind-opt').forEach((opt) =>
+    opt.addEventListener('click', () => {
+      document.querySelectorAll('#kind-grid .kind-opt').forEach((o) => o.classList.remove('active'));
+      opt.classList.add('active');
+      document.getElementById('new-elem-dims').style.display = opt.dataset.kind === 'Scatolone' ? 'none' : 'block';
+    }),
+  );
+
+  document.getElementById('create-element-btn').addEventListener('click', async () => {
+    const kind = document.querySelector('#kind-grid .kind-opt.active').dataset.kind;
+    const name = document.getElementById('new-elem-name').value.trim() || kind;
+    const body = { kind, name };
+    if (kind !== 'Scatolone') {
+      body.tiers = parseInt(document.getElementById('new-elem-tiers').value) || 3;
+      body.cols = parseInt(document.getElementById('new-elem-cols').value) || 5;
+      body.depth = parseInt(document.getElementById('new-elem-depth').value) || 1;
+    }
+    const created = await api.post(`/api/cellars/${currentCellarId}/elements`, body);
+    currentElements.push(created);
+    renderElementsList();
+  });
+}
+
+function renderElementDetail(id) {
+  elementsMode = 'detail';
+  currentElementId = id;
+  document.getElementById('elements-back-btn').style.visibility = 'visible';
+  const el = currentElements.find((e) => e.id === id);
+  document.getElementById('elements-title').textContent = el.name;
+
+  const body = document.getElementById('elements-body');
+
+  if (el.kind === 'Scatolone') {
+    const items = currentBottles.filter((b) => b.element_id === id);
+    body.innerHTML = `
+      <div class="icon-btn danger" id="delete-element-btn" title="Elimina elemento" style="align-self:flex-end; margin-bottom:10px;"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"/><path d="M6 7l1 13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-13"/><path d="M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3"/></svg></div>
+      <p class="box-note">Gli scatoloni non hanno slot: è solo un elenco di cosa c'è dentro.</p>
+      <div class="box-contents">${
+        items.length
+          ? items.map((b) => `<div class="box-item"><div class="bphoto photo ${photoClass(b.type)}"></div><div class="bname">${escapeHtml(b.name)}</div><div class="elem-count">×${b.quantity}</div></div>`).join('')
+          : '<div class="empty-note">Scatolone vuoto.</div>'
+      }</div>
+      ${picker ? `<div class="primary-btn" id="assign-box-btn" style="margin-top:14px;">Metti "${escapeHtml(picker.bottle.name)}" qui</div>` : ''}`;
+    document.getElementById('delete-element-btn').addEventListener('click', () => deleteCurrentElement());
+    document.getElementById('assign-box-btn')?.addEventListener('click', () => placeBottle(id, null, null, null));
+    return;
+  }
+
+  const occupied = elemCount(el);
+  const capacity = elemCapacity(el);
+  let html = `
+    <div class="icon-btn danger" id="delete-element-btn" title="Elimina elemento" style="align-self:flex-end; margin-bottom:10px;"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"/><path d="M6 7l1 13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-13"/><path d="M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3"/></svg></div>
+    <div class="elements-view">
+    <div class="elem-stats">
+      <div class="stat"><b>${capacity}</b><span>Capacità</span></div>
+      <div class="stat"><b>${occupied}</b><span>Occupati</span></div>
+      <div class="stat"><b>${capacity - occupied}</b><span>Liberi</span></div>
+    </div>
+    <div class="bottle-popup" id="bottle-popup"></div>`;
+  for (let t = 1; t <= el.tiers; t++) {
+    html += `<div class="tier-block"><div class="tier-label">Livello ${t}</div><div class="tier-rows">`;
+    for (let d = 1; d <= el.depth; d++) {
+      html += `<div class="slot-row">`;
+      for (let c = 0; c < el.cols; c++) {
+        const occ = currentBottles.find((b) => b.element_id === id && b.slot_tier === t && b.slot_col === c && b.slot_depth === d);
+        const typeClass = occ ? (occ.type === 'bianco' ? 'type-bianco' : occ.type === 'bollicine' ? 'type-bollicine' : '') : '';
+        html += `<div class="slot-circle${occ ? ' filled ' + typeClass : ''}" data-t="${t}" data-c="${c}" data-d="${d}"><span class="slabel">${colLetter(c)}.${d}</span></div>`;
+      }
+      html += '</div>';
+    }
+    html += '</div></div>';
+  }
+  html += `<p class="page-sub" style="margin:0; font-size:11.5px; color:#8f8474; text-align:center;">Tocca uno slot vuoto per posizionarci ${picker ? '"' + escapeHtml(picker.bottle.name) + '"' : 'una bottiglia'}. Tocca uno slot pieno per vederne il contenuto.</p></div>`;
+  body.innerHTML = html;
+
+  document.getElementById('delete-element-btn').addEventListener('click', () => deleteCurrentElement());
+  body.querySelectorAll('.slot-circle').forEach((cell) => {
+    const t = Number(cell.dataset.t), c = Number(cell.dataset.c), d = Number(cell.dataset.d);
+    const occ = currentBottles.find((b) => b.element_id === id && b.slot_tier === t && b.slot_col === c && b.slot_depth === d);
+    cell.addEventListener('click', () => (occ ? showBottlePopup(occ) : placeBottle(id, t, c, d)));
+  });
+}
+
+function showBottlePopup(b) {
+  const popup = document.getElementById('bottle-popup');
+  popup.innerHTML = `
+    <div class="bphoto photo ${photoClass(b.type)}"></div>
+    <div class="binfo"><div class="bname">${escapeHtml(b.name)}</div><div class="bsub">${escapeHtml(b.producer)}${b.vintage ? ' · ' + b.vintage : ''}</div></div>
+    <div class="bgo" id="popup-open-btn">Apri ›</div>`;
+  popup.classList.add('show');
+  document.getElementById('popup-open-btn').addEventListener('click', async () => {
+    closeElementsOverlay();
+    await openDetail(b, await me());
+  });
+}
+
+async function placeBottle(elId, tier, col, depth) {
+  const bottle = picker ? picker.bottle : null;
+  if (!bottle) return; // browsing an empty slot outside picker mode is a no-op
+  const updated = await api.patch(`/api/bottles/${bottle.id}/location`, { elementId: elId, tier, col, depth });
+  const el = currentElements.find((e) => e.id === elId);
+  bottle.element_id = updated.element_id;
+  bottle.slot_tier = updated.slot_tier;
+  bottle.slot_col = updated.slot_col;
+  bottle.slot_depth = updated.slot_depth;
+  bottle.element_name = el?.name;
+  bottle.element_kind = el?.kind;
+  const onPicked = picker.onPicked;
+  closeElementsOverlay();
+  onPicked?.(bottle);
+  applyFilters();
+}
+
+async function deleteCurrentElement() {
+  if (!confirm('Eliminare questo elemento? Le bottiglie al suo interno resteranno senza posizione.')) return;
+  await api.del(`/api/elements/${currentElementId}`);
+  currentElements = currentElements.filter((e) => e.id !== currentElementId);
+  currentBottles.forEach((b) => {
+    if (b.element_id === currentElementId) {
+      b.element_id = null;
+      b.slot_tier = null;
+      b.slot_col = null;
+      b.slot_depth = null;
+      b.element_name = null;
+      b.element_kind = null;
+    }
+  });
+  applyFilters();
+  renderElementsList();
+}
+
+// Opened from a bottle's "modifica posizione" link, on top of the already-open
+// detail overlay. onPicked receives the mutated bottle once a slot is chosen.
+export function openLocationPicker(bottle, onPicked) {
+  picker = { bottle, onPicked };
+  openElementsOverlay();
+}
+
 function wireStaticControls() {
   const cellarList = document.getElementById('cellar-list');
   const compareBtn = document.getElementById('compare-open');
@@ -170,6 +530,30 @@ function wireStaticControls() {
       }
     });
   });
+
+  document.getElementById('cellar-search-input')?.addEventListener('input', applyFilters);
+  document.getElementById('cantina-switch')?.addEventListener('click', () => {
+    renderCellarRows();
+    openSheet('cellar-sheet');
+  });
+  document.getElementById('cellar-sheet-close')?.addEventListener('click', () => closeSheet('cellar-sheet'));
+  document.getElementById('new-cellar-btn')?.addEventListener('click', async () => {
+    const name = prompt('Nome della nuova cantina:', 'Nuova cantina');
+    if (!name) return;
+    const cellar = await api.post('/api/cellars', { name });
+    cellars.push(cellar);
+    renderCellarRows();
+  });
+
+  document.getElementById('elements-link')?.addEventListener('click', () => {
+    picker = null;
+    openElementsOverlay();
+  });
+  document.getElementById('elements-close')?.addEventListener('click', closeElementsOverlay);
+  document.getElementById('elements-back-btn')?.addEventListener('click', () => {
+    if (elementsMode === 'list') closeElementsOverlay();
+    else renderElementsList();
+  });
 }
 
 wireStaticControls();
@@ -179,9 +563,8 @@ export async function mountCellar() {
   // would reference detached nodes — drop it and reset the compare UI.
   exitCompareMode();
 
-  const cellars = await api.get('/api/cellars');
-  currentCellarId = cellars[0].id;
-  currentBottles = await api.get(`/api/cellars/${currentCellarId}/bottles`);
-  await renderList();
-  await renderWishlist();
+  cellars = await api.get('/api/cellars');
+  if (!cellars.some((c) => c.id === currentCellarId)) currentCellarId = cellars[0].id;
+  document.getElementById('active-cellar-name').textContent = cellars.find((c) => c.id === currentCellarId).name;
+  await loadCellarData();
 }

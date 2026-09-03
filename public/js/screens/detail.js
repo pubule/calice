@@ -1,5 +1,6 @@
 import { api } from '../api-client.js';
 import { escapeHtml, photoClass } from '../util.js';
+import { openLocationPicker, locationLabel } from './cellar.js';
 
 let currentBottleId = null;
 let currentBottle = null; // same object reference cellar.js's currentBottles holds, mutated in place on save
@@ -33,11 +34,7 @@ function renderHero(bottle) {
   } else {
     badge.style.display = 'none';
   }
-  document.getElementById('loc-value').textContent = bottle.shelf_location || 'Non assegnata';
-  // No reliable slot<->label mapping exists (shelf_location is free text),
-  // so don't carry over a stale highlighted slot from a previous bottle.
-  document.querySelectorAll('.rack-slot.sel').forEach((s) => s.classList.remove('sel'));
-  document.getElementById('rack-panel').classList.remove('open');
+  document.getElementById('loc-value').textContent = locationLabel(bottle) || 'Non assegnata';
 }
 
 async function loadNotes(bottleId) {
@@ -78,7 +75,7 @@ export async function openDetail(bottle, me) {
 
 // The gallery add-tile and file input are re-created on every loadPhotos()
 // call (they're part of its innerHTML), so they get wired there. Everything
-// else in the sheet (close, tab switch, star picker, note form, rack picker)
+// else in the sheet (close, tab switch, star picker, note form, location edit)
 // is static markup that exists once for the app's lifetime — wire it once
 // here, mirroring cellar.js's wireStaticControls(), instead of re-attaching
 // a fresh listener (and stacking duplicates) on every openDetail() call.
@@ -114,29 +111,10 @@ function wireStaticControls() {
   });
 
   document.getElementById('loc-edit-btn')?.addEventListener('click', () => {
-    document.getElementById('rack-panel').classList.toggle('open');
-  });
-
-  document.querySelectorAll('.rack-slot:not(.taken)').forEach((slot) => {
-    slot.addEventListener('click', () => {
-      document.querySelectorAll('.rack-slot').forEach((s) => s.classList.remove('sel'));
-      slot.classList.add('sel');
+    if (!currentBottle) return;
+    openLocationPicker(currentBottle, (updated) => {
+      document.getElementById('loc-value').textContent = locationLabel(updated) || 'Non assegnata';
     });
-  });
-
-  document.getElementById('rack-save')?.addEventListener('click', async () => {
-    if (currentBottleId == null) return;
-    const selected = document.querySelector('.rack-slot.sel');
-    const label = selected ? `Scaffale ${selected.dataset.shelf || '?'}` : null;
-    if (label) {
-      await api.patch(`/api/bottles/${currentBottleId}`, { shelfLocation: label });
-      document.getElementById('loc-value').textContent = label;
-      // Keep the in-memory bottle object (shared by reference with cellar.js's
-      // currentBottles list) in sync, so reopening the same sheet later in
-      // this session shows the new location without needing a full reload.
-      if (currentBottle) currentBottle.shelf_location = label;
-    }
-    document.getElementById('rack-panel').classList.remove('open');
   });
 }
 

@@ -34,6 +34,14 @@ cellarRoutes.post('/', async (c) => {
   return c.json(cellar);
 });
 
+cellarRoutes.patch('/:id', async (c) => {
+  const id = Number(c.req.param('id'));
+  if (!(await isCellarMember(c.env.DB, id, c.get('userId')))) return c.json({ error: 'not a member' }, 403);
+  const { name } = await c.req.json<{ name: string }>();
+  const cellar = await c.env.DB.prepare('update cellars set name = ? where id = ? returning *').bind(name, id).first();
+  return c.json(cellar);
+});
+
 cellarRoutes.post('/:id/invite', async (c) => {
   const cellarId = Number(c.req.param('id'));
   const userId = c.get('userId');

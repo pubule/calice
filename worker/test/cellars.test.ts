@@ -54,4 +54,30 @@ describe('cellars', () => {
     const res = await app.request('/api/invites/does-not-exist/accept', { method: 'POST', headers: auth }, env);
     expect(res.status).toBe(404);
   });
+
+  it('renames a cellar via PATCH', async () => {
+    const auth = signup('renamer@b.com');
+    const cellars = await (await app.request('/api/cellars', { headers: auth }, env)).json<any[]>();
+    const cellarId = cellars[0].id;
+    const res = await app.request(
+      `/api/cellars/${cellarId}`,
+      { method: 'PATCH', body: JSON.stringify({ name: 'Cantina in campagna' }), headers: { ...auth, 'content-type': 'application/json' } },
+      env,
+    );
+    expect(res.status).toBe(200);
+    const body = await res.json<{ name: string }>();
+    expect(body.name).toBe('Cantina in campagna');
+  });
+
+  it('rejects a rename from a non-member with 403', async () => {
+    const authA = signup('owner3@b.com');
+    const cellarId = (await (await app.request('/api/cellars', { headers: authA }, env)).json<any[]>())[0].id;
+    const authB = signup('stranger2@b.com');
+    const res = await app.request(
+      `/api/cellars/${cellarId}`,
+      { method: 'PATCH', body: JSON.stringify({ name: 'Rubata' }), headers: { ...authB, 'content-type': 'application/json' } },
+      env,
+    );
+    expect(res.status).toBe(403);
+  });
 });

@@ -39,29 +39,35 @@
   </div>
 
   <div class="view" id="view-cellar">
-    <div class="topbar">
-      <h2 class="screen-title">La tua cantina</h2>
-      <div class="cantina-switch"><span>Casa</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></div>
+    <div class="cellar-header">
+      <div class="topbar">
+        <h2 class="screen-title">La tua cantina</h2>
+        <div class="cantina-switch" id="cantina-switch"><span id="active-cellar-name">…</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></div>
+      </div>
+      <div class="segmented">
+        <button class="active" data-wall="owned">La mia cantina</button>
+        <button data-wall="wish">Desideri</button>
+      </div>
+      <div class="compare-btn" id="compare-open">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v18"/><path d="M16 3v18"/><path d="M3 8h4"/><path d="M17 8h4"/><path d="M3 16h4"/><path d="M17 16h4"/></svg>
+        Confronta due vini
+      </div>
+      <div class="elements-link" id="elements-link">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="7" height="7" rx="1"/><rect x="13" y="4" width="7" height="7" rx="1"/><rect x="4" y="13" width="7" height="7" rx="1"/><rect x="13" y="13" width="7" height="7" rx="1"/></svg>
+        Elementi cantina
+      </div>
+      <input id="cellar-search-input" class="search" placeholder="Cerca per nome, produttore, annata…" type="text">
+      <div><div class="chip-label">Tipo</div><div class="chips" id="cellar-chips-type"></div></div>
+      <div><div class="chip-label">Paese</div><div class="chips" id="cellar-chips-country"></div></div>
+      <div><div class="chip-label">Regione</div><div class="chips" id="cellar-chips-region"></div></div>
     </div>
-    <div class="segmented">
-      <button class="active" data-wall="owned">La mia cantina</button>
-      <button data-wall="wish">Desideri</button>
+
+    <div class="cellar-body">
+      <div class="results-count" id="cellar-results-count"></div>
+      <div class="cellar-list" id="cellar-list"></div>
+
+      <div id="wishlist-list" style="display:none; flex-direction:column; gap:8px;"></div>
     </div>
-    <div class="compare-btn" id="compare-open">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v18"/><path d="M16 3v18"/><path d="M3 8h4"/><path d="M17 8h4"/><path d="M3 16h4"/><path d="M17 16h4"/></svg>
-      Confronta due vini
-    </div>
-    <div class="search"><svg class="ic" viewBox="0 0 24 24" style="width:16px;height:16px;"><circle cx="10.5" cy="10.5" r="6.5"/><line x1="20" y1="20" x2="15.3" y2="15.3"/></svg>Cerca per nome, cantina, annata…</div>
-    <div><div class="chip-label">Tipo</div><div class="chips">
-      <div class="chip active">Tutti</div><div class="chip">Rosso</div><div class="chip">Bianco</div><div class="chip">Bollicine</div><div class="chip">Rosato</div>
-    </div></div>
-    <div><div class="chip-label">Paese</div><div class="chips">
-      <div class="chip active">Tutti</div><div class="chip">Italia</div><div class="chip">Francia</div><div class="chip">Spagna</div><div class="chip">Portogallo</div><div class="chip">Germania</div>
-    </div></div>
-    <div><div class="chip-label">Regione</div><div class="chips">
-      <div class="chip active">Tutte</div><div class="chip">Piemonte</div><div class="chip">Toscana</div><div class="chip">Veneto</div><div class="chip">Sicilia</div><div class="chip">Lombardia</div><div class="chip">Sardegna</div><div class="chip">Campania</div><div class="chip">Rioja</div>
-    </div></div>
-    <div class="cellar-list" id="cellar-list"></div>
 
     <div class="compare-bar" id="compare-bar">
       <span id="compare-count">0/2 selezionati</span>
@@ -71,7 +77,29 @@
       </div>
     </div>
 
-    <div id="wishlist-list" style="display:none; flex-direction:column; gap:8px;"></div>
+    <!-- SHEET: selettore cantina (rinomina + crea) -->
+    <div class="compare-overlay" id="cellar-sheet">
+      <div class="compare-sheet">
+        <div class="compare-head"><h3>Le tue cantine</h3><div class="close" id="cellar-sheet-close"><svg viewBox="0 0 24 24" style="width:14px;height:14px;" fill="none" stroke="#241e1a" stroke-width="1.8" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="6" y1="18" x2="18" y2="6"/></svg></div></div>
+        <div id="cellar-rows"></div>
+        <div class="add-row-btn" id="new-cellar-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Nuova cantina
+        </div>
+      </div>
+    </div>
+
+    <!-- OVERLAY: elementi cantina (lista / dettaglio con slot / nuovo elemento) -->
+    <div class="compare-overlay" id="elements-overlay">
+      <div class="compare-sheet" style="max-height:92%;">
+        <div class="topbar" style="padding-top:0;">
+          <div class="back-btn" id="elements-back-btn"><svg viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg></div>
+          <h2 class="screen-title" style="font-size:16px;" id="elements-title">Elementi</h2>
+          <div class="icon-btn" id="elements-close"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="6" y1="18" x2="18" y2="6"/></svg></div>
+        </div>
+        <div id="elements-body"></div>
+      </div>
+    </div>
   </div>
 
   <div class="view" id="view-add">
@@ -80,22 +108,18 @@
       <div class="scan-tiles">
         <div class="scan-tile" id="scan-label-tile">
           <div class="ic-wrap"><svg class="ic" viewBox="0 0 24 24" style="width:18px;height:18px;"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7l1.8-2.5h4.4L16 7"/><circle cx="12" cy="13.5" r="3.2"/></svg></div>
-          <div class="t">Scansiona etichetta</div><div class="s">Riconoscimento foto</div>
+          <div class="t">Scansiona etichetta</div>
         </div>
         <div class="scan-tile" id="scan-barcode-tile">
           <div class="ic-wrap"><svg class="ic" viewBox="0 0 24 24" style="width:18px;height:18px;"><rect x="3" y="5" width="2" height="14"/><rect x="7" y="5" width="1" height="14"/><rect x="10" y="5" width="3" height="14"/><rect x="15" y="5" width="1" height="14"/><rect x="18" y="5" width="2" height="14"/></svg></div>
-          <div class="t">Codice a barre</div><div class="s">Scan rapido</div>
+          <div class="t">Codice a barre</div>
         </div>
       </div>
       <input id="add-search-input" class="search" placeholder="Cerca per nome, produttore, regione…" type="text">
-      <div class="lang-note">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3a14 14 0 0 1 0 18"/><path d="M12 3a14 14 0 0 0 0 18"/></svg>
-        Riconoscimento etichette in italiano, francese, spagnolo, inglese e tedesco
-      </div>
     </div>
     <div class="add-body">
       <div>
-        <div class="section-head"><h3>Risultati</h3></div>
+        <div class="section-head"><h3 id="add-results-count">Risultati</h3></div>
         <div id="add-results" style="display:flex; flex-direction:column; gap:8px; margin-top:8px;"></div>
       </div>
       <div class="manual-link" id="manual-add-link">Non lo trovi? Aggiungilo manualmente</div>
@@ -180,17 +204,6 @@
           <div class="loc-edit" id="loc-edit-btn">modifica</div>
         </div>
 
-        <div class="rack" id="rack-panel">
-          <div class="section-head" style="margin-bottom:2px;"><h3 style="font-size:13px;">Scegli la posizione</h3><a>+ nuovo scaffale</a></div>
-          <div class="rack-grid">
-            <div class="rack-slot taken" data-shelf="A1"></div><div class="rack-slot taken" data-shelf="A2"></div><div class="rack-slot" data-shelf="A3"></div><div class="rack-slot taken" data-shelf="A4"></div><div class="rack-slot" data-shelf="A5"></div><div class="rack-slot taken" data-shelf="A6"></div>
-            <div class="rack-slot" data-shelf="B1"></div><div class="rack-slot taken" data-shelf="B2"></div><div class="rack-slot taken" data-shelf="B3"></div><div class="rack-slot" data-shelf="B4"></div><div class="rack-slot taken" data-shelf="B5"></div><div class="rack-slot" data-shelf="B6"></div>
-            <div class="rack-slot taken" data-shelf="C1"></div><div class="rack-slot" data-shelf="C2"></div><div class="rack-slot" data-shelf="C3"></div><div class="rack-slot taken" data-shelf="C4"></div><div class="rack-slot" data-shelf="C5"></div><div class="rack-slot taken" data-shelf="C6"></div>
-            <div class="rack-slot" data-shelf="D1"></div><div class="rack-slot taken" data-shelf="D2"></div><div class="rack-slot" data-shelf="D3"></div><div class="rack-slot taken" data-shelf="D4"></div><div class="rack-slot taken" data-shelf="D5"></div><div class="rack-slot" data-shelf="D6"></div>
-          </div>
-          <div class="rack-save" id="rack-save">Salva posizione</div>
-        </div>
-
         <div class="rev-tabs">
           <div class="rev-tab active" data-tab="others">Dalla community</div>
           <div class="rev-tab" data-tab="mine">Le tue note</div>
@@ -241,6 +254,8 @@
       <div class="compare-head"><h3>Rivedi e conferma</h3><div class="close" id="recognize-close"><svg viewBox="0 0 24 24" style="width:14px;height:14px;" fill="none" stroke="#241e1a" stroke-width="1.8" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="6" y1="18" x2="18" y2="6"/></svg></div></div>
       <div id="recognize-photo-wrap" style="display:none;"><img id="recognize-photo" alt="" style="width:100%;border-radius:10px;display:block;"></div>
       <div id="recognize-rawtext" class="lang-note" style="display:none;"></div>
+      <input id="rec-photo-input" type="file" accept="image/*" capture="environment" style="display:none;">
+      <div class="manual-link" id="rec-photo-pick">Aggiungi foto bottiglia</div>
       <input id="rec-name" class="search" placeholder="Nome del vino" type="text">
       <input id="rec-producer" class="search" placeholder="Produttore" type="text">
       <input id="rec-country" class="search" placeholder="Paese" type="text">
@@ -256,6 +271,13 @@
       <input id="rec-denomination" class="search" placeholder="Denominazione (opzionale)" type="text">
       <div class="action" id="recognize-save" style="cursor:pointer;">Salva</div>
     </div>
+  </div>
+  <div class="camera-overlay" id="camera-overlay">
+    <video id="camera-video" autoplay playsinline muted></video>
+    <div class="camera-spinner" id="camera-spinner"></div>
+    <div class="camera-close" id="camera-close"><svg viewBox="0 0 24 24" style="width:14px;height:14px;" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="6" y1="18" x2="18" y2="6"/></svg></div>
+    <div class="camera-hint" id="camera-hint"></div>
+    <div class="camera-shutter-wrap" id="camera-shutter-wrap"><div class="camera-shutter" id="camera-shutter"></div></div>
   </div>
 </div>
 <script>
@@ -282,7 +304,7 @@
 
   // Cantina list rendering, wishlist, and compare-selection are now owned by
   // js/screens/cellar.js (driven by real API data instead of hardcoded rows).
-  // The detail sheet (open/close, location rack picker, photo gallery, notes
+  // The detail sheet (open/close, location picker, photo gallery, notes
   // tabs) is now owned by js/screens/detail.js — opened for real bottle ids
   // from cellar.js's row click handler, instead of the old static
   // `.wine-card, .cellar-row, .diary-row, .result-row` delegated listener
@@ -301,6 +323,19 @@
 </script>
 <script>
   window.CALICE_VAPID_PUBLIC_KEY = 'BBsAbKl6WBtTB7u3vQP4s0Bkw4Cz2bEhXt44J1wk5iz4EmDxIsKvdKy2ggBgZqIz6OYsghjpaecQx985rB0CQDs';
+</script>
+<!-- BarcodeDetector polyfill for Safari/iOS, which never shipped the native
+     Shape Detection API: zbar-wasm (a battle-tested C barcode decoder
+     compiled to WASM) backs a drop-in window.BarcodeDetector, so the app's
+     own scan code stays the same on every browser — no separate code path. -->
+<script src="https://cdn.jsdelivr.net/npm/@undecaf/zbar-wasm@0.9.15/dist/index.js" integrity="sha384-yW9Y7lGkfKYN+jnhSQpcumEsBkSCx/Ab9s2+rHyU5faxR81n4c2mhBw1K6TyFG2a" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@undecaf/barcode-detector-polyfill@0.9.23/dist/index.js" integrity="sha384-NFIMegDBZ9bfElS5WQzuZUmREleRh+7jLt23CXLvKgM2tNuSWYZyCSeR/I1vvXeF" crossorigin="anonymous"></script>
+<script>
+  try {
+    window.BarcodeDetector.getSupportedFormats();
+  } catch {
+    window.BarcodeDetector = barcodeDetectorPolyfill.BarcodeDetectorPolyfill;
+  }
 </script>
 <script type="module" src="js/main.js"></script>
 <script>

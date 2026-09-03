@@ -31,12 +31,35 @@ describe('buildSuggestion', () => {
     expect(result).toEqual({ barcode: '1234567890123', name: 'Chianti Classico', producer: 'Antinori', country: 'Italia', imageUrl: 'https://x/img.jpg' });
   });
 
-  it('keeps the barcode and returns an otherwise-empty suggestion when Open Food Facts finds nothing', async () => {
+  it('keeps the barcode and returns an otherwise-empty suggestion when neither Open Food Facts nor Tavily find anything', async () => {
     const lookupBarcode = async (): Promise<OffSuggestion | null> => null;
+    const searchWine = async () => null;
     const enrichFromWikidata = async (): Promise<never> => { throw new Error('should not be called'); };
     const runVisionOcr = async (): Promise<never> => { throw new Error('should not be called'); };
-    const result = await buildSuggestion(env, { barcode: '0000000000000' }, { lookupBarcode, enrichFromWikidata, runVisionOcr });
+    const result = await buildSuggestion(env, { barcode: '0000000000000' }, { lookupBarcode, searchWine, enrichFromWikidata, runVisionOcr });
     expect(result).toEqual({ barcode: '0000000000000' });
+  });
+
+  it('falls back to a Tavily search on the barcode itself when Open Food Facts finds nothing, and logs the credit spent', async () => {
+    await env.DB.exec('DELETE FROM tavily_usage;');
+    const candidates = [
+      { title: 'Barolo DOCG 8001234500099 - Wine Searcher', snippet: 'Rosso piemontese.', sourceUrl: 'https://wine-searcher.com/p/1', imageUrl: 'https://x/barolo.jpg' },
+    ];
+    const lookupBarcode = async (): Promise<OffSuggestion | null> => null;
+    const searchWine = async (query: string) => {
+      expect(query).toBe('8001234500099');
+      return { candidates, creditsUsed: 1 };
+    };
+    const enrichFromWikidata = async (): Promise<never> => { throw new Error('should not be called'); };
+    const runVisionOcr = async (): Promise<never> => { throw new Error('should not be called'); };
+    const result = await buildSuggestion(env, { barcode: '8001234500099' }, { lookupBarcode, searchWine, enrichFromWikidata, runVisionOcr });
+    expect(result).toEqual({ barcode: '8001234500099', candidates });
+    // A barcode number is never trusted as the wine's name — only the
+    // candidates come back, same as the text-search fallback.
+    expect(result.name).toBeUndefined();
+
+    const usage = await env.DB.prepare('select credits from tavily_usage').first<{ credits: number }>();
+    expect(usage?.credits).toBe(1);
   });
 
   it('returns an empty suggestion when called with neither barcode nor photo', async () => {
@@ -58,9 +81,10 @@ describe('buildSuggestion', () => {
 
   it('skips Wikidata entirely when no name is known yet', async () => {
     const lookupBarcode = async () => null;
+    const searchWine = async () => null;
     const enrichFromWikidata = async (): Promise<never> => { throw new Error('should not be called'); };
     const runVisionOcr = async (): Promise<never> => { throw new Error('should not be called'); };
-    const result = await buildSuggestion(env, { barcode: '9999999999998' }, { lookupBarcode, enrichFromWikidata, runVisionOcr });
+    const result = await buildSuggestion(env, { barcode: '9999999999998' }, { lookupBarcode, searchWine, enrichFromWikidata, runVisionOcr });
     expect(result).toEqual({ barcode: '9999999999998' });
   });
 
@@ -91,10 +115,54 @@ describe('buildSuggestion', () => {
     const result = await buildSuggestion(env, { barcode: '1111111111111', photoBase64: 'data:image/jpeg;base64,AAAA' }, { runVisionOcr } as any);
     expect(result.name).toBe('Barolo DOCG');
   });
+
+  it('trusts a text-search query as the name, exposes Tavily candidates, and logs the credit spent', async () => {
+    await env.DB.exec('DELETE FROM tavily_usage;');
+    const candidates = [
+      { title: 'Zamuner | Sito ufficiale', snippet: 'Cantina Zamuner.', sourceUrl: 'https://www.zamuner.it', imageUrl: 'https://zamuner.it/bottiglia.jpg' },
+      { title: 'Zamuner - Vivino', snippet: 'Bollicine venete.', sourceUrl: 'https://vivino.com/zamuner', imageUrl: 'https://images.vivino.com/zamuner.jpg' },
+    ];
+    const searchWine = async (query: string) => {
+      expect(query).toBe('Bardolino Chiaretto');
+      return { candidates, creditsUsed: 2 };
+    };
+    const enrichFromWikidata = async () => null;
+    const result = await buildSuggestion(env, { query: 'Bardolino Chiaretto' }, { searchWine, enrichFromWikidata } as any);
+    expect(result.name).toBe('Bardolino Chiaretto');
+    expect(result.candidates).toEqual(candidates);
+    // Nothing is auto-picked onto the top-level suggestion — the frontend
+    // decides once the user taps a candidate.
+    expect(result.imageUrl).toBeUndefined();
+
+    const usage = await env.DB.prepare('select credits from tavily_usage').first<{ credits: number }>();
+    expect(usage?.credits).toBe(2);
+  });
+
+  it('keeps just the name when Tavily finds no candidates for the query', async () => {
+    const searchWine = async () => ({ candidates: [], creditsUsed: 1 });
+    const enrichFromWikidata = async () => null;
+    const result = await buildSuggestion(env, { query: 'Vino Sconosciuto Rarissimo' }, { searchWine, enrichFromWikidata } as any);
+    expect(result.name).toBe('Vino Sconosciuto Rarissimo');
+    expect(result.candidates).toBeUndefined();
+  });
+
+  it('keeps just the name when Tavily fails outright', async () => {
+    const searchWine = async () => null;
+    const enrichFromWikidata = async () => null;
+    const result = await buildSuggestion(env, { query: 'Vino Sconosciuto Rarissimo' }, { searchWine, enrichFromWikidata } as any);
+    expect(result).toEqual({ name: 'Vino Sconosciuto Rarissimo' });
+  });
+
+  it('never calls Tavily when a name is already known from a barcode hit', async () => {
+    await env.DB.prepare(`insert into wines (name, producer, country, type, barcode, source) values ('Barolo DOCG', 'Elio Altare', 'Italia', 'rosso', '2222222222222', 'catalog')`).run();
+    const searchWine = async (): Promise<never> => { throw new Error('should not be called'); };
+    const result = await buildSuggestion(env, { barcode: '2222222222222', query: 'irrelevant' }, { searchWine } as any);
+    expect(result.name).toBe('Barolo DOCG');
+  });
 });
 
 describe('POST /api/wines/recognize', () => {
-  it('requires barcode or photoBase64', async () => {
+  it('requires barcode, photoBase64, or query', async () => {
     const res = await app.request(
       '/api/wines/recognize',
       { method: 'POST', body: JSON.stringify({}), headers: { 'X-Calice-Dev-Email': 'rec1@b.com', 'content-type': 'application/json' } },
