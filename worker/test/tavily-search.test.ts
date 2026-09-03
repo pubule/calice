@@ -116,10 +116,26 @@ describe('searchWine', () => {
     ]);
   });
 
-  it('drops a candidate that never mentions the distinctive query word (title/snippet/URL all miss)', async () => {
+  it('drops a candidate that never mentions the distinctive query word in its title or URL', async () => {
     const fetchImpl = fakeFetch(200, {
       results: [
         { title: 'Sauvignon Blanc | Uve da vino', content: 'wine types. price range. showing 1-24 of 673 wines.', url: 'https://vivino.com/grapes/sauvignon-blanc' },
+        { title: 'Zamuner Blanc de Noirs', content: 'Bollicine venete.', url: 'https://vivino.com/wines/zamuner-blanc' },
+      ],
+      images: [],
+    });
+    const result = await searchWine('Zamuner blanc', 'key', fetchImpl);
+    expect(result?.candidates.map((c) => c.title)).toEqual(['Zamuner Blanc de Noirs']);
+  });
+
+  it('does not let a coincidental mention buried in the snippet save a generic listing page', async () => {
+    // A grape/category listing page can enumerate hundreds of wines in its
+    // scraped content, so "zamuner" can show up there by sheer coincidence
+    // even though the page itself is a generic "Sauvignon Blanc" listing,
+    // not anything specific to Zamuner — only title/URL should count.
+    const fetchImpl = fakeFetch(200, {
+      results: [
+        { title: 'Sauvignon Blanc | Uve da vino', content: 'showing 1-24 of 673 wines, including Zamuner Blanc de Blancs among many others.', url: 'https://vivino.com/grapes/sauvignon-blanc' },
         { title: 'Zamuner Blanc de Noirs', content: 'Bollicine venete.', url: 'https://vivino.com/wines/zamuner-blanc' },
       ],
       images: [],

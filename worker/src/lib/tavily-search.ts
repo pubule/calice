@@ -47,14 +47,19 @@ function keyWord(words: string[]): string | undefined {
 }
 
 // Tavily's within-domain search can return a page that's merely
-// topically adjacent (e.g. a generic "Sauvignon Blanc" category listing on
-// vivino.com for a "Zamuner Blanc" query) rather than one actually about
-// the searched wine — include_domains guarantees the *site*, not the
-// *match*. Drop anything that doesn't mention the distinctive query term
-// anywhere in title/snippet/URL, unless that would wipe out every
-// candidate (better to show a loose guess than nothing).
+// topically adjacent (e.g. a generic "Sauvignon Blanc" grape/category
+// listing on vivino.com for a "Zamuner Blanc" query) rather than one
+// actually about the searched wine — include_domains guarantees the
+// *site*, not the *match*. Checked against title/URL only, NOT the
+// snippet: a category-listing page's scraped content can enumerate
+// hundreds of wines, so it will often contain the search term
+// somewhere by sheer coincidence even though the page itself isn't
+// about that wine — title/URL are what actually identify what the page
+// is. Drops anything that doesn't mention the distinctive query term in
+// either, unless that would wipe out every candidate (a loose guess
+// beats nothing).
 function isRelevant(word: string, candidate: WineCandidate): boolean {
-  const haystack = `${candidate.title ?? ''} ${candidate.snippet ?? ''} ${candidate.sourceUrl ?? ''}`.toLowerCase();
+  const haystack = `${candidate.title ?? ''} ${candidate.sourceUrl ?? ''}`.toLowerCase();
   return haystack.includes(word);
 }
 
