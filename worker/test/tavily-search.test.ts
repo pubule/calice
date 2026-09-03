@@ -6,37 +6,29 @@ function fakeFetch(status: number, body: unknown): typeof fetch {
 }
 
 describe('searchWine', () => {
-  it('restricts the search to the trusted wine-site domain list, so Vivino coverage is guaranteed rather than hoped-for', async () => {
+  it('sends the query as-is with advanced search depth, no domain restriction', async () => {
     let capturedBody: any;
     const fetchImpl = (async (_url: string, init: RequestInit) => {
       capturedBody = JSON.parse(init.body as string);
       return new Response(JSON.stringify({ results: [], images: [] }), { status: 200 });
     }) as typeof fetch;
-    await searchWine('Barolo DOCG', 'key', fetchImpl);
-    expect(capturedBody.query).toBe('Barolo DOCG'); // sent as-is — no " vino" suffix diluting relevance
-    expect(capturedBody.include_domains).toEqual([
-      'vivino.com',
-      'wine-searcher.com',
-      'tannico.it',
-      'oltrebolla20.com',
-      'callmewine.com',
-      'bernabei.it',
-      'vino.com',
-      'xtrawine.com',
-    ]);
+    await searchWine('Zamuner blanc', 'key', fetchImpl);
+    expect(capturedBody.query).toBe('Zamuner blanc');
+    expect(capturedBody.search_depth).toBe('advanced');
+    expect(capturedBody.include_domains).toBeUndefined();
   });
 
-  it('zips results and images by index into candidates, and counts one credit spent', async () => {
+  it('zips results and images by index into candidates, and counts two credits spent (advanced depth)', async () => {
     const fetchImpl = fakeFetch(200, {
       results: [
-        { title: 'Barolo DOCG - Wine Searcher', content: 'Rosso piemontese.', url: 'https://wine-searcher.com/p/1' },
-        { title: 'Barolo DOCG - Decanter', content: 'Vino corposo.', url: 'https://decanter.com/p/2' },
+        { title: 'Barolo DOCG - Wine Searcher', content: 'Rosso piemontese.', url: 'https://wine-searcher.com/p/1', score: 0.8 },
+        { title: 'Barolo DOCG - Decanter', content: 'Vino corposo.', url: 'https://decanter.com/p/2', score: 0.7 },
       ],
       images: ['https://wine-searcher.com/bottiglia.jpg', 'https://decanter.com/bottiglia.jpg'],
     });
     const result = await searchWine('Barolo DOCG', 'key', fetchImpl);
     expect(result).toEqual({
-      creditsUsed: 1,
+      creditsUsed: 2,
       candidates: [
         { title: 'Barolo DOCG - Wine Searcher', snippet: 'Rosso piemontese.', sourceUrl: 'https://wine-searcher.com/p/1', imageUrl: 'https://wine-searcher.com/bottiglia.jpg' },
         { title: 'Barolo DOCG - Decanter', snippet: 'Vino corposo.', sourceUrl: 'https://decanter.com/p/2', imageUrl: 'https://decanter.com/bottiglia.jpg' },
@@ -44,16 +36,11 @@ describe('searchWine', () => {
     });
   });
 
-  it('reorders candidates so more query words matched in the URL rank first, among non-Vivino results', async () => {
-    // Neither URL contains "riserva" or "fondatore" as literally as the
-    // producer's own domain contains "zamuner" — zamuner.it should outrank
-    // a generic retailer URL even though Tavily listed it second. Both
-    // mention "fondatore" (the distinctive word) so neither trips the
-    // relevance filter below.
+  it('reorders candidates by Tavily\'s own relevance score', async () => {
     const fetchImpl = fakeFetch(200, {
       results: [
-        { title: 'Trovato: Fondatore', content: 'n/a', url: 'https://example.com/other' },
-        { title: 'Zamuner | Sito ufficiale', content: 'Cantina Zamuner.', url: 'https://www.zamuner.it/riserva-del-fondatore' },
+        { title: 'Weak match', content: 'n/a', url: 'https://example.com/other', score: 0.3 },
+        { title: 'Zamuner | Sito ufficiale', content: 'Cantina Zamuner.', url: 'https://www.zamuner.it/riserva-del-fondatore', score: 0.9 },
       ],
       images: [],
     });
@@ -64,13 +51,13 @@ describe('searchWine', () => {
     ]);
   });
 
-  it('always ranks a Vivino result first, even over a stronger URL-match elsewhere', async () => {
+  it('always ranks a Vivino result first, even over a much higher Tavily score elsewhere', async () => {
     const fetchImpl = fakeFetch(200, {
       results: [
-        // Zero URL-match words, but it's Vivino — should still win.
-        { title: 'Zamuner Riserva del Fondatore - Vivino', content: 'Bollicine venete.', url: 'https://vivino.com/p/98765' },
-        // Every query word literally in the URL — would win without the boost.
-        { title: 'Zamuner | Sito ufficiale', content: 'Cantina Zamuner.', url: 'https://www.zamuner.it/riserva-del-fondatore' },
+        // Lower Tavily score, but it's Vivino — should still win.
+        { title: 'Zamuner Riserva del Fondatore - Vivino', content: 'Bollicine venete.', url: 'https://vivino.com/p/98765', score: 0.5 },
+        // Much higher Tavily score — would win without the boost.
+        { title: 'Zamuner | Sito ufficiale', content: 'Cantina Zamuner.', url: 'https://www.zamuner.it/riserva-del-fondatore', score: 0.95 },
       ],
       images: [],
     });
@@ -85,10 +72,10 @@ describe('searchWine', () => {
     const fetchImpl = fakeFetch(200, {
       results: [
         // Spoofed: neither is actually on vivino.com.
-        { title: 'Fake 1', content: 'n/a', url: 'https://evil.example/?x=vivino.com' },
-        { title: 'Fake 2', content: 'n/a', url: 'https://vivino.com.evil.example/p/1' },
-        // Real, but scores 0 on URL-match too — order should be Tavily's own (stable).
-        { title: 'Real', content: 'n/a', url: 'https://vivino.com/wines/1' },
+        { title: 'Fake 1', content: 'n/a', url: 'https://evil.example/?x=vivino.com', score: 0.5 },
+        { title: 'Fake 2', content: 'n/a', url: 'https://vivino.com.evil.example/p/1', score: 0.5 },
+        // Real, and scores lower on Tavily's own relevance too — still wins on the Vivino boost alone.
+        { title: 'Real', content: 'n/a', url: 'https://vivino.com/wines/1', score: 0.1 },
       ],
       images: [],
     });
@@ -100,13 +87,11 @@ describe('searchWine', () => {
     ]);
   });
 
-  it('orders multiple Vivino results between themselves by URL-match score', async () => {
-    // Both mention "zamuner" (the distinctive word) so neither trips the
-    // relevance filter — only their URL-match score should differ.
+  it('orders multiple Vivino results between themselves by Tavily score', async () => {
     const fetchImpl = fakeFetch(200, {
       results: [
-        { title: 'Zamuner - lista vini', content: 'n/a', url: 'https://vivino.com/wines/1' },
-        { title: 'Zamuner Vivino hit', content: 'n/a', url: 'https://vivino.com/wines/zamuner-riserva' },
+        { title: 'Generic Vivino hit', content: 'n/a', url: 'https://vivino.com/wines/1', score: 0.4 },
+        { title: 'Zamuner Vivino hit', content: 'n/a', url: 'https://vivino.com/wines/zamuner-riserva', score: 0.8 },
       ],
       images: [],
     });
@@ -117,54 +102,44 @@ describe('searchWine', () => {
     ]);
   });
 
-  it('drops a candidate that never mentions the distinctive query word in its title or URL', async () => {
+  it('keeps stable Tavily order among candidates that tie on score (missing score defaults to 0)', async () => {
     const fetchImpl = fakeFetch(200, {
       results: [
-        { title: 'Sauvignon Blanc | Uve da vino', content: 'wine types. price range. showing 1-24 of 673 wines.', url: 'https://vivino.com/grapes/sauvignon-blanc' },
-        { title: 'Zamuner Blanc de Noirs', content: 'Bollicine venete.', url: 'https://vivino.com/wines/zamuner-blanc' },
+        { title: 'A', content: 'a', url: 'https://a.example/x' },
+        { title: 'B', content: 'b', url: 'https://b.example/x' },
+        { title: 'C', content: 'c', url: 'https://c.example/x' },
       ],
       images: [],
     });
-    const result = await searchWine('Zamuner blanc', 'key', fetchImpl);
-    expect(result?.candidates.map((c) => c.title)).toEqual(['Zamuner Blanc de Noirs']);
+    const result = await searchWine('Barolo DOCG', 'key', fetchImpl);
+    expect(result?.candidates.map((c) => c.title)).toEqual(['A', 'B', 'C']);
   });
 
-  it('does not let a coincidental mention buried in the snippet save a generic listing page', async () => {
-    // A grape/category listing page can enumerate hundreds of wines in its
-    // scraped content, so "zamuner" can show up there by sheer coincidence
-    // even though the page itself is a generic "Sauvignon Blanc" listing,
-    // not anything specific to Zamuner — only title/URL should count.
-    const fetchImpl = fakeFetch(200, {
-      results: [
-        { title: 'Sauvignon Blanc | Uve da vino', content: 'showing 1-24 of 673 wines, including Zamuner Blanc de Blancs among many others.', url: 'https://vivino.com/grapes/sauvignon-blanc' },
-        { title: 'Zamuner Blanc de Noirs', content: 'Bollicine venete.', url: 'https://vivino.com/wines/zamuner-blanc' },
-      ],
-      images: [],
-    });
-    const result = await searchWine('Zamuner blanc', 'key', fetchImpl);
-    expect(result?.candidates.map((c) => c.title)).toEqual(['Zamuner Blanc de Noirs']);
+  it('requests a bigger pool from Tavily than it shows, then caps the (re-sorted) result at 10', async () => {
+    const results = Array.from({ length: 15 }, (_, i) => ({ title: String(i), content: String(i), url: `https://${i}.example`, score: i / 15 }));
+    const fetchImpl = fakeFetch(200, { results, images: [] });
+    const result = await searchWine('query', 'key', fetchImpl);
+    expect(result?.candidates).toHaveLength(10);
   });
 
-  it('keeps every candidate when filtering would drop them all (a loose guess beats nothing)', async () => {
+  it('handles image objects with a url field', async () => {
     const fetchImpl = fakeFetch(200, {
-      results: [
-        { title: 'Sauvignon Blanc | Uve da vino', content: 'n/a', url: 'https://vivino.com/grapes/sauvignon-blanc' },
-        { title: 'Muscat Blanc | Uve da vino', content: 'n/a', url: 'https://vivino.com/grapes/muscat-blanc' },
-      ],
-      images: [],
+      results: [{ title: 'Barolo DOCG', content: 'Rosso piemontese.', url: 'https://wine-searcher.com/barolo', score: 0.8 }],
+      images: [{ url: 'https://x/barolo.jpg', description: 'Bottiglia di Barolo' }],
     });
-    const result = await searchWine('Zamuner blanc', 'key', fetchImpl);
-    expect(result?.candidates).toHaveLength(2);
+    const result = await searchWine('Barolo DOCG', 'key', fetchImpl);
+    expect(result?.candidates[0]?.imageUrl).toBe('https://x/barolo.jpg');
   });
 
   it('cleans markdown-separator noise and long boilerplate out of the snippet', async () => {
     const fetchImpl = fakeFetch(200, {
       results: [
         {
-          title: 'Zamuner',
+          title: 'Zamuner Blanc de Blancs Brut | Vivino English',
           content:
-            'Title: Sauvignon Blanc ##### wine types. ##### price range(EUR). ##### vivino average rating. ## grapes. ## regions. ## countries. ## foods. showing 1-24 of 673 wines. Lail Vineyards Georgia Sauvignon Blanc 2017. Terlan Quarz Sauvignon 2024. Henri Bourgeois Sancerre Jadis 2017.',
+            'Zamuner Blanc de Blancs Brut\n\n# Zamuner Blanc de Blancs Brut\n\n##### Facts about the wine\n\n##### winery Zamuner\n\n##### grapes Pinot Blanc, Chardonnay\n\nOur support team is always here to help. Careful delivery right to your doorstep. Check honest reviews of any wine before purchase.',
           url: 'https://vivino.com/wines/zamuner',
+          score: 0.8,
         },
       ],
       images: [],
@@ -175,39 +150,10 @@ describe('searchWine', () => {
     expect(snippet.length).toBeLessThanOrEqual(181); // 180 + the ellipsis char
   });
 
-  it('keeps stable Tavily order among candidates that tie on URL-match score', async () => {
-    const fetchImpl = fakeFetch(200, {
-      results: [
-        { title: 'A', content: 'a', url: 'https://a.example/no-match' },
-        { title: 'B', content: 'b', url: 'https://b.example/no-match' },
-        { title: 'C', content: 'c', url: 'https://c.example/no-match' },
-      ],
-      images: [],
-    });
-    const result = await searchWine('Barolo DOCG', 'key', fetchImpl);
-    expect(result?.candidates.map((c) => c.title)).toEqual(['A', 'B', 'C']);
-  });
-
-  it('requests a bigger pool from Tavily than it shows, then caps the (re-sorted) result at 10', async () => {
-    const results = Array.from({ length: 15 }, (_, i) => ({ title: String(i), content: String(i), url: `https://${i}.example` }));
-    const fetchImpl = fakeFetch(200, { results, images: [] });
-    const result = await searchWine('query', 'key', fetchImpl);
-    expect(result?.candidates).toHaveLength(10);
-  });
-
-  it('handles image objects with a url field', async () => {
-    const fetchImpl = fakeFetch(200, {
-      results: [{ title: 'Barolo DOCG', content: 'Rosso piemontese.', url: 'https://wine-searcher.com/barolo' }],
-      images: [{ url: 'https://x/barolo.jpg', description: 'Bottiglia di Barolo' }],
-    });
-    const result = await searchWine('Barolo DOCG', 'key', fetchImpl);
-    expect(result?.candidates[0]?.imageUrl).toBe('https://x/barolo.jpg');
-  });
-
-  it('returns an empty candidate list (not null) when there are no results — the call still cost a credit', async () => {
+  it('returns an empty candidate list (not null) when there are no results — the call still cost credits', async () => {
     const fetchImpl = fakeFetch(200, { results: [], images: [] });
     const result = await searchWine('nothing found', 'key', fetchImpl);
-    expect(result).toEqual({ candidates: [], creditsUsed: 1 });
+    expect(result).toEqual({ candidates: [], creditsUsed: 2 });
   });
 
   it('returns null (no credit counted) on a non-200 response', async () => {
