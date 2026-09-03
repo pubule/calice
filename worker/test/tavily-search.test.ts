@@ -13,7 +13,16 @@ describe('searchWine', () => {
       return new Response(JSON.stringify({ results: [], images: [] }), { status: 200 });
     }) as typeof fetch;
     await searchWine('Barolo DOCG', 'key', fetchImpl);
-    expect(capturedBody.include_domains).toEqual(['vivino.com', 'wine-searcher.com', 'tannico.it']);
+    expect(capturedBody.include_domains).toEqual([
+      'vivino.com',
+      'wine-searcher.com',
+      'tannico.it',
+      'oltrebolla20.com',
+      'callmewine.com',
+      'bernabei.it',
+      'vino.com',
+      'xtrawine.com',
+    ]);
   });
 
   it('zips results and images by index into candidates, and counts one credit spent', async () => {

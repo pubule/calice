@@ -16,7 +16,16 @@ const FETCH_POOL = 15;
 // a hard filter — results come ONLY from these domains) guarantees Vivino
 // coverage when it exists, at the cost of losing the producer's own site and
 // smaller/regional retailers that would otherwise show up on the open web.
-const TRUSTED_DOMAINS = ['vivino.com', 'wine-searcher.com', 'tannico.it'];
+const TRUSTED_DOMAINS = [
+  'vivino.com',
+  'wine-searcher.com',
+  'tannico.it',
+  'oltrebolla20.com',
+  'callmewine.com',
+  'bernabei.it',
+  'vino.com',
+  'xtrawine.com',
+];
 
 const STOPWORDS = new Set(['il', 'lo', 'la', 'i', 'gli', 'le', 'di', 'del', 'dello', 'della', 'dei', 'degli', 'delle', 'e', 'un', 'una', 'vino']);
 
