@@ -13,7 +13,7 @@ describe('searchWine', () => {
       return new Response(JSON.stringify({ results: [], images: [] }), { status: 200 });
     }) as typeof fetch;
     await searchWine('Zamuner blanc', 'key', fetchImpl);
-    expect(capturedBody.query).toBe('Zamuner blanc');
+    expect(capturedBody.query).toBe('Zamuner blanc vino');
     expect(capturedBody.search_depth).toBeUndefined();
     expect(capturedBody.include_domains).toBeUndefined();
   });

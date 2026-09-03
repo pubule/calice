@@ -75,10 +75,13 @@ function rankScore(isVivino: boolean, tavilyScore: number): number {
 // happens before the score re-sort below so each candidate keeps its own
 // paired image when candidates get reordered.
 export async function searchWine(query: string, apiKey: string, fetchImpl: typeof fetch = fetch): Promise<TavilySearchResult | null> {
+  // Appending "vino" steers Tavily's open-web ranking toward wine-related
+  // pages — worth it now that the search isn't restricted to wine-only
+  // domains, unlike when include_domains made it redundant (and diluting).
   const res = await fetchWithTimeout('https://api.tavily.com/search', 8000, fetchImpl, {
     method: 'POST',
     headers: { 'content-type': 'application/json', authorization: `Bearer ${apiKey}` },
-    body: JSON.stringify({ query, max_results: FETCH_POOL, include_images: true }),
+    body: JSON.stringify({ query: `${query} vino`, max_results: FETCH_POOL, include_images: true }),
   });
   if (!res || !res.ok) return null;
 
