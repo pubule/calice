@@ -57,6 +57,25 @@ function isRelevant(word: string, candidate: WineCandidate): boolean {
   return haystack.includes(word);
 }
 
+// Vivino publishes the same wine page in several languages under
+// /it/, /en/, /es/ etc. on the same hostname (confirmed live — e.g.
+// "Zamuner Cuvée Alessandra ... /w/12211516" appears under both /it/ and
+// /es/) — include_domains can't restrict by path, only by host, so an
+// Italian preference has to be a ranking nudge instead. Small relative to
+// Tavily's own 0-1 score range: real gaps between different wines were
+// observed around 0.02-0.08, an Italian-vs-other-language duplicate of the
+// SAME wine around 0.01-0.04 — 0.05 reliably wins the latter without
+// routinely reordering genuinely different (but both relevant) wines.
+const ITALIAN_PATH_BOOST = 0.05;
+function isItalianVivinoUrl(sourceUrl?: string): boolean {
+  if (!sourceUrl) return false;
+  try {
+    return new URL(sourceUrl).pathname.startsWith('/it/');
+  } catch {
+    return false;
+  }
+}
+
 // Tavily's scraped `content` is raw page text — often littered with
 // markdown-style "#####" section separators and long runs of unrelated
 // site chrome (nav labels, marketing copy). Strip the separator noise and
@@ -136,7 +155,9 @@ export async function searchWine(query: string, apiKey: string, fetchImpl: typeo
 
   // Stable sort: candidates that tie on score keep Tavily's own relevance
   // order relative to each other.
-  const ranked = filtered.slice().sort((a, b) => b.tavilyScore - a.tavilyScore);
+  const ranked = filtered
+    .map((b) => ({ candidate: b.candidate, rankScore: b.tavilyScore + (isItalianVivinoUrl(b.candidate.sourceUrl) ? ITALIAN_PATH_BOOST : 0) }))
+    .sort((a, b) => b.rankScore - a.rankScore);
 
   // A basic search (what this sends — no search_depth override) is a flat
   // 1 credit per Tavily's docs, regardless of max_results; the response

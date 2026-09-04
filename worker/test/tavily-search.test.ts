@@ -120,6 +120,36 @@ describe('searchWine', () => {
     expect(snippet.length).toBeLessThanOrEqual(181); // 180 + the ellipsis char
   });
 
+  it('prefers the /it/ Vivino page over a same-wine duplicate in another language, close in Tavily score', async () => {
+    const fetchImpl = fakeFetch(200, {
+      results: [
+        { title: 'Zamuner Cuvée Alessandra | Vivino English', content: 'n/a', url: 'https://www.vivino.com/en/zamuner-cuvee-alessandra/w/1', score: 0.75 },
+        { title: 'Zamuner Cuvée Alessandra | Vivino Italiano', content: 'n/a', url: 'https://www.vivino.com/it/zamuner-cuvee-alessandra/w/1', score: 0.73 },
+      ],
+      images: [],
+    });
+    const result = await searchWine('Zamuner', 'key', fetchImpl);
+    expect(result?.candidates.map((c) => c.sourceUrl)).toEqual([
+      'https://www.vivino.com/it/zamuner-cuvee-alessandra/w/1',
+      'https://www.vivino.com/en/zamuner-cuvee-alessandra/w/1',
+    ]);
+  });
+
+  it('does not let the Italian-path boost override a much more relevant non-Italian result', async () => {
+    const fetchImpl = fakeFetch(200, {
+      results: [
+        { title: 'Zamuner Riserva | Vivino English', content: 'n/a', url: 'https://www.vivino.com/en/zamuner-riserva/w/1', score: 0.9 },
+        { title: 'Zamuner Base | Vivino Italiano', content: 'n/a', url: 'https://www.vivino.com/it/zamuner-base/w/2', score: 0.3 },
+      ],
+      images: [],
+    });
+    const result = await searchWine('Zamuner', 'key', fetchImpl);
+    expect(result?.candidates.map((c) => c.sourceUrl)).toEqual([
+      'https://www.vivino.com/en/zamuner-riserva/w/1',
+      'https://www.vivino.com/it/zamuner-base/w/2',
+    ]);
+  });
+
   it('returns an empty list rather than falling back to off-topic candidates when none mention the distinctive word', async () => {
     // On an unlucky Tavily draw, every returned result can miss the
     // distinctive query term — an honest "nothing found" beats resurrecting
