@@ -6,7 +6,7 @@ function fakeFetch(status: number, body: unknown): typeof fetch {
 }
 
 describe('searchWine', () => {
-  it('sends the query with a " vino" suffix, basic search depth (default), restricted to the trusted domain list', async () => {
+  it('sends the query with a " vino" suffix, basic search depth (default), open web (no domain restriction)', async () => {
     let capturedBody: any;
     const fetchImpl = (async (_url: string, init: RequestInit) => {
       capturedBody = JSON.parse(init.body as string);
@@ -15,16 +15,7 @@ describe('searchWine', () => {
     await searchWine('Zamuner blanc', 'key', fetchImpl);
     expect(capturedBody.query).toBe('Zamuner blanc vino');
     expect(capturedBody.search_depth).toBeUndefined();
-    expect(capturedBody.include_domains).toEqual([
-      'vivino.com',
-      'wine-searcher.com',
-      'tannico.it',
-      'oltrebolla20.com',
-      'callmewine.com',
-      'bernabei.it',
-      'vino.com',
-      'xtrawine.com',
-    ]);
+    expect(capturedBody.include_domains).toBeUndefined();
   });
 
   it('zips results and images by index into candidates, and counts one credit spent', async () => {

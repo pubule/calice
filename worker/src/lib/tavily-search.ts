@@ -9,23 +9,6 @@ const MAX_CANDIDATES = 10;
 // actually displayed. 15 is under Tavily's max_results cap of 20.
 const FETCH_POOL = 15;
 
-// Wine-only retailer/rating sites. Confirmed via a real playground call
-// (query "Zamuner vino", basic depth, these 8 domains): 8 of 10 results
-// were genuine bottle pages (title names a specific wine), the 2 that
-// weren't (a brand-landing page) still ranked below every Vivino result
-// thanks to the boost below — no hotel/tourism content is possible since
-// none of these domains host any.
-const TRUSTED_DOMAINS = [
-  'vivino.com',
-  'wine-searcher.com',
-  'tannico.it',
-  'oltrebolla20.com',
-  'callmewine.com',
-  'bernabei.it',
-  'vino.com',
-  'xtrawine.com',
-];
-
 const STOPWORDS = new Set(['il', 'lo', 'la', 'i', 'gli', 'le', 'di', 'del', 'dello', 'della', 'dei', 'degli', 'delle', 'e', 'un', 'una', 'vino']);
 
 function queryWords(query: string): string[] {
@@ -109,14 +92,15 @@ function rankScore(isVivino: boolean, tavilyScore: number): number {
 // principle as every other suggestion in this feature: nothing is trusted
 // without a human confirming it.
 //
-// include_domains restricts to a curated wine-retailer list (see
-// TRUSTED_DOMAINS) rather than the open web — it also rules out
-// company/tourism pages by construction (none of these sites host that
-// kind of content). The isRelevant title/URL filter above still runs on
-// top: being on a trusted domain doesn't mean a given result is actually
-// about the searched wine (see its own comment), and the Vivino boost
-// below would otherwise blindly promote an off-topic-but-on-domain
-// result to the top. Ranking within what survives the filter uses
+// Open web, no include_domains: confirmed via a live playground call that
+// Tavily's include_domains restricts its crawl scope, not just the result
+// list — for a lesser-known producer ("Zamuner") it returned zero raw
+// results even before any filtering, while the open web found the
+// producer's own site plus a trusted retailer page in the same query. The
+// isRelevant title/URL filter above is what actually keeps results on
+// topic (it's what fixed the "Don de Dar" off-topic-Vivino-boost bug, not
+// the domain restriction), so dropping include_domains trades no safety
+// for a lot of recall. Ranking within what survives the filter uses
 // Tavily's own `score`, not a hand-rolled word-match score — a much
 // stronger relevance signal once the filter has already ruled out the
 // clearly off-topic candidates. Basic search_depth (no override sent) is
@@ -134,7 +118,7 @@ export async function searchWine(query: string, apiKey: string, fetchImpl: typeo
   const res = await fetchWithTimeout('https://api.tavily.com/search', 8000, fetchImpl, {
     method: 'POST',
     headers: { 'content-type': 'application/json', authorization: `Bearer ${apiKey}` },
-    body: JSON.stringify({ query: `${query} vino`, max_results: FETCH_POOL, include_images: true, include_domains: TRUSTED_DOMAINS }),
+    body: JSON.stringify({ query: `${query} vino`, max_results: FETCH_POOL, include_images: true }),
   });
   if (!res || !res.ok) return null;
 
