@@ -46,6 +46,28 @@ test.describe('Profilo — seguiti', () => {
   });
 });
 
+test.describe('Profilo — impostazioni', () => {
+  test('"Le mie cantine" opens the Cantina screen', async ({ page }) => {
+    await gotoScreen(page, 'profile');
+    await page.click('#my-cellars-row');
+    await expect(page.locator('#view-cellar')).toHaveClass(/active/);
+  });
+
+  test('"Aiuto" shows a help dialog', async ({ page }) => {
+    await gotoScreen(page, 'profile');
+    await page.click('#help-row');
+    await expect(page.locator(modal.title)).toHaveText('Aiuto');
+    await expect(page.locator(modal.message)).toContainText('Elementi cantina');
+    await dismissAlert(page);
+  });
+
+  test('"Esporta CSV" downloads a CSV file', async ({ page }) => {
+    await gotoScreen(page, 'profile');
+    const [download] = await Promise.all([page.waitForEvent('download'), page.click('#export-csv-row')]);
+    expect(download.suggestedFilename()).toMatch(/^calice-cantina-\d{4}-\d{2}-\d{2}\.csv$/);
+  });
+});
+
 test.describe('Profilo — notifiche', () => {
   test('toggling notifications without permission resets the checkbox instead of crashing', async ({ page }) => {
     await gotoScreen(page, 'profile');

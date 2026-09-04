@@ -1,6 +1,7 @@
 import { api } from '../api-client.js';
 import { escapeHtml } from '../util.js';
 import { alertModal, promptModal } from '../modal.js';
+import { navigate } from '../router.js';
 
 function urlBase64ToUint8Array(base64String) {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
@@ -59,6 +60,39 @@ document.getElementById('find-friends-btn')?.addEventListener('click', async () 
     else if (err.status === 400) await alertModal('Non puoi seguire te stesso.', { title: 'Trova amici' });
     else await alertModal('Ricerca non riuscita, riprova.', { title: 'Trova amici' });
   }
+});
+
+document.getElementById('my-cellars-row')?.addEventListener('click', () => navigate('#/cellar'));
+
+document.getElementById('help-row')?.addEventListener('click', () => {
+  alertModal(
+    'Aggiungi vini scansionando l\'etichetta, il codice a barre o cercandoli per nome. Tocca "Elementi cantina" per organizzare le bottiglie su scaffali, celle o scatoloni. Segui altre persone da Profilo per vedere la loro attività. Problemi? Scrivi a chi ti ha invitato in questa cantina.',
+    { title: 'Aiuto' },
+  );
+});
+
+function csvField(value) {
+  const s = String(value ?? '');
+  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+
+document.getElementById('export-csv-row')?.addEventListener('click', async () => {
+  const cellars = await api.get('/api/cellars');
+  const header = ['cantina', 'vino', 'produttore', 'annata', 'tipo', 'paese', 'regione', 'quantita', 'prezzo_pagato', 'valutazione'];
+  const lines = [header.join(',')];
+  for (const cellar of cellars) {
+    const bottles = await api.get(`/api/cellars/${cellar.id}/bottles`);
+    for (const b of bottles) {
+      lines.push([cellar.name, b.name, b.producer, b.vintage ?? '', b.type, b.country, b.region ?? '', b.quantity, b.price_paid ?? '', b.score ?? ''].map(csvField).join(','));
+    }
+  }
+  const blob = new Blob([lines.join('\n')], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `calice-cantina-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
 });
 
 document.getElementById('notif-toggle')?.addEventListener('change', async (e) => {

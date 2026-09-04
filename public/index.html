@@ -23,17 +23,17 @@
     <div id="home-alerts"></div>
 
     <div>
-      <div class="section-head"><h3>Da bere presto</h3><a>vedi tutte</a></div>
+      <div class="section-head"><h3>Da bere presto</h3><a id="home-soon-toggle"></a></div>
       <div class="scroller" id="home-soon"></div>
     </div>
 
     <div class="card">
-      <div class="section-head" style="margin-bottom:10px;"><h3>Regioni principali</h3><a>vedi tutte</a></div>
+      <div class="section-head" style="margin-bottom:10px;"><h3>Regioni principali</h3><a id="home-regions-toggle"></a></div>
       <div id="home-regions"></div>
     </div>
 
     <div class="card">
-      <div class="section-head" style="margin-bottom:6px;"><h3>Attività amici</h3><a>vedi tutto</a></div>
+      <div class="section-head" style="margin-bottom:6px;"><h3>Attività amici</h3><a id="home-feed-toggle"></a></div>
       <div id="home-feed"></div>
     </div>
   </div>
@@ -178,11 +178,10 @@
     </div>
 
     <div class="settings-list">
-      <div class="settings-row"><svg class="ic" viewBox="0 0 24 24" style="width:17px;height:17px;"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg><span class="lbl">Le mie cantine</span><span id="profile-cellar-count" style="font-size:10.5px;color:#a89b89;margin-right:2px;">0</span><svg class="chev" viewBox="0 0 24 24" stroke-width="2" fill="none" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></div>
+      <div class="settings-row" id="my-cellars-row"><svg class="ic" viewBox="0 0 24 24" style="width:17px;height:17px;"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg><span class="lbl">Le mie cantine</span><span id="profile-cellar-count" style="font-size:10.5px;color:#a89b89;margin-right:2px;">0</span><svg class="chev" viewBox="0 0 24 24" stroke-width="2" fill="none" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></div>
       <div class="settings-row"><svg class="ic" viewBox="0 0 24 24" style="width:17px;height:17px;"><path d="M12 3v18"/><path d="M5 10c0 4 3 6 7 6s7-2 7-6"/></svg><span class="lbl">Notifiche</span><input type="checkbox" id="notif-toggle" style="margin-right:2px;"></div>
-      <div class="settings-row"><svg class="ic" viewBox="0 0 24 24" style="width:17px;height:17px;"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg><span class="lbl">Unità di misura</span><svg class="chev" viewBox="0 0 24 24" stroke-width="2" fill="none" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></div>
-      <div class="settings-row"><svg class="ic" viewBox="0 0 24 24" style="width:17px;height:17px;"><path d="M12 3v12"/><path d="M7 9l5 5 5-5"/><path d="M5 19h14"/></svg><span class="lbl">Importa / esporta CSV</span><svg class="chev" viewBox="0 0 24 24" stroke-width="2" fill="none" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></div>
-      <div class="settings-row"><svg class="ic" viewBox="0 0 24 24" style="width:17px;height:17px;"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 0 1 5 0c0 2-2.5 2-2.5 4"/><path d="M12 17h.01"/></svg><span class="lbl">Aiuto</span><svg class="chev" viewBox="0 0 24 24" stroke-width="2" fill="none" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></div>
+      <div class="settings-row" id="export-csv-row"><svg class="ic" viewBox="0 0 24 24" style="width:17px;height:17px;"><path d="M12 3v12"/><path d="M7 9l5 5 5-5"/><path d="M5 19h14"/></svg><span class="lbl">Esporta CSV</span><svg class="chev" viewBox="0 0 24 24" stroke-width="2" fill="none" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></div>
+      <div class="settings-row" id="help-row"><svg class="ic" viewBox="0 0 24 24" style="width:17px;height:17px;"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 0 1 5 0c0 2-2.5 2-2.5 4"/><path d="M12 17h.01"/></svg><span class="lbl">Aiuto</span><svg class="chev" viewBox="0 0 24 24" stroke-width="2" fill="none" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></div>
     </div>
     <div class="logout">Esci</div>
   </div>
@@ -302,19 +301,6 @@
       document.getElementById(btn.dataset.view).classList.add('active');
     });
   });
-  document.querySelectorAll('.chip').forEach(chip=>{
-    chip.addEventListener('click',()=>{
-      chip.parentElement.querySelectorAll('.chip').forEach(c=>c.classList.remove('active'));
-      chip.classList.add('active');
-    });
-  });
-
-  document.querySelectorAll('.alert-dismiss').forEach(btn=>{
-    btn.addEventListener('click', function(){
-      this.closest('.alert-banner').remove();
-    });
-  });
-
   // Cantina list rendering, wishlist, and compare-selection are now owned by
   // js/screens/cellar.js (driven by real API data instead of hardcoded rows).
   // The detail sheet (open/close, location picker, photo gallery, notes
@@ -323,12 +309,14 @@
   // `.wine-card, .cellar-row, .diary-row, .result-row` delegated listener
   // that used to live here (dead on arrival: none of those rows exist in the
   // DOM at page-load time, they're all rendered later from API data).
-
-  document.querySelectorAll('[data-follow]').forEach(btn=>{
-    btn.addEventListener('click', ()=>{
-      btn.textContent = btn.textContent === 'Segui' ? 'Seguito' : 'Segui';
-    });
-  });
+  //
+  // A generic `.chip` toggle, a `[data-follow]` Segui/Seguito toggle, and a
+  // top-level `.alert-dismiss` binding used to live here too — all three
+  // matched zero elements at page load (chips, follow buttons, and alert
+  // banners are all rendered later from real data by cellar.js/profile.js/
+  // home.js, which each wire their own real listeners). Removed as dead
+  // code rather than left as a trap for the next person who greps for them
+  // expecting them to do something.
 
   // .wish-add and .segmented button handling for the Cantina view are wired
   // in js/screens/cellar.js against real wishlist rows and the #cellar-list /
