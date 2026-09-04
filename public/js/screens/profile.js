@@ -1,5 +1,5 @@
 import { api } from '../api-client.js';
-import { escapeHtml } from '../util.js';
+import { escapeHtml, skeletonBar } from '../util.js';
 import { alertModal, promptModal } from '../modal.js';
 import { navigate } from '../router.js';
 
@@ -122,6 +122,11 @@ document.getElementById('notif-toggle')?.addEventListener('change', async (e) =>
 });
 
 export async function mountProfile() {
+  document.getElementById('profile-follows').innerHTML = Array.from(
+    { length: 2 },
+    () => `<div class="follow-row"><div class="rev-avatar skeleton"></div>${skeletonBar('50%', 11)}</div>`,
+  ).join('');
+
   // Set via textContent (not innerHTML), so no escapeHtml() needed here —
   // the DOM API itself treats these as plain text, not markup.
   const user = await api.get('/api/auth/me');

@@ -1,9 +1,26 @@
 import { api } from '../api-client.js';
 import { me } from '../auth.js';
-import { escapeHtml, photoClass } from '../util.js';
+import { escapeHtml, photoClass, skeletonBar } from '../util.js';
 
 function scoreBadge(score) {
   return score == null ? '' : `<span class="badge-score">${score.toFixed(1)}</span>`;
+}
+
+function showLoadingSkeletons() {
+  document.getElementById('home-stats').innerHTML = `
+    <div class="stat">${skeletonBar('60%', 20)}</div>
+    <div class="stat">${skeletonBar('60%', 20)}</div>
+    <div class="stat">${skeletonBar('60%', 20)}</div>
+  `;
+  document.getElementById('home-soon').innerHTML = Array.from({ length: 3 }, () => `
+    <div class="wine-card">
+      <div class="card-photo">${skeletonBar('100%', 98)}</div>
+      <div class="card-body">${skeletonBar('85%', 11)}<div style="margin-top:6px;">${skeletonBar('60%', 9)}</div></div>
+    </div>`).join('');
+  document.getElementById('home-regions').innerHTML = Array.from({ length: 3 }, () => `
+    <div class="region-row">${skeletonBar('74px', 10)}${skeletonBar('100%', 8)}${skeletonBar('22px', 10)}</div>`).join('');
+  document.getElementById('home-feed').innerHTML = Array.from({ length: 3 }, () => `
+    <div class="feed-row"><div class="rev-avatar skeleton"></div>${skeletonBar('70%', 11)}</div>`).join('');
 }
 
 const PREVIEW_COUNT = 5;
@@ -83,6 +100,7 @@ function renderAll() {
 }
 
 export async function mountHome() {
+  showLoadingSkeletons();
   const user = await me();
   document.getElementById('home-greet-name').textContent = user.name;
 

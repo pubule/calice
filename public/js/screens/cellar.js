@@ -1,8 +1,16 @@
 import { api } from '../api-client.js';
-import { escapeHtml, photoClass } from '../util.js';
+import { escapeHtml, photoClass, skeletonBar } from '../util.js';
 import { openDetail } from './detail.js';
 import { me } from '../auth.js';
 import { confirmModal, promptModal } from '../modal.js';
+
+function skeletonRowHtml() {
+  return `
+    <div class="cellar-row">
+      <div class="skeleton" style="width:34px; height:48px; border-radius:4px; flex-shrink:0;"></div>
+      <div class="cinfo">${skeletonBar('70%', 12)}<div style="margin-top:6px;">${skeletonBar('45%', 10)}</div></div>
+    </div>`;
+}
 
 const ICON_COMPARE =
   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v18"/><path d="M16 3v18"/><path d="M3 8h4"/><path d="M17 8h4"/><path d="M3 16h4"/><path d="M17 16h4"/></svg> Confronta due vini';
@@ -229,6 +237,7 @@ async function selectCellar(id) {
 }
 
 async function loadCellarData() {
+  document.getElementById('cellar-list').innerHTML = Array.from({ length: 4 }, skeletonRowHtml).join('');
   currentBottles = await api.get(`/api/cellars/${currentCellarId}/bottles`);
   currentElements = await api.get(`/api/cellars/${currentCellarId}/elements`);
   activeChips = { type: null, country: null, region: null };

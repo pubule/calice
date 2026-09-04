@@ -1,5 +1,5 @@
 import { api } from '../api-client.js';
-import { escapeHtml } from '../util.js';
+import { escapeHtml, skeletonBar } from '../util.js';
 
 const TYPE_LABEL = { rosso: 'Rosso', bianco: 'Bianco', bollicine: 'Bollicine', rosato: 'Rosato' };
 const TYPE_COLOR = { rosso: '#5b2333', bianco: '#b9a750', bollicine: '#6b7a4f', rosato: '#a24a5a' };
@@ -50,7 +50,20 @@ function typeRows(bottles) {
     .join('');
 }
 
+function skeletonBarRow() {
+  return `<div class="region-row">${skeletonBar('74px', 10)}${skeletonBar('100%', 8)}${skeletonBar('22px', 10)}</div>`;
+}
+
 export async function mountStats() {
+  document.getElementById('stats-summary').innerHTML = `
+    <div class="stat">${skeletonBar('60%', 20)}</div>
+    <div class="stat">${skeletonBar('60%', 20)}</div>
+    <div class="stat">${skeletonBar('60%', 20)}</div>
+  `;
+  document.getElementById('stats-type').innerHTML = Array.from({ length: 3 }, skeletonBarRow).join('');
+  document.getElementById('stats-country').innerHTML = Array.from({ length: 3 }, skeletonBarRow).join('');
+  document.getElementById('stats-region').innerHTML = Array.from({ length: 3 }, skeletonBarRow).join('');
+
   const cellars = await api.get('/api/cellars');
   const raw = await api.get(`/api/cellars/${cellars[0].id}/bottles`);
   // quantity/price_paid/vintage come from the API as unvalidated JSON (no
