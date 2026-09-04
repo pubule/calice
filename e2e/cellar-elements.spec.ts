@@ -106,6 +106,30 @@ test.describe('Cantina — elementi', () => {
     await expect(page.locator('.box-item', { hasText: bottleName })).toBeVisible();
   });
 
+  test('create a Rack and fill a slot via the reverse picker', async ({ page }) => {
+    await gotoScreen(page, 'cellar');
+    await page.click('#elements-link');
+
+    const elName = `Rack E2E ${runId}`;
+    await page.click('#new-element-btn');
+    await page.click('.kind-opt[data-kind="Rack"]');
+    await page.fill('#new-elem-name', elName);
+    await page.fill('#new-elem-tiers', '1');
+    await page.fill('#new-elem-cols', '2');
+    await page.fill('#new-elem-depth', '1');
+    await page.click('#create-element-btn');
+
+    const row = page.locator('.elem-row', { hasText: elName });
+    await expect(row).toBeVisible();
+    await expect(row.locator('.elem-sub')).toHaveText('Rack · 1 livelli × 2 col.');
+    await row.click();
+
+    await page.click('.slot-circle[data-t="1"][data-c="0"][data-d="1"]');
+    await expect(page.locator('#elements-title')).toHaveText('Scegli la bottiglia');
+    await page.click(`#pick-bottle-list .elem-row:has-text("${bottleName}")`);
+    await expect(page.locator('.slot-circle.filled[data-t="1"][data-c="0"][data-d="1"]')).toBeVisible();
+  });
+
   test('assigning a location from the bottle detail screen (forward picker)', async ({ page }) => {
     await gotoScreen(page, 'cellar');
     await page.click(`.cellar-row:has-text("${bottleName}")`);

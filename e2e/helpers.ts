@@ -27,6 +27,15 @@ export async function apiGet<T>(request: APIRequestContext, url: string): Promis
   return res.json();
 }
 
+// Impersonates a second user via the X-Calice-Dev-Email header override
+// (worker/src/lib/session.ts) so tests can exercise follow/unfollow against
+// a real user row, without a login flow to drive in this app.
+export async function seedUser(request: APIRequestContext, email: string): Promise<{ id: number; name: string }> {
+  const res = await request.get('/api/auth/me', { headers: { 'X-Calice-Dev-Email': email } });
+  if (!res.ok()) throw new Error(`seedUser ${email} failed: ${res.status()} ${await res.text()}`);
+  return res.json();
+}
+
 export type Wine = { id: number; name: string; producer: string; country: string; region?: string; type: string };
 export type Bottle = { id: number; wine_id: number; cellar_id: number };
 
