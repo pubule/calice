@@ -4,10 +4,22 @@ export type WineCandidate = { title?: string; snippet?: string; sourceUrl?: stri
 export type TavilySearchResult = { candidates: WineCandidate[]; creditsUsed: number };
 
 const MAX_CANDIDATES = 10;
-// Requested pool is bigger than what's shown, giving the Vivino-boost
-// re-sort below more material to work with before trimming down to what's
-// actually displayed. 15 is under Tavily's max_results cap of 20.
+// Requested pool is bigger than what's shown, giving the relevance-filter
+// below more material to work with before trimming down to what's actually
+// displayed. 15 is under Tavily's max_results cap of 20.
 const FETCH_POOL = 15;
+
+// Restricting to Vivino alone rather than the open web or a multi-site list:
+// confirmed live via the playground that vivino.com-only gives BOTH full
+// recall for a lesser-known producer (15/15 real "Zamuner" bottles with no
+// query suffix at all) AND zero non-wine junk (an unrestricted "Zamuner
+// blanc" search surfaced six LinkedIn people-profiles for others who happen
+// to share the surname — Vivino only ever hosts wine pages, so that whole
+// failure mode is structurally impossible here). A wider multi-domain list
+// was tried first and cut recall to zero for this same producer — Tavily's
+// include_domains restricts its crawl scope, not just the result list, so
+// more domains is not simply "more coverage".
+const SEARCH_DOMAINS = ['vivino.com'];
 
 const STOPWORDS = new Set(['il', 'lo', 'la', 'i', 'gli', 'le', 'di', 'del', 'dello', 'della', 'dei', 'degli', 'delle', 'e', 'un', 'una', 'vino']);
 
@@ -28,19 +40,18 @@ function keyWord(words: string[]): string | undefined {
   return words.slice().sort((a, b) => b.length - a.length)[0];
 }
 
-// The Vivino boost below is unconditional on domain alone — a page merely
-// hosted on vivino.com is NOT necessarily about the searched wine (Tavily
-// still returns whatever ranks reasonably within the domain restriction,
-// which can be a same-category-but-different-producer wine). Confirmed:
-// a "Zamuner blanc" search once surfaced "Don de Dar ... Sauvignon Blanc"
-// — a completely unrelated Spanish wine — which the boost then shoved to
-// the top of the list purely for being on vivino.com. Checked against
-// title/URL only, NOT the snippet: a category-listing page's scraped
-// content can enumerate hundreds of wines, so it will often contain the
-// search term somewhere by sheer coincidence even though the page isn't
-// about that wine. Drops anything that doesn't mention the distinctive
-// query term in either — including, deliberately, every candidate at
-// once on an unlucky draw (see the caller for why there's no fallback).
+// Being on vivino.com does NOT mean a result is about the searched wine —
+// Tavily still returns whatever ranks reasonably within the domain
+// restriction, which can be a same-category-but-different-producer wine.
+// Confirmed: a "Zamuner blanc" search once surfaced "Don de Dar ...
+// Sauvignon Blanc" — a completely unrelated Spanish wine that was still on
+// vivino.com. Checked against title/URL only, NOT the snippet: a
+// category-listing page's scraped content can enumerate hundreds of wines,
+// so it will often contain the search term somewhere by sheer coincidence
+// even though the page isn't about that wine. Drops anything that doesn't
+// mention the distinctive query term in either — including, deliberately,
+// every candidate at once on an unlucky draw (see the caller for why
+// there's no fallback).
 function isRelevant(word: string, candidate: WineCandidate): boolean {
   const haystack = `${candidate.title ?? ''} ${candidate.sourceUrl ?? ''}`.toLowerCase();
   return haystack.includes(word);
@@ -58,30 +69,6 @@ function cleanSnippet(text: string): string {
   return cleaned.slice(0, SNIPPET_MAX_LEN).replace(/\s+\S*$/, '') + '…';
 }
 
-// Checks the actual hostname, not a raw substring match — sourceUrl comes
-// from Tavily's (third-party) search results, and `.includes('vivino.com')`
-// would let a spoofed URL like "evil.com/?x=vivino.com" or
-// "vivino.com.evil.com" claim the trust boost below without being Vivino.
-function isVivinoUrl(sourceUrl?: string): boolean {
-  if (!sourceUrl) return false;
-  try {
-    const host = new URL(sourceUrl).hostname.toLowerCase();
-    return host === 'vivino.com' || host.endsWith('.vivino.com');
-  } catch {
-    return false;
-  }
-}
-
-// Vivino has crowd-sourced photos/vintages/ratings for far more wines than
-// any single retailer, so a Vivino hit is trusted over Tavily's own
-// relevance score alone — the boost dwarfs the score's 0-1 range,
-// guaranteeing every Vivino candidate sorts above every non-Vivino one
-// while still using Tavily's score to order candidates within each group.
-const VIVINO_BOOST = 1000;
-function rankScore(isVivino: boolean, tavilyScore: number): number {
-  return (isVivino ? VIVINO_BOOST : 0) + tavilyScore;
-}
-
 // One call, not two like the old Google integration: Tavily returns web
 // results (title/content/url/score) and images in the same response when
 // include_images is set. Requesting several results instead of committing
@@ -92,20 +79,12 @@ function rankScore(isVivino: boolean, tavilyScore: number): number {
 // principle as every other suggestion in this feature: nothing is trusted
 // without a human confirming it.
 //
-// Open web, no include_domains: confirmed via a live playground call that
-// Tavily's include_domains restricts its crawl scope, not just the result
-// list — for a lesser-known producer ("Zamuner") it returned zero raw
-// results even before any filtering, while the open web found the
-// producer's own site plus a trusted retailer page in the same query. The
-// isRelevant title/URL filter above is what actually keeps results on
-// topic (it's what fixed the "Don de Dar" off-topic-Vivino-boost bug, not
-// the domain restriction), so dropping include_domains trades no safety
-// for a lot of recall. Ranking within what survives the filter uses
-// Tavily's own `score`, not a hand-rolled word-match score — a much
-// stronger relevance signal once the filter has already ruled out the
-// clearly off-topic candidates. Basic search_depth (no override sent) is
-// enough — advanced depth was tried too and costs 2 credits instead of
-// basic's 1 for results that weren't meaningfully better.
+// Ranking within what survives the isRelevant filter uses Tavily's own
+// `score` directly — with every result already guaranteed to be on Vivino
+// (see SEARCH_DOMAINS above), there's no cross-domain trust signal left to
+// layer on top. Basic search_depth (no override sent) is enough — advanced
+// depth was tried too and costs 2 credits instead of basic's 1 for results
+// that weren't meaningfully better.
 //
 // Images and results are paired by index — Tavily doesn't tie a specific
 // image to a specific result, so this is a best-effort zip, good enough
@@ -113,12 +92,10 @@ function rankScore(isVivino: boolean, tavilyScore: number): number {
 // happens before the score re-sort below so each candidate keeps its own
 // paired image when candidates get reordered.
 export async function searchWine(query: string, apiKey: string, fetchImpl: typeof fetch = fetch): Promise<TavilySearchResult | null> {
-  // Appending "vino" steers ranking toward wine-related pages within the
-  // trusted domains — several of them (e.g. vino.com) sell more than wine.
   const res = await fetchWithTimeout('https://api.tavily.com/search', 8000, fetchImpl, {
     method: 'POST',
     headers: { 'content-type': 'application/json', authorization: `Bearer ${apiKey}` },
-    body: JSON.stringify({ query: `${query} vino`, max_results: FETCH_POOL, include_images: true }),
+    body: JSON.stringify({ query: `${query} vino`, max_results: FETCH_POOL, include_images: true, include_domains: SEARCH_DOMAINS }),
   });
   if (!res || !res.ok) return null;
 
@@ -157,11 +134,9 @@ export async function searchWine(query: string, apiKey: string, fetchImpl: typeo
   const distinctiveWord = keyWord(queryWords(query));
   const filtered = distinctiveWord ? built.filter((b) => isRelevant(distinctiveWord, b.candidate)) : built;
 
-  // Stable sort: candidates that tie on rank score keep Tavily's own
-  // relevance order relative to each other.
-  const ranked = filtered
-    .map((b) => ({ candidate: b.candidate, score: rankScore(isVivinoUrl(b.candidate.sourceUrl), b.tavilyScore) }))
-    .sort((a, b) => b.score - a.score);
+  // Stable sort: candidates that tie on score keep Tavily's own relevance
+  // order relative to each other.
+  const ranked = filtered.slice().sort((a, b) => b.tavilyScore - a.tavilyScore);
 
   // A basic search (what this sends — no search_depth override) is a flat
   // 1 credit per Tavily's docs, regardless of max_results; the response
