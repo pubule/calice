@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { gotoScreen, apiGet, apiPost, seedUser, runId } from './helpers';
+import { gotoScreen, apiGet, apiPost, seedUser, runId, fillPrompt, dismissAlert, modal } from './helpers';
 import type { APIRequestContext } from '@playwright/test';
 
 async function unfollowEveryone(request: APIRequestContext) {
@@ -25,6 +25,24 @@ test.describe('Profilo — seguiti', () => {
     await gotoScreen(page, 'profile');
     await expect(page.locator('.follow-row')).toHaveCount(0);
     await expect(page.locator('#profile-follows')).toContainText('Non segui ancora nessuno.');
+  });
+
+  test('"trova amici" finds a user by exact email and follows them', async ({ page, request }) => {
+    const friend = await seedUser(request, `findme-${runId}@test.com`);
+
+    await gotoScreen(page, 'profile');
+    await page.click('#find-friends-btn');
+    await fillPrompt(page, `findme-${runId}@test.com`);
+    await expect(page.locator('.follow-row', { hasText: friend.name })).toBeVisible();
+  });
+
+  test('"trova amici" shows an error for an email that matches nobody', async ({ page }) => {
+    await gotoScreen(page, 'profile');
+    await page.click('#find-friends-btn');
+    await fillPrompt(page, `nobody-${runId}@test.com`);
+    await expect(page.locator(modal.title)).toHaveText('Trova amici');
+    await expect(page.locator(modal.message)).toHaveText('Nessun utente trovato con questa email.');
+    await dismissAlert(page);
   });
 });
 

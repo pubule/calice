@@ -15,6 +15,26 @@ beforeEach(async () => {
 });
 
 describe('follows + activity feed', () => {
+  it('GET /lookup finds a user by exact email, case-insensitively, 404s when not found', async () => {
+    const a = await signup('lookupa@b.com');
+    const b = await signup('LookupB@b.com');
+
+    const found = await app.request('/api/follows/lookup?email=LOOKUPB%40B.COM', { headers: a.auth }, env);
+    expect(found.status).toBe(200);
+    expect(await found.json()).toMatchObject({ id: b.userId, name: 'LookupB' });
+
+    const missing = await app.request('/api/follows/lookup?email=nobody@b.com', { headers: a.auth }, env);
+    expect(missing.status).toBe(404);
+  });
+
+  it('cannot follow yourself', async () => {
+    const a = await signup('selfa@b.com');
+    const res = await app.request(`/api/follows/${a.userId}`, { method: 'POST', headers: a.auth }, env);
+    expect(res.status).toBe(400);
+    const list = await (await app.request('/api/follows', { headers: a.auth }, env)).json<any[]>();
+    expect(list).toHaveLength(0);
+  });
+
   it('follow then unfollow', async () => {
     const a = await signup('fa@b.com');
     const b = await signup('fb@b.com');

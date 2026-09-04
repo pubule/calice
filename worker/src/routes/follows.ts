@@ -17,8 +17,22 @@ followRoutes.get('/', async (c) => {
   return c.json(rows.results);
 });
 
+// Exact-match lookup only (no partial/prefix search) — a free-text name or
+// email-prefix search would let anyone enumerate the user table by typing
+// single characters. Requiring the full email means the caller already
+// knows who they're looking for, same trust model as "add contact by
+// email" elsewhere.
+followRoutes.get('/lookup', async (c) => {
+  const email = c.req.query('email')?.trim().toLowerCase();
+  if (!email) return c.json({ error: 'email required' }, 400);
+  const user = await c.env.DB.prepare('select id, name from users where lower(email) = ?').bind(email).first<{ id: number; name: string }>();
+  if (!user) return c.json({ error: 'not found' }, 404);
+  return c.json(user);
+});
+
 followRoutes.post('/:userId', async (c) => {
   const followeeId = Number(c.req.param('userId'));
+  if (followeeId === c.get('userId')) return c.json({ error: 'cannot follow yourself' }, 400);
   await c.env.DB
     .prepare('insert or ignore into follows (follower_id, followee_id) values (?, ?)')
     .bind(c.get('userId'), followeeId)

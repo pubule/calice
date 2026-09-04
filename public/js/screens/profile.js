@@ -1,5 +1,6 @@
 import { api } from '../api-client.js';
 import { escapeHtml } from '../util.js';
+import { alertModal, promptModal } from '../modal.js';
 
 function urlBase64ToUint8Array(base64String) {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
@@ -44,6 +45,20 @@ document.getElementById('invite-btn')?.addEventListener('click', async () => {
   if (firstCellarId == null) return;
   const { code } = await api.post(`/api/cellars/${firstCellarId}/invite`);
   document.getElementById('invite-result').textContent = `${window.location.origin}/#/invite/${code}`;
+});
+
+document.getElementById('find-friends-btn')?.addEventListener('click', async () => {
+  const email = await promptModal('Email della persona da seguire', { title: 'Trova amici', placeholder: 'email@esempio.com', confirmLabel: 'Cerca' });
+  if (!email) return;
+  try {
+    const user = await api.get(`/api/follows/lookup?email=${encodeURIComponent(email.trim())}`);
+    await api.post(`/api/follows/${user.id}`);
+    await renderFollows();
+  } catch (err) {
+    if (err.status === 404) await alertModal('Nessun utente trovato con questa email.', { title: 'Trova amici' });
+    else if (err.status === 400) await alertModal('Non puoi seguire te stesso.', { title: 'Trova amici' });
+    else await alertModal('Ricerca non riuscita, riprova.', { title: 'Trova amici' });
+  }
 });
 
 document.getElementById('notif-toggle')?.addEventListener('change', async (e) => {
