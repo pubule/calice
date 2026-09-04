@@ -166,7 +166,7 @@ function renderList(bottles) {
 async function renderWishlist() {
   const wishlist = await api.get(`/api/cellars/${currentCellarId}/wishlist`);
   const wishEl = document.getElementById('wishlist-list');
-  wishEl.innerHTML = wishlist.map(wishRowHtml).join('');
+  wishEl.innerHTML = wishlist.length ? wishlist.map(wishRowHtml).join('') : '<div class="empty-note">Nessun vino nei desideri.</div>';
   wishEl.querySelectorAll('.wish-add').forEach((btn) =>
     btn.addEventListener('click', async (e) => {
       e.stopPropagation();
