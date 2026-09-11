@@ -25,3 +25,17 @@ indipendente.
 — c'è una lunga serie di tentativi già fatti (vedi commit da `3a8468a` a
 `d0d2bd8`) prima di arrivare allo stato attuale. Leggere quelli prima di
 riprovare varianti già scartate.
+
+### Bug distinto: zona grigia solo al cold-launch da icona Home
+
+Anche in `status-bar-style: default` (quello giusto, sopra) restava una
+zona grigia in alto **solo** al lancio a freddo dall'icona Home, che
+spariva da sola aprendo e richiudendo la tastiera. Causa: la chiamata
+eager `applyViewportHeight()` al load leggeva `visualViewport.offsetTop`
+prima che iOS l'avesse assestato dopo un cold-launch standalone,
+fissando `.screen` con un piccolo offset sbagliato (si vedeva lo sfondo
+di `body` nel gap). Il primo evento reale `resize`/`scroll` (es. la
+tastiera) ricalcolava con valori corretti e il problema spariva — indizio
+che ha portato dritti al fix. Rimossa la chiamata eager: `.screen` resta
+sui default CSS (`top:0`, `100dvh`, già corretti a riposo) finché non
+arriva un vero evento di resize/scroll.

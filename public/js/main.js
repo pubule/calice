@@ -35,7 +35,14 @@ if (vv) {
   };
   vv.addEventListener('resize', applyViewportHeight);
   vv.addEventListener('scroll', applyViewportHeight);
-  applyViewportHeight();
+  // No eager call on load: right after a cold launch from the home-screen
+  // icon, visualViewport's own numbers haven't settled yet (offsetTop in
+  // particular), and applying them immediately pinned .screen a few px off,
+  // showing body's background through the gap above it — confirmed by the
+  // glitch clearing itself the moment any real resize/scroll event fires
+  // (e.g. opening then closing the keyboard) with settled numbers. .screen's
+  // own CSS defaults (top:0, 100dvh) are already correct at rest, so it's
+  // fine to wait for the first real event instead.
 }
 
 registerRoute('#/home', async () => { showView('view-home'); await mountHome(); });
