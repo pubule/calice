@@ -191,17 +191,32 @@ il fondo fisico. Ecco perché **ogni** tentativo precedente falliva:
 contro quella stessa viewport corta, quindi davano tutti lo stesso
 risultato sbagliato. Non era la scelta dell'unità.
 
-**Fix**: allungare `.screen` oltre il bordo inferiore della viewport
-esattamente di quell'ammontare, solo in standalone (in Safari normale la
-viewport è corretta e questo la spingerebbe fuori schermo):
+**Tentativo fallito, da non ripetere**: allungare `.screen` oltre il bordo
+della viewport con `bottom:calc(-1 * env(safe-area-inset-top))`.
+Geometricamente torna (793 + 59 = 852) ma **iOS non dipinge niente sotto
+il bordo della viewport**: la navbar finiva nella striscia non disegnata,
+le etichette sparivano e le icone venivano tagliate a metà glifo
+(verificato: il contenuto si interrompeva di netto a y=792, cioè 793).
+La viewport *è* tutta la tela disponibile — `.screen` deve restarci dentro
+(`bottom:0`).
+
+**Fix effettivo**: accettare la viewport da 793 e smettere di sprecare
+spazio dentro di essa. `env(safe-area-inset-bottom)` riporta 34px come se
+la viewport fosse a schermo intero, ma l'home indicator sta **fuori**,
+nella striscia sotto: riservargli spazio dentro la navbar impilava spazio
+morto su spazio morto, ed è questo che si vedeva come "menù troppo
+grande".
 ```css
-@media (display-mode: standalone){
-  .screen{ bottom:calc(-1 * env(safe-area-inset-top, 0px)); }
-}
+@media (display-mode: standalone){ .navbar{ padding-bottom:2px; } }
 ```
-Sul device: 793 + 59 = 852, cioè lo schermo esatto. La navbar torna sul
-fondo vero, e il suo `padding-bottom` di `calc(2px + env(safe-area-inset-bottom))`
-= 36px tiene libera l'area dell'home indicator.
+Navbar da 83pt → 49pt; lo spazio sotto le etichette passa da ~100pt a
+~66pt (una tab bar iOS nativa ne ha ~42).
+
+**Residuo noto**: quei ~59pt di striscia non dipinta in fondo non sono
+eliminabili in `black-translucent` — è il prezzo di avere la status bar
+color crema. L'unica alternativa è tornare a `status-bar-style: default`,
+dove la viewport parte sotto la status bar e arriva al fondo vero (niente
+striscia), ma la status bar torna a essere disegnata da iOS.
 
 **Corollario**: `env()` funziona correttamente, sia sopra che sotto. I
 tentativi di "limitare" l'inset inferiore con `min(..., 34px)` sembravano

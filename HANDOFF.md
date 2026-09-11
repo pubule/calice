@@ -86,8 +86,15 @@ questo file è il riassunto "dove eravamo rimasti".
      un bug di altezza, ed è per questo che `100dvh`,
      `-webkit-fill-available` e `top:0/bottom:0` davano tutti lo stesso
      risultato: risolvono tutti contro quella stessa viewport corta.
-     Fix: `@media (display-mode: standalone){ .screen{ bottom:calc(-1 * env(safe-area-inset-top, 0px)) } }`
-     → 793 + 59 = 852, lo schermo esatto.
+     Allungare `.screen` oltre quel bordo **non** funziona: iOS non dipinge
+     nulla sotto la viewport, quindi la navbar finiva in una striscia non
+     disegnata (etichette sparite, icone tagliate). Fix effettivo: restare
+     dentro la viewport e togliere il padding inutile —
+     `@media (display-mode: standalone){ .navbar{ padding-bottom:2px } }`,
+     perché l'home indicator sta fuori dalla viewport e riservargli spazio
+     nella navbar impilava spazio morto su spazio morto. Navbar 83→49pt.
+     Restano ~59pt di striscia in fondo: non eliminabili in
+     `black-translucent`, è il prezzo della status bar crema.
    - **Diagnosi precedente sbagliata, da non ripetere**: avevo concluso
      che `env(safe-area-inset-bottom)` fosse gonfiato a ~94pt. **Non lo
      è**: il device riporta 34, corretto. I tentativi di limitarlo con

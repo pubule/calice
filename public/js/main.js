@@ -82,7 +82,7 @@ function renderBuildLine() {
   const navRect = nav?.getBoundingClientRect();
   const r = (n) => Math.round(n);
   el.textContent =
-    `build 63 · win ${window.innerHeight} · vv ${r(window.visualViewport?.height ?? 0)}` +
+    `build 64 · win ${window.innerHeight} · vv ${r(window.visualViewport?.height ?? 0)}` +
     ` · screen ${r(screen?.top ?? 0)}→${r(screen?.bottom ?? 0)}` +
     ` · nav h${r(navRect?.height ?? 0)} pb${nav ? getComputedStyle(nav).paddingBottom : '?'}` +
     ` · inset top ${probe('safe-area-inset-top')} bottom ${probe('safe-area-inset-bottom')}`;

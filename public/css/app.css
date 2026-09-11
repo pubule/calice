@@ -14,17 +14,13 @@
   .screen{ position:fixed; top:0; bottom:0; left:50%; transform:translateX(-50%); width:100%; max-width:480px; overflow:hidden; background:#f7f5f0; color:#241e1a; font-family:'Archivo',sans-serif; display:flex; flex-direction:column; padding-top:env(safe-area-inset-top); }
   /* In an iOS standalone PWA with black-translucent, the layout viewport is
      moved up to y=0 so content draws under the status bar, but it KEEPS the
-     height it would have had below the status bar — so it falls exactly
-     env(safe-area-inset-top) short at the bottom. Read off the device:
-     window.innerHeight 793 on an 852pt screen, inset top 59. .screen fills
-     that viewport perfectly (0→793) and therefore stops 59pt above the
-     physical bottom of the screen. Stretching it past the viewport's bottom
-     edge by that same amount is what puts the navbar back on the real bottom.
-     Scoped to standalone: in ordinary Safari the viewport is correct and this
-     would push .screen off-screen. */
-  @media (display-mode: standalone){
-    .screen{ bottom:calc(-1 * env(safe-area-inset-top, 0px)); }
-  }
+     height it would have had below the status bar. Read off the device:
+     window.innerHeight 793 on an 852pt screen, env(safe-area-inset-top) 59.
+     So the viewport ends 59pt above the physical bottom, and — this is the
+     part that matters — iOS paints NOTHING below that edge. Stretching
+     .screen past it (bottom:-59px was tried) just pushes the navbar into the
+     unpainted strip: the labels vanish and the icons are clipped mid-glyph.
+     The viewport is the whole canvas; .screen must stay inside it. */
   svg.ic{width:19px; height:19px; stroke:currentColor; stroke-width:1.6; fill:none; stroke-linecap:round; stroke-linejoin:round; flex-shrink:0;}
 
   /* .navbar is a normal flex child (flex:none, last in DOM order), never
@@ -197,6 +193,17 @@
 
   .navbar{ flex:none; display:flex; align-items:stretch; justify-content:space-around; padding:2px 6px calc(2px + env(safe-area-inset-bottom, 0px)); background:rgba(247,245,240,.94); -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px); border-top:1px solid #e2e0d8; box-shadow:0 -2px 8px rgba(20,15,12,.05); }
   .navbar.kb-hidden{display:none;}
+  /* No bottom safe-area inset in standalone: env(safe-area-inset-bottom)
+     reports 34px as if the viewport were the full screen, but the viewport is
+     short (see .screen above) and the home indicator actually sits in the
+     unpainted strip BELOW it. Reserving 34px for it inside the navbar just
+     stacks dead space on top of dead space — which is what read as "the menu
+     is too big". Tied to black-translucent; revisit with the .screen note if
+     apple-mobile-web-app-status-bar-style ever changes. */
+  @media (display-mode: standalone){
+    .navbar{ padding-bottom:2px; }
+  }
+
   .navbtn{ flex:1; background:none; border:none; color:#a89b89; font-family:'Archivo',sans-serif; font-size:9.5px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; padding:4px 4px; min-height:44px; cursor:pointer; -webkit-tap-highlight-color:transparent; touch-action:manipulation; }
   .navbtn.active{color:#5b2333;}
 
