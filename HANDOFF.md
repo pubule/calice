@@ -121,9 +121,10 @@ questo file è il riassunto "dove eravamo rimasti".
   l'altro più volte.
 - `env()` funziona correttamente (inset 59 sopra, 34 sotto): si usa
   normale. La regola da **non** togliere è invece
-  `@media (display-mode: standalone){ .screen{ bottom:calc(-1 * env(safe-area-inset-top, 0px)) } }`,
-  che compensa la viewport corta di `black-translucent` — senza, la
-  navbar resta 59pt sopra il fondo dello schermo.
+  `@media (display-mode: standalone){ .navbar{ padding-bottom:2px } }`:
+  con la viewport corta l'home indicator sta fuori, quindi riservargli
+  spazio nella navbar aggiunge solo vuoto. E **non** riprovare ad
+  allungare `.screen` oltre il bordo della viewport: iOS non dipinge lì.
 - **Il service worker non consegnava gli aggiornamenti.** Il fetch
   handler passava un init object (`{ cache: 'no-store' }`) a `fetch()`,
   che fa ricostruire la Request: su una richiesta `mode:"navigate"` questo

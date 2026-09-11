@@ -156,9 +156,11 @@ i due valori inline si torna allo stiramento.
 - Mai `100dvh` né `-webkit-fill-available` per l'altezza di `.screen`:
   risolvono contro la viewport corta (vedi sezione successiva), quindi
   danno tutti lo stesso risultato sbagliato.
-- Mai togliere la regola `@media (display-mode: standalone)` che allunga
-  `.screen` di `env(safe-area-inset-top)` oltre il fondo: senza quella,
-  in PWA la navbar resta 59pt sopra il fondo dello schermo.
+- Mai allungare `.screen` oltre il bordo inferiore della viewport: iOS
+  non dipinge nulla lì (provato e revertato, vedi sezione dedicata).
+- Mai togliere `@media (display-mode: standalone){ .navbar{ padding-bottom:2px } }`:
+  con la viewport corta l'home indicator sta fuori dalla viewport, quindi
+  riservargli spazio nella navbar aggiunge solo vuoto.
 - Mai reintrodurre un background dipendente da `prefers-color-scheme` su
   `html`/`body`: l'app è light-only e quello è l'unico motivo per cui un
   errore di layout diventava una fascia nera visibile.
