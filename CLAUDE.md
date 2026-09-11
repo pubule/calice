@@ -1,5 +1,16 @@
 # Note per sessioni future
 
+## Handoff: aggiornarlo a ogni push
+
+`HANDOFF.md` (root del repo) è il riassunto "dove eravamo rimasti" per chi
+riprende il progetto — stato attuale, lavoro recente, cose note da non
+rifare, prossimi passi. **Prima di ogni push** (che sia su `master` o su
+un branch di lavoro), aggiornarlo perché rifletta lo stato dopo quel push:
+cosa è cambiato in questa sessione, eventuali decisioni/trade-off presi,
+cosa resta aperto. Non è un changelog di ogni commit — è lo snapshot
+utile a chi (o quale sessione) arriva dopo, quindi riscrivere/potare le
+sezioni superate invece di limitarsi ad aggiungere in fondo.
+
 ## PWA su iOS: status bar / viewport — non ritoccare senza guardare prima la storia
 
 `public/index.html`'s `apple-mobile-web-app-status-bar-style` è su **`default`**
