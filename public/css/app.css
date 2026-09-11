@@ -324,7 +324,7 @@
   #view-cellar .cellar-body{flex:1; overflow-y:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; display:flex; flex-direction:column; gap:16px; padding:16px 20px 20px;}
   /* Tre gruppi di chip impilati in cantina/elementi: la spaziatura negativa
      globale di .chip-label li fa sovrapporre — qui basta più margine. */
-  #view-cellar .chip-label, #elements-overlay .chip-label, #filter-sheet .chip-label{margin:0 0 6px;}
+  #view-cellar .chip-label, #elements-overlay .chip-label, #filter-sheet .chip-label, #view-explore .chip-label{margin:0 0 6px;}
   .results-count{font-family:'JetBrains Mono',monospace; font-size:9.5px; letter-spacing:.06em; text-transform:uppercase; color:#a89b89;}
 
   .search-row{display:flex; align-items:center; gap:9px;}

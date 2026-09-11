@@ -45,6 +45,15 @@ questo file è il riassunto "dove eravamo rimasti".
    cronologia completa. Stato finale: `status-bar-style: default`
    (male minore, già scelto in passato), niente chiamata eager di
    `applyViewportHeight()` al load (causava zona grigia al cold-launch).
+4. **Fix layout "Uve principali" su più righe** (Esplora) — quando i
+   chip delle uve vanno a capo, l'etichetta `.chip-label` di default ha
+   un margine negativo (`-4px`, pensato per un solo rigo) che la incolla
+   alla prima riga, mentre il gap tra riga 1 e riga 2 resta il gap
+   normale del flex (7px): risultato, ritmo verticale incoerente.
+   Stesso problema già risolto altrove (`#view-cellar`, `#elements-overlay`,
+   `#filter-sheet` in `app.css`) con un override `margin:0 0 6px`
+   — aggiunto `#view-explore` alla stessa regola invece di inventarne
+   una nuova.
 
 ## Cose note, non (ancora) da rifare
 
