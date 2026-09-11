@@ -74,8 +74,17 @@ questo file è il riassunto "dove eravamo rimasti".
    - Verificato in locale con Chromium in dark mode (riproducibile,
      a differenza di tutto il resto): `body` è crema anche con
      `prefers-color-scheme: dark`, e `.screen` copre esattamente il
-     viewport. **Da confermare sul device**: cold-launch E resume da
-     background.
+     viewport. **Confermato sul device**: la fascia scura è sparita e lo
+     schermo è pieno fino in fondo.
+   - **Navbar troppo alta** (emerso subito dopo, una volta che lo schermo
+     arrivava davvero in fondo): 141pt sul device contro 49pt in locale.
+     La differenza è `env(safe-area-inset-bottom)`, che in standalone +
+     `black-translucent` riporta ~93pt = 34pt (home indicator) + 59pt
+     (status bar) — iOS somma anche l'inset superiore. Introdotta
+     `--safe-bottom: min(env(safe-area-inset-bottom, 0px), 34px)`, usata
+     da navbar e otturatore fotocamera: navbar 141pt → 83pt (tab bar iOS
+     standard), invariata a 49pt sui device senza home indicator.
+     L'inset **superiore** invece è corretto e va lasciato stare.
 4. **Fix layout "Uve principali" su più righe** (Esplora) — quando i
    chip delle uve vanno a capo, l'etichetta `.chip-label` di default ha
    un margine negativo (`-4px`, pensato per un solo rigo) che la incolla
@@ -95,10 +104,16 @@ questo file è il riassunto "dove eravamo rimasti".
   riappare grigio in alto o scuro in fondo, leggere `CLAUDE.md` per
   intero prima di ritoccare: sono bug distinti, già scambiati l'uno per
   l'altro più volte.
+- Mai usare `env(safe-area-inset-bottom)` nudo: passare sempre da
+  `--safe-bottom`, che gli mette un tetto di 34px (iOS lo riporta
+  gonfiato in `black-translucent`, vedi `CLAUDE.md`).
 - Prima di teorizzare su una zona "non dipinta": **campionare il colore
   del pixel** dallo screenshot del device. `#000000` = canvas nativo,
   qualsiasi altro colore = un elemento dell'app. Questo singolo controllo
-  avrebbe risparmiato settimane di diagnosi sbagliata.
+  avrebbe risparmiato settimane di diagnosi sbagliata. Stessa logica per
+  le dimensioni: misurare le coordinate nello screenshot e confrontarle
+  con Playwright in locale dà il valore che iOS sta riportando, invece di
+  indovinarlo.
 - Dentro ogni mappa, le regioni senza dati curati sono deliberatamente
   "dati in arrivo" invece di contenuto inventato — vale per tutti i
   paesi, non solo l'Italia.

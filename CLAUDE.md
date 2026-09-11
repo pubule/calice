@@ -162,3 +162,48 @@ i due valori inline si torna allo stiramento.
 - Prima di teorizzare sul perché una zona non è dipinta, **campionare il
   colore del pixel** in uno screenshot del device: distingue in un colpo
   solo tra canvas nativo (`#000000`) e un elemento dell'app dipinto male.
+
+### `env(safe-area-inset-bottom)` è gonfiato in `black-translucent` — va limitato con un tetto
+
+Sintomo riportato: "il menù in basso è troppo grande". La navbar misurava
+**141pt** sul device contro i **49pt** che rende in locale con le
+safe-area a zero. La differenza, 92-93pt, è tutta
+`env(safe-area-inset-bottom)`.
+
+Il valore corretto per l'home indicator di un iPhone è **34pt**. Su questo
+device (iPhone 15 Pro, schermo 852pt) `env(safe-area-inset-bottom)`
+riporta invece ~93pt, cioè **34pt (home indicator) + 59pt (status bar)**:
+in modalità standalone + `black-translucent` iOS somma nell'inset
+inferiore anche quello superiore. L'inset superiore invece è corretto
+(misurato ~59pt, coerente con la posizione del contenuto), quindi il
+`padding-top:env(safe-area-inset-top)` di `.screen` va lasciato com'è.
+
+**Fix**: una variabile con un tetto esplicito, usata ovunque serva
+l'inset inferiore (navbar e pulsante otturatore della fotocamera):
+```css
+:root{ --safe-bottom: min(env(safe-area-inset-bottom, 0px), 34px); }
+```
+Verificato: con inset grezzo 93pt la navbar scende da 141pt a 83pt
+(altezza standard di una tab bar iOS), identica a quella che si ottiene
+con l'inset corretto di 34pt; e con inset 0 (device senza home indicator)
+resta 49pt come prima, quindi nessuna regressione.
+
+**Mai** usare `env(safe-area-inset-bottom)` nudo in questo progetto: va
+sempre passato da `--safe-bottom`.
+
+### Come misurare invece di indovinare
+
+Questa vicenda (status bar grigia, fascia nera, navbar gonfia) è costata
+molti tentativi a vuoto perché si ragionava sui sintomi. Le due tecniche
+che l'hanno invece chiusa in fretta, da riusare:
+
+1. **Campionare il colore del pixel** nello screenshot del device
+   (`PIL`): distingue canvas nativo (`#000000`) da un elemento dell'app
+   dipinto male — è così che si è scoperto che la fascia era `#111011`,
+   cioè `body` in dark mode.
+2. **Confrontare le coordinate device vs locale**: misurare nello
+   screenshot dove cadono testi e bordi (in pt, dividendo i pixel per il
+   device pixel ratio) e confrontarle con le stesse misure prese in
+   Chromium via Playwright. La differenza *è* il valore che iOS sta
+   riportando, senza doverlo indovinare: è così che si è ricavato che
+   `env(safe-area-inset-bottom)` valeva 93pt e non 34pt.
