@@ -178,18 +178,22 @@ inferiore anche quello superiore. L'inset superiore invece è corretto
 (misurato ~59pt, coerente con la posizione del contenuto), quindi il
 `padding-top:env(safe-area-inset-top)` di `.screen` va lasciato com'è.
 
-**Fix**: una variabile con un tetto esplicito, usata ovunque serva
+**Fix**: un tetto esplicito, scritto **per esteso in ogni punto** che usa
 l'inset inferiore (navbar e pulsante otturatore della fotocamera):
 ```css
-:root{ --safe-bottom: min(env(safe-area-inset-bottom, 0px), 34px); }
+calc(2px + min(env(safe-area-inset-bottom, 0px), 34px))
 ```
-Verificato: con inset grezzo 93pt la navbar scende da 141pt a 83pt
+Verificato: con inset grezzo 94pt la navbar scende da 141pt a 83pt
 (altezza standard di una tab bar iOS), identica a quella che si ottiene
 con l'inset corretto di 34pt; e con inset 0 (device senza home indicator)
 resta 49pt come prima, quindi nessuna regressione.
 
-**Mai** usare `env(safe-area-inset-bottom)` nudo in questo progetto: va
-sempre passato da `--safe-bottom`.
+**Mai** usare `env(safe-area-inset-bottom)` senza il tetto — e **mai**
+metterlo dentro una custom property. Un primo tentativo lo aveva hoistato
+in `:root{ --safe-bottom: ... }` e sul device non è cambiato nulla:
+`env()` dentro una custom property è la stessa indirezione WebKit che in
+questo file ha già fallito in silenzio con i fallback di `var()`. Va
+scritto letterale dove serve, anche a costo di ripetere il `34px`.
 
 ### Come misurare invece di indovinare
 

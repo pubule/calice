@@ -81,10 +81,13 @@ questo file è il riassunto "dove eravamo rimasti".
      La differenza è `env(safe-area-inset-bottom)`, che in standalone +
      `black-translucent` riporta ~93pt = 34pt (home indicator) + 59pt
      (status bar) — iOS somma anche l'inset superiore. Introdotta
-     `--safe-bottom: min(env(safe-area-inset-bottom, 0px), 34px)`, usata
-     da navbar e otturatore fotocamera: navbar 141pt → 83pt (tab bar iOS
+     `min(env(safe-area-inset-bottom, 0px), 34px)`, scritta per esteso in
+     navbar e otturatore fotocamera: navbar 141pt → 83pt (tab bar iOS
      standard), invariata a 49pt sui device senza home indicator.
      L'inset **superiore** invece è corretto e va lasciato stare.
+     Nota: un primo tentativo metteva quel `min()` in una custom property
+     `--safe-bottom`; sul device non cambiava nulla, quindi `env()` dentro
+     una custom property non va usato (vedi `CLAUDE.md`).
 4. **Fix layout "Uve principali" su più righe** (Esplora) — quando i
    chip delle uve vanno a capo, l'etichetta `.chip-label` di default ha
    un margine negativo (`-4px`, pensato per un solo rigo) che la incolla
@@ -104,9 +107,10 @@ questo file è il riassunto "dove eravamo rimasti".
   riappare grigio in alto o scuro in fondo, leggere `CLAUDE.md` per
   intero prima di ritoccare: sono bug distinti, già scambiati l'uno per
   l'altro più volte.
-- Mai usare `env(safe-area-inset-bottom)` nudo: passare sempre da
-  `--safe-bottom`, che gli mette un tetto di 34px (iOS lo riporta
-  gonfiato in `black-translucent`, vedi `CLAUDE.md`).
+- Mai usare `env(safe-area-inset-bottom)` senza il tetto
+  `min(..., 34px)`, e mai dentro una custom property: va scritto
+  letterale (iOS lo riporta gonfiato in `black-translucent`, vedi
+  `CLAUDE.md`).
 - Prima di teorizzare su una zona "non dipinta": **campionare il colore
   del pixel** dallo screenshot del device. `#000000` = canvas nativo,
   qualsiasi altro colore = un elemento dell'app. Questo singolo controllo
