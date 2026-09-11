@@ -5,7 +5,7 @@
   *{box-sizing:border-box;}
   html{ background:#f7f5f0; color-scheme:light; height:100%; height:-webkit-fill-available; overflow:hidden; overscroll-behavior-y:none; }
   body{ margin:0; height:100%; height:-webkit-fill-available; overflow:hidden; background:var(--page-bg); overscroll-behavior-y:none; }
-  .screen{ position:fixed; top:var(--app-top, 0px); left:50%; transform:translateX(-50%); width:100%; max-width:480px; height:var(--app-height, 100%); height:var(--app-height, -webkit-fill-available); overflow:hidden; background:#f7f5f0; color:#241e1a; font-family:'Archivo',sans-serif; display:flex; flex-direction:column; padding-top:env(safe-area-inset-top); }
+  .screen{ position:fixed; top:0; left:50%; transform:translateX(-50%); width:100%; max-width:480px; height:100%; height:-webkit-fill-available; overflow:hidden; background:#f7f5f0; color:#241e1a; font-family:'Archivo',sans-serif; display:flex; flex-direction:column; padding-top:env(safe-area-inset-top); }
   svg.ic{width:19px; height:19px; stroke:currentColor; stroke-width:1.6; fill:none; stroke-linecap:round; stroke-linejoin:round; flex-shrink:0;}
 
   /* .navbar is a normal flex child (flex:none, last in DOM order), never

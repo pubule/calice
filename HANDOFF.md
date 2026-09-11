@@ -63,16 +63,33 @@ questo file è il riassunto "dove eravamo rimasti".
      `100dvh` — già scartato il 2 settembre su device reale (commit
      `9d64542`) per lo stesso sintomo (fascia nera in fondo in
      standalone), e poi silenziosamente reintrodotto da un commit
-     successivo (`7d0c953`). Fallback riportato al pattern
-     `9d64542`-testato: `height:100%` con `-webkit-fill-available`
-     esplicito, combinato con la var JS:
+     successivo (`7d0c953`).
+   - **Primo tentativo di fix (peggiorato, non risolto)**: fallback
+     riportato al pattern `9d64542` ma tenuto dentro `var()`:
      `height:var(--app-height, 100%); height:var(--app-height, -webkit-fill-available);`.
+     L'utente ha riportato che sul device la fascia nera è diventata
+     **più grande**, non è sparita ("Ancora peggio"). Causa: `var()`
+     con un fallback vendor-prefixed (`-webkit-fill-available`) è una
+     combinazione fragile su WebKit (bug noti nella risoluzione dei
+     fallback di `var()`) — se la risoluzione fallisce, la proprietà
+     diventa invalida e `.screen` torna a `height:auto`, cioè si
+     restringe al contenuto invece di riempire lo schermo: molto peggio
+     della piccola discrepanza di `100dvh` da cui si era partiti.
+   - **Fix corretto**: eliminate del tutto le custom property CSS per
+     la geometria di `.screen`. A riposo, pattern "progressive
+     enhancement" puro (parse-time, non `var()`), identico a
+     `html`/`body`: `top:0; height:100%; height:-webkit-fill-available;`.
+     L'override per tastiera aperta in `main.js` ora scrive/rimuove
+     `style.top`/`style.height` **direttamente sull'elemento `.screen`**
+     (inline style), non più su custom property lette da `var()` — un
+     inline style non passa da nessuna risoluzione di fallback.
      Verificato in locale (Chromium/Playwright) che `.screen` a riposo
-     combacia con `window.innerHeight` col nuovo fallback — ma
-     Playwright non riproduce il bug reale di `100dvh` su iOS
-     standalone, quindi **da confermare sul device**: cold-launch E
-     resume da background, controllando che la cima resti crema E il
-     fondo non torni nero.
+     combacia con `window.innerHeight` e che eventi resize/scroll
+     simulati senza focus non applicano alcun override — ma Playwright
+     non riproduce il bug reale di `100dvh`/`var()` su iOS standalone,
+     quindi **da confermare sul device**: cold-launch E resume da
+     background, controllando che la cima resti crema E il fondo non
+     torni nero.
 4. **Fix layout "Uve principali" su più righe** (Esplora) — quando i
    chip delle uve vanno a capo, l'etichetta `.chip-label` di default ha
    un margine negativo (`-4px`, pensato per un solo rigo) che la incolla

@@ -103,11 +103,51 @@ riportando a galla il bug originale (osservato dall'utente come
 "regressione in basso" subito dopo la riprova di `black-translucent`,
 che in realtà non c'entrava — erano due bug distinti sovrapposti).
 
-**Fix**: fallback di `.screen` riportato al pattern `9d64542`, combinato
-con la variabile JS:
+**Primo tentativo di fix (insufficiente, vedi correzione sotto)**: fallback
+di `.screen` riportato al pattern `9d64542`, ma tenuto dentro `var()`:
 ```css
 height:var(--app-height, 100%); height:var(--app-height, -webkit-fill-available);
 ```
-**Mai** usare `100dvh` da solo (né come valore fisso né come fallback di
-`var()`) per `.screen`, `html` o `body` in questo progetto — è già stato
-scartato due volte su device reale.
+Su device reale l'utente ha riportato il problema **peggiorato**, non
+risolto — fascia nera in fondo più grande di prima, non più piccola.
+
+### Correzione: `var()` con fallback a un valore vendor-prefixed non è affidabile su WebKit
+
+Motivo del peggioramento: `height:var(--app-height, -webkit-fill-available)`
+mescola due cose fragili insieme. Il pattern "progressive enhancement"
+`height:100%; height:-webkit-fill-available;` (usato con successo per
+`html`/`body` in questo stesso file) funziona perché il *parser* scarta
+a tempo di parsing la riga con un valore che non riconosce, lasciando
+intatta la riga precedente — dei due browser, uno slot vince e basta.
+Ma appena il valore passa dentro `var(--x, fallback)`, la riga con
+`var()` è **sempre sintatticamente valida** (il parser non sa ancora
+cosa risolverà `--x`), quindi vince sempre in cascata sull'altra riga;
+`-webkit-fill-available` viene *poi* risolto a tempo di valore
+calcolato, e WebKit ha una storia nota di bug proprio nella
+risoluzione dei fallback di `var()` (Safari Technology Preview 248,
+luglio 2026, ha dovuto correggere quando un fallback viene valutato).
+Se la risoluzione fallisce, la proprietà diventa "guaranteed-invalid"
+e `.screen` torna al suo valore iniziale `height:auto` — cioè si
+restringe al contenuto flex invece di riempire lo schermo, lasciando
+un'area vuota (nera, canvas non dipinto) molto più grande della
+piccola discrepanza di `100dvh` da cui si era partiti.
+
+**Fix corretto**: `.screen` non usa più **nessuna** custom property CSS
+per la sua geometria. Il fallback a riposo è il pattern
+"progressive enhancement" puro, senza `var()`, identico a `html`/`body`:
+```css
+.screen{ position:fixed; top:0; ...; height:100%; height:-webkit-fill-available; ... }
+```
+L'override per tastiera aperta (in `main.js`, `applyViewportHeight`) non
+scrive più `--app-top`/`--app-height` su `document.documentElement` —
+scrive direttamente `style.top`/`style.height` **sull'elemento `.screen`
+stesso** (inline style), e li rimuove con `removeProperty` quando la
+tastiera si chiude o non c'è focus reale. Un inline style non passa da
+nessuna risoluzione di fallback: o è impostato con un valore concreto in
+px, o è assente e la regola CSS sopra (comprovata) si applica di nuovo.
+
+**Regola generale per questo progetto**: mai usare `var(--x, fallback)`
+quando `fallback` è un valore vendor-prefixed o comunque non-standard
+(`-webkit-fill-available`, `-webkit-*` in genere). O il fallback è un
+valore "normale" (es. `0px`), o il default va espresso come riga CSS
+piana (parse-time), mai dentro `var()`.
