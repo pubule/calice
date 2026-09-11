@@ -29,23 +29,9 @@ if (vv) {
     // keyboard regardless of any element's CSS height, so without this the
     // panned-past area (below a merely-shortened .screen) shows through as
     // unpainted black canvas.
-    //
-    // Only apply that override once the viewport is ACTUALLY shrunk
-    // (keyboard open) — in edge-to-edge mode (viewport-fit=cover,
-    // black-translucent status bar) visualViewport.height sits a few
-    // pixels under window.innerHeight even at rest, and forcing .screen to
-    // that slightly-short height unconditionally left an unpainted black
-    // strip in the home-indicator area. At rest, .screen's own 100dvh
-    // default already covers the full edge-to-edge screen correctly.
-    const shrunk = vv.height < fullHeight - 100;
-    if (shrunk) {
-      document.documentElement.style.setProperty('--app-top', `${vv.offsetTop}px`);
-      document.documentElement.style.setProperty('--app-height', `${vv.height}px`);
-    } else {
-      document.documentElement.style.removeProperty('--app-top');
-      document.documentElement.style.removeProperty('--app-height');
-    }
-    document.querySelector('.navbar')?.classList.toggle('kb-hidden', shrunk);
+    document.documentElement.style.setProperty('--app-top', `${vv.offsetTop}px`);
+    document.documentElement.style.setProperty('--app-height', `${vv.height}px`);
+    document.querySelector('.navbar')?.classList.toggle('kb-hidden', vv.height < fullHeight - 100);
   };
   vv.addEventListener('resize', applyViewportHeight);
   vv.addEventListener('scroll', applyViewportHeight);
