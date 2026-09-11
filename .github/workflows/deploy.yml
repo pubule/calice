@@ -26,9 +26,11 @@ jobs:
       # deploy still runs from the repo root so it picks up the root
       # wrangler.jsonc (main = worker/src/index.ts, assets = public/, the
       # real D1/R2/AI bindings and the production ACCESS_AUD).
+      # npm ci needs a committed lockfile; worker/package-lock.json is
+      # gitignored in this repo, so plain install it is.
       - name: Install worker dependencies
         working-directory: worker
-        run: npm ci
+        run: npm install
 
       - name: Deploy
         env:
