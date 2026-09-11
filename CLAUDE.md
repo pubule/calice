@@ -178,22 +178,32 @@ inferiore anche quello superiore. L'inset superiore invece è corretto
 (misurato ~59pt, coerente con la posizione del contenuto), quindi il
 `padding-top:env(safe-area-inset-top)` di `.screen` va lasciato com'è.
 
-**Fix**: un tetto esplicito, scritto **per esteso in ogni punto** che usa
-l'inset inferiore (navbar e pulsante otturatore della fotocamera):
+**Fix**: valore **statico**, niente `env()` per l'inset inferiore.
 ```css
-calc(2px + min(env(safe-area-inset-bottom, 0px), 34px))
+.navbar{ padding:2px 6px 36px; }        /* 2px + 34px di home indicator */
+.camera-shutter-wrap{ bottom:62px; }    /* 34px + 28px */
 ```
-Verificato: con inset grezzo 94pt la navbar scende da 141pt a 83pt
-(altezza standard di una tab bar iOS), identica a quella che si ottiene
-con l'inset corretto di 34pt; e con inset 0 (device senza home indicator)
-resta 49pt come prima, quindi nessuna regressione.
+Prima di arrivarci sono stati provati, e **nessuno dei due ha cambiato
+qualcosa sul device**, con la navbar rimasta a 141.0pt identici al pixel
+in entrambi i casi:
+1. `min(env(safe-area-inset-bottom, 0px), 34px)` dentro una custom
+   property `--safe-bottom`, letta con `var()`;
+2. lo stesso `min(env(...), 34px)` scritto per esteso nei punti d'uso.
 
-**Mai** usare `env(safe-area-inset-bottom)` senza il tetto — e **mai**
-metterlo dentro una custom property. Un primo tentativo lo aveva hoistato
-in `:root{ --safe-bottom: ... }` e sul device non è cambiato nulla:
-`env()` dentro una custom property è la stessa indirezione WebKit che in
-questo file ha già fallito in silenzio con i fallback di `var()`. Va
-scritto letterale dove serve, anche a costo di ripetere il `34px`.
+Il dettaglio che conta: un CSS *rotto* non può produrre il valore
+**vecchio**. Se una di quelle due dichiarazioni fosse arrivata e non
+avesse funzionato, il `padding` sarebbe stato invalido → 0 → navbar più
+**corta** (~45pt), non identica. Tre versioni diverse che danno lo stesso
+identico pixel significano che quel CSS non era attivo, oppure che `env()`
+in questa modalità non è affidabile in nessuna forma. Il valore statico
+elimina entrambe le possibilità: non può fallire il parsing e non dipende
+da `env()`.
+
+Costo accettato: un device **senza** home indicator si prende 34px di
+spazio morto in fondo. È il compromesso migliore contro una navbar alta
+quasi il doppio del dovuto. L'inset **superiore** invece è corretto
+(misurato ~59pt), quindi `padding-top:env(safe-area-inset-top)` su
+`.screen` resta e va lasciato stare.
 
 ### Come misurare invece di indovinare
 
@@ -211,3 +221,23 @@ che l'hanno invece chiusa in fretta, da riusare:
    Chromium via Playwright. La differenza *è* il valore che iOS sta
    riportando, senza doverlo indovinare: è così che si è ricavato che
    `env(safe-area-inset-bottom)` valeva 93pt e non 34pt.
+
+### Service worker: gli aggiornamenti possono non arrivare mai a una PWA standalone
+
+`public/sw.js` è network-first, quindi in teoria un utente online prende
+sempre i file freschi. In pratica, durante il debug della navbar, tre
+deploy consecutivi non hanno prodotto **nessun** cambiamento sul device.
+Un motivo strutturale c'era: senza `skipWaiting()` un service worker
+nuovo resta in stato *waiting* finché tutti i client non si chiudono — e
+una PWA iOS lanciata dall'icona Home non viene quasi mai chiusa davvero
+(tornarci dall'app switcher è un resume, non un reload). Aggiunti
+`self.skipWaiting()` in `install` e `self.clients.claim()` in `activate`.
+
+**Quando si cambiano file dello shell, alzare sempre `CACHE`**
+(`calice-shell-vNN`): è quello che forza il reinstall e il `cache.addAll`
+dei file freschi.
+
+Per farsi mandare un test attendibile dall'utente: il deploy da GitHub
+Actions impiega ~45s, quindi va aspettato che il run sia **completato**, e
+poi l'app va **chiusa davvero** (scorrendola via dall'app switcher) e
+rilanciata dall'icona — un semplice ritorno all'app non ricarica nulla.

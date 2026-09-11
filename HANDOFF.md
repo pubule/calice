@@ -81,13 +81,16 @@ questo file è il riassunto "dove eravamo rimasti".
      La differenza è `env(safe-area-inset-bottom)`, che in standalone +
      `black-translucent` riporta ~93pt = 34pt (home indicator) + 59pt
      (status bar) — iOS somma anche l'inset superiore. Introdotta
-     `min(env(safe-area-inset-bottom, 0px), 34px)`, scritta per esteso in
-     navbar e otturatore fotocamera: navbar 141pt → 83pt (tab bar iOS
-     standard), invariata a 49pt sui device senza home indicator.
+     un valore **statico**: `.navbar{ padding:2px 6px 36px }` (2px + 34px
+     di home indicator), navbar 141pt → 83pt. Ci sono voluti due tentativi
+     falliti con `min(env(safe-area-inset-bottom, 0px), 34px)` — prima in
+     una custom property, poi scritto per esteso — che sul device non
+     hanno cambiato **niente**, navbar a 141.0pt identici al pixel in
+     entrambi i casi. Un CSS rotto non può dare il valore vecchio, quindi
+     `env()` in questa modalità non è affidabile in nessuna forma: il
+     valore statico non dipende da `env()` e non può fallire il parsing.
+     Costo: 34px di spazio morto sui device senza home indicator.
      L'inset **superiore** invece è corretto e va lasciato stare.
-     Nota: un primo tentativo metteva quel `min()` in una custom property
-     `--safe-bottom`; sul device non cambiava nulla, quindi `env()` dentro
-     una custom property non va usato (vedi `CLAUDE.md`).
 4. **Fix layout "Uve principali" su più righe** (Esplora) — quando i
    chip delle uve vanno a capo, l'etichetta `.chip-label` di default ha
    un margine negativo (`-4px`, pensato per un solo rigo) che la incolla
@@ -107,10 +110,14 @@ questo file è il riassunto "dove eravamo rimasti".
   riappare grigio in alto o scuro in fondo, leggere `CLAUDE.md` per
   intero prima di ritoccare: sono bug distinti, già scambiati l'uno per
   l'altro più volte.
-- Mai usare `env(safe-area-inset-bottom)` senza il tetto
-  `min(..., 34px)`, e mai dentro una custom property: va scritto
-  letterale (iOS lo riporta gonfiato in `black-translucent`, vedi
-  `CLAUDE.md`).
+- Non usare `env(safe-area-inset-bottom)` in questo progetto: iOS lo
+  riporta gonfiato in `black-translucent` e i tentativi di limitarlo con
+  `min()` non hanno avuto effetto sul device. Si usa un valore statico
+  (34px), vedi `CLAUDE.md`.
+- **Alzare sempre `CACHE` in `public/sw.js`** quando si toccano i file
+  dello shell, altrimenti un aggiornamento può non raggiungere mai una
+  PWA standalone. Aggiunti `skipWaiting()`/`clients.claim()` proprio
+  perché tre deploy di fila non erano arrivati sul device.
 - Prima di teorizzare su una zona "non dipinta": **campionare il colore
   del pixel** dallo screenshot del device. `#000000` = canvas nativo,
   qualsiasi altro colore = un elemento dell'app. Questo singolo controllo

@@ -1,4 +1,4 @@
-const CACHE = 'calice-shell-v59';
+const CACHE = 'calice-shell-v60';
 const SHELL_FILES = [
   '/', '/index.html', '/css/app.css',
   '/js/main.js', '/js/api-client.js', '/js/router.js', '/js/auth.js', '/js/util.js', '/js/modal.js',
@@ -9,12 +9,20 @@ const SHELL_FILES = [
 ];
 
 self.addEventListener('install', (event) => {
+  // skipWaiting because a new worker otherwise stays parked until every client
+  // closes — and an iOS PWA launched from the Home Screen is almost never
+  // really closed, so an update could sit unactivated indefinitely.
+  self.skipWaiting();
   event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(SHELL_FILES)));
 });
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))))
+    caches
+      .keys()
+      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))))
+      // Take over the already-open page too, rather than only pages opened later.
+      .then(() => self.clients.claim()),
   );
 });
 
