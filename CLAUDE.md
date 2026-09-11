@@ -37,16 +37,31 @@ indipendente.
 `d0d2bd8`) prima di arrivare allo stato attuale. Leggere quelli prima di
 riprovare varianti già scartate.
 
-### Bug distinto: zona grigia solo al cold-launch da icona Home
+### Bug distinto: zona grigia al cold-launch E al resume da background
 
 Anche in `status-bar-style: default` (quello giusto, sopra) restava una
-zona grigia in alto **solo** al lancio a freddo dall'icona Home, che
-spariva da sola aprendo e richiudendo la tastiera. Causa: la chiamata
-eager `applyViewportHeight()` al load leggeva `visualViewport.offsetTop`
-prima che iOS l'avesse assestato dopo un cold-launch standalone,
-fissando `.screen` con un piccolo offset sbagliato (si vedeva lo sfondo
-di `body` nel gap). Il primo evento reale `resize`/`scroll` (es. la
-tastiera) ricalcolava con valori corretti e il problema spariva — indizio
-che ha portato dritti al fix. Rimossa la chiamata eager: `.screen` resta
-sui default CSS (`top:0`, `100dvh`, già corretti a riposo) finché non
-arriva un vero evento di resize/scroll.
+zona grigia in alto, che spariva da sola aprendo e richiudendo la
+tastiera. Prima diagnosi (incompleta): solo al cold-launch da icona
+Home, causa la chiamata eager `applyViewportHeight()` al load che
+leggeva `visualViewport.offsetTop` prima che iOS l'avesse assestato.
+Rimossa quella chiamata eager — ma il bug è **ricomparso**, stavolta
+al resume dell'app da background (switch ad altre app e ritorno), non
+al cold-launch.
+
+Causa vera, più a monte: i listener `resize`/`scroll` su
+`visualViewport` restano attivi per tutta la vita della pagina, e
+quegli eventi non sparano solo quando si apre la tastiera — sparano
+anche al cold-launch E ogni volta che la PWA standalone torna in
+foreground da background, e in entrambi i casi iOS può riportare
+valori transitori/non ancora assestati. La sola rimozione della
+chiamata eager copriva il cold-launch ma non gli eventi successivi con
+valori sbagliati durante il resume.
+
+**Fix definitivo**: applicare l'override di `--app-top`/`--app-height`
+solo quando c'è davvero un `input`/`textarea` con `document.activeElement`
+— l'unico segnale vero che la tastiera sia genuinamente aperta, a
+differenza di dedurlo dalla sola variazione di `visualViewport.height`
+(fragile, dipende da soglie in pixel e dal timing di iOS). Cold-launch,
+resume da background, rotazione: nessuno di questi ha un input attivo,
+quindi cadono sempre nel ramo che lascia `.screen` sui default CSS
+(`top:0`, `100dvh`, già corretti a riposo).

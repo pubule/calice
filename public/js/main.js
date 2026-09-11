@@ -29,20 +29,34 @@ if (vv) {
     // keyboard regardless of any element's CSS height, so without this the
     // panned-past area (below a merely-shortened .screen) shows through as
     // unpainted black canvas.
-    document.documentElement.style.setProperty('--app-top', `${vv.offsetTop}px`);
-    document.documentElement.style.setProperty('--app-height', `${vv.height}px`);
-    document.querySelector('.navbar')?.classList.toggle('kb-hidden', vv.height < fullHeight - 100);
+    //
+    // Only apply that override while a text input genuinely has focus. A
+    // resize/scroll event on visualViewport doesn't only fire when the
+    // keyboard opens — it also fires on cold launch and, worse, every time
+    // the standalone PWA resumes from the background (switching back from
+    // another app), and in both cases iOS can report transient/unsettled
+    // numbers before they are trustworthy. Gating on a real focused
+    // input/textarea (rather than trying to guess from vv.height alone) is
+    // the one signal that's actually true only when the keyboard is really
+    // up, so cold-launch and background-resume always fall through to
+    // .screen's own correct CSS defaults (top:0, 100dvh) instead of
+    // sometimes latching onto a bad transient value.
+    const active = document.activeElement;
+    const editing = active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA');
+    const shrunk = editing && vv.height < fullHeight - 100;
+    if (shrunk) {
+      document.documentElement.style.setProperty('--app-top', `${vv.offsetTop}px`);
+      document.documentElement.style.setProperty('--app-height', `${vv.height}px`);
+    } else {
+      document.documentElement.style.removeProperty('--app-top');
+      document.documentElement.style.removeProperty('--app-height');
+    }
+    document.querySelector('.navbar')?.classList.toggle('kb-hidden', shrunk);
   };
   vv.addEventListener('resize', applyViewportHeight);
   vv.addEventListener('scroll', applyViewportHeight);
-  // No eager call on load: right after a cold launch from the home-screen
-  // icon, visualViewport's own numbers haven't settled yet (offsetTop in
-  // particular), and applying them immediately pinned .screen a few px off,
-  // showing body's background through the gap above it — confirmed by the
-  // glitch clearing itself the moment any real resize/scroll event fires
-  // (e.g. opening then closing the keyboard) with settled numbers. .screen's
-  // own CSS defaults (top:0, 100dvh) are already correct at rest, so it's
-  // fine to wait for the first real event instead.
+  // No eager call on load — see the focus gating above; nothing is focused
+  // at load anyway, so it would be a no-op.
 }
 
 registerRoute('#/home', async () => { showView('view-home'); await mountHome(); });

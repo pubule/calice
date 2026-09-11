@@ -43,8 +43,12 @@ questo file è il riassunto "dove eravamo rimasti".
    Actions manuale, per deployare da telefono/browser senza terminale.
 3. **Bug PWA iOS (status bar / viewport)** — vedi `CLAUDE.md` per la
    cronologia completa. Stato finale: `status-bar-style: default`
-   (male minore, già scelto in passato), niente chiamata eager di
-   `applyViewportHeight()` al load (causava zona grigia al cold-launch).
+   (male minore, già scelto in passato). L'override di `--app-height`
+   in `main.js` ora scatta **solo** se c'è un `input`/`textarea` con
+   focus reale (tastiera davvero aperta) — non più dedotto dalla sola
+   variazione di `visualViewport.height`, che sparava (con valori
+   transitori sbagliati) anche al cold-launch e al resume da
+   background, ricreando la zona grigia in entrambi i casi.
 4. **Fix layout "Uve principali" su più righe** (Esplora) — quando i
    chip delle uve vanno a capo, l'etichetta `.chip-label` di default ha
    un margine negativo (`-4px`, pensato per un solo rigo) che la incolla
