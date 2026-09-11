@@ -154,8 +154,11 @@ i due valori inline si torna allo stiramento.
 
 **Regole da non violare in questo progetto**:
 - Mai `100dvh` né `-webkit-fill-available` per l'altezza di `.screen`:
-  sono già stati scartati su device reale, ognuno in una modalità di
-  status bar diversa.
+  risolvono contro la viewport corta (vedi sezione successiva), quindi
+  danno tutti lo stesso risultato sbagliato.
+- Mai togliere la regola `@media (display-mode: standalone)` che allunga
+  `.screen` di `env(safe-area-inset-top)` oltre il fondo: senza quella,
+  in PWA la navbar resta 59pt sopra il fondo dello schermo.
 - Mai reintrodurre un background dipendente da `prefers-color-scheme` su
   `html`/`body`: l'app è light-only e quello è l'unico motivo per cui un
   errore di layout diventava una fascia nera visibile.
@@ -163,48 +166,55 @@ i due valori inline si torna allo stiramento.
   colore del pixel** in uno screenshot del device: distingue in un colpo
   solo tra canvas nativo (`#000000`) e un elemento dell'app dipinto male.
 
-### `env(safe-area-inset-bottom)` è gonfiato in `black-translucent` — va limitato con un tetto
+### La causa radice: in `black-translucent` la viewport è più corta dello schermo
 
-Sintomo riportato: "il menù in basso è troppo grande". La navbar misurava
-**141pt** sul device contro i **49pt** che rende in locale con le
-safe-area a zero. La differenza, 92-93pt, è tutta
-`env(safe-area-inset-bottom)`.
+**Questa sezione sostituisce una diagnosi precedente sbagliata** (che
+`env(safe-area-inset-bottom)` fosse "gonfiato" a ~94pt). Non lo è: sul
+device riporta **34**, il valore giusto. Numeri letti direttamente
+dall'iPhone 15 Pro tramite la riga diagnostica in Profilo:
 
-Il valore corretto per l'home indicator di un iPhone è **34pt**. Su questo
-device (iPhone 15 Pro, schermo 852pt) `env(safe-area-inset-bottom)`
-riporta invece ~93pt, cioè **34pt (home indicator) + 59pt (status bar)**:
-in modalità standalone + `black-translucent` iOS somma nell'inset
-inferiore anche quello superiore. L'inset superiore invece è corretto
-(misurato ~59pt, coerente con la posizione del contenuto), quindi il
-`padding-top:env(safe-area-inset-top)` di `.screen` va lasciato com'è.
-
-**Fix**: valore **statico**, niente `env()` per l'inset inferiore.
-```css
-.navbar{ padding:2px 6px 36px; }        /* 2px + 34px di home indicator */
-.camera-shutter-wrap{ bottom:62px; }    /* 34px + 28px */
 ```
-Prima di arrivarci sono stati provati, e **nessuno dei due ha cambiato
-qualcosa sul device**, con la navbar rimasta a 141.0pt identici al pixel
-in entrambi i casi:
-1. `min(env(safe-area-inset-bottom, 0px), 34px)` dentro una custom
-   property `--safe-bottom`, letta con `var()`;
-2. lo stesso `min(env(...), 34px)` scritto per esteso nei punti d'uso.
+win 793 · vv 793 · screen 0→793 · nav h83 pb36px · inset top 59 bottom 34
+```
 
-Il dettaglio che conta: un CSS *rotto* non può produrre il valore
-**vecchio**. Se una di quelle due dichiarazioni fosse arrivata e non
-avesse funzionato, il `padding` sarebbe stato invalido → 0 → navbar più
-**corta** (~45pt), non identica. Tre versioni diverse che danno lo stesso
-identico pixel significano che quel CSS non era attivo, oppure che `env()`
-in questa modalità non è affidabile in nessuna forma. Il valore statico
-elimina entrambe le possibilità: non può fallire il parsing e non dipende
-da `env()`.
+Lo schermo è **852pt**, ma `window.innerHeight` è **793** = 852 − 59,
+cioè manca esattamente l'inset superiore. È il difetto noto di
+`apple-mobile-web-app-status-bar-style: black-translucent`: iOS sposta
+l'origine della viewport a y=0, così il contenuto disegna sotto la status
+bar, **ma le lascia l'altezza che avrebbe avuto sotto la status bar**.
+Quei 59pt cadono fuori in fondo allo schermo.
 
-Costo accettato: un device **senza** home indicator si prende 34px di
-spazio morto in fondo. È il compromesso migliore contro una navbar alta
-quasi il doppio del dovuto. L'inset **superiore** invece è corretto
-(misurato ~59pt), quindi `padding-top:env(safe-area-inset-top)` su
-`.screen` resta e va lasciato stare.
+`.screen` riempiva già perfettamente quella viewport (`0→793`) — non ha
+mai avuto un bug di altezza. Semplicemente la viewport finisce 59pt sopra
+il fondo fisico. Ecco perché **ogni** tentativo precedente falliva:
+`100dvh`, `-webkit-fill-available` e `top:0/bottom:0` risolvono tutti
+contro quella stessa viewport corta, quindi davano tutti lo stesso
+risultato sbagliato. Non era la scelta dell'unità.
 
+**Fix**: allungare `.screen` oltre il bordo inferiore della viewport
+esattamente di quell'ammontare, solo in standalone (in Safari normale la
+viewport è corretta e questo la spingerebbe fuori schermo):
+```css
+@media (display-mode: standalone){
+  .screen{ bottom:calc(-1 * env(safe-area-inset-top, 0px)); }
+}
+```
+Sul device: 793 + 59 = 852, cioè lo schermo esatto. La navbar torna sul
+fondo vero, e il suo `padding-bottom` di `calc(2px + env(safe-area-inset-bottom))`
+= 36px tiene libera l'area dell'home indicator.
+
+**Corollario**: `env()` funziona correttamente, sia sopra che sotto. I
+tentativi di "limitare" l'inset inferiore con `min(..., 34px)` sembravano
+non avere effetto solo perché **il service worker non consegnava il CSS**
+(vedi sezione sotto) — due bug diversi sovrapposti, ed è quello che ha
+reso la diagnosi così lunga. Si usa `env(safe-area-inset-bottom)` normale.
+
+**Come si è chiusa**: smettendo di dedurre dagli screenshot e facendo
+stampare all'app i propri numeri (`renderBuildLine()` in `main.js`, riga
+in fondo a Profilo). Tre round di ragionamento sui pixel non erano
+riusciti a distinguere "navbar alta il doppio" da "`.screen` che finisce
+presto", perché le due ipotesi producono **lo stesso identico screenshot**;
+una riga di numeri l'ha risolto al primo colpo.
 ### Come misurare invece di indovinare
 
 Questa vicenda (status bar grigia, fascia nera, navbar gonfia) è costata

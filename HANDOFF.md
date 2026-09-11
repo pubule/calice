@@ -76,21 +76,23 @@ questo file è il riassunto "dove eravamo rimasti".
      `prefers-color-scheme: dark`, e `.screen` copre esattamente il
      viewport. **Confermato sul device**: la fascia scura è sparita e lo
      schermo è pieno fino in fondo.
-   - **Navbar troppo alta** (emerso subito dopo, una volta che lo schermo
-     arrivava davvero in fondo): 141pt sul device contro 49pt in locale.
-     La differenza è `env(safe-area-inset-bottom)`, che in standalone +
-     `black-translucent` riporta ~93pt = 34pt (home indicator) + 59pt
-     (status bar) — iOS somma anche l'inset superiore. Introdotta
-     un valore **statico**: `.navbar{ padding:2px 6px 36px }` (2px + 34px
-     di home indicator), navbar 141pt → 83pt. Ci sono voluti due tentativi
-     falliti con `min(env(safe-area-inset-bottom, 0px), 34px)` — prima in
-     una custom property, poi scritto per esteso — che sul device non
-     hanno cambiato **niente**, navbar a 141.0pt identici al pixel in
-     entrambi i casi. Un CSS rotto non può dare il valore vecchio, quindi
-     `env()` in questa modalità non è affidabile in nessuna forma: il
-     valore statico non dipende da `env()` e non può fallire il parsing.
-     Costo: 34px di spazio morto sui device senza home indicator.
-     L'inset **superiore** invece è corretto e va lasciato stare.
+   - **Spazio residuo in fondo** (sembrava "navbar troppo alta"): risolto
+     facendo stampare all'app i propri numeri invece di dedurli dagli
+     screenshot. Il device dice `win 793` su uno schermo da **852pt**, con
+     `inset top 59`: in `black-translucent` iOS sposta l'origine della
+     viewport a y=0 ma le lascia l'altezza che avrebbe avuto sotto la
+     status bar, quindi la viewport finisce **59pt sopra il fondo fisico**.
+     `.screen` la riempiva già perfettamente (`0→793`) — non ha mai avuto
+     un bug di altezza, ed è per questo che `100dvh`,
+     `-webkit-fill-available` e `top:0/bottom:0` davano tutti lo stesso
+     risultato: risolvono tutti contro quella stessa viewport corta.
+     Fix: `@media (display-mode: standalone){ .screen{ bottom:calc(-1 * env(safe-area-inset-top, 0px)) } }`
+     → 793 + 59 = 852, lo schermo esatto.
+   - **Diagnosi precedente sbagliata, da non ripetere**: avevo concluso
+     che `env(safe-area-inset-bottom)` fosse gonfiato a ~94pt. **Non lo
+     è**: il device riporta 34, corretto. I tentativi di limitarlo con
+     `min()` sembravano non avere effetto solo perché il service worker
+     non consegnava il CSS — due bug sovrapposti. `env()` si usa normale.
 4. **Fix layout "Uve principali" su più righe** (Esplora) — quando i
    chip delle uve vanno a capo, l'etichetta `.chip-label` di default ha
    un margine negativo (`-4px`, pensato per un solo rigo) che la incolla
@@ -110,10 +112,11 @@ questo file è il riassunto "dove eravamo rimasti".
   riappare grigio in alto o scuro in fondo, leggere `CLAUDE.md` per
   intero prima di ritoccare: sono bug distinti, già scambiati l'uno per
   l'altro più volte.
-- Non usare `env(safe-area-inset-bottom)` in questo progetto: iOS lo
-  riporta gonfiato in `black-translucent` e i tentativi di limitarlo con
-  `min()` non hanno avuto effetto sul device. Si usa un valore statico
-  (34px), vedi `CLAUDE.md`.
+- `env()` funziona correttamente (inset 59 sopra, 34 sotto): si usa
+  normale. La regola da **non** togliere è invece
+  `@media (display-mode: standalone){ .screen{ bottom:calc(-1 * env(safe-area-inset-top, 0px)) } }`,
+  che compensa la viewport corta di `black-translucent` — senza, la
+  navbar resta 59pt sopra il fondo dello schermo.
 - **Il service worker non consegnava gli aggiornamenti.** Il fetch
   handler passava un init object (`{ cache: 'no-store' }`) a `fetch()`,
   che fa ricostruire la Request: su una richiesta `mode:"navigate"` questo

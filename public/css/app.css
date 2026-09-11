@@ -1,14 +1,4 @@
   @import url('https://fonts.googleapis.com/css2?family=Newsreader:wght@400;500;600&family=Archivo:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap');
-  /* The bottom inset is a STATIC 34px here, not env(safe-area-inset-bottom).
-     In standalone + black-translucent iOS reports that inset as top and bottom
-     added together (measured 94pt on an iPhone 15 Pro: 34pt home indicator +
-     59pt status bar), which made the navbar almost twice its proper height.
-     Capping it with min(env(...), 34px) was tried, both inline and via a
-     custom property, and neither changed anything on device — so env() is not
-     trustworthy in this mode at all. 34px is the real home indicator inset on
-     every iPhone that has one; a device without one gets 34px of harmless
-     slack at the bottom, which is the better trade against a navbar that is
-     nearly twice its proper height. See CLAUDE.md. */
   *{box-sizing:border-box;}
   html{ background:#f7f5f0; color-scheme:light; height:100%; height:-webkit-fill-available; overflow:hidden; overscroll-behavior-y:none; }
   /* Same cream as html and .screen, unconditionally: this app has no dark
@@ -22,6 +12,19 @@
      fill the viewport that never resolves a length at all, so it cannot be
      wrong the way 100dvh and -webkit-fill-available each were on iOS. */
   .screen{ position:fixed; top:0; bottom:0; left:50%; transform:translateX(-50%); width:100%; max-width:480px; overflow:hidden; background:#f7f5f0; color:#241e1a; font-family:'Archivo',sans-serif; display:flex; flex-direction:column; padding-top:env(safe-area-inset-top); }
+  /* In an iOS standalone PWA with black-translucent, the layout viewport is
+     moved up to y=0 so content draws under the status bar, but it KEEPS the
+     height it would have had below the status bar — so it falls exactly
+     env(safe-area-inset-top) short at the bottom. Read off the device:
+     window.innerHeight 793 on an 852pt screen, inset top 59. .screen fills
+     that viewport perfectly (0→793) and therefore stops 59pt above the
+     physical bottom of the screen. Stretching it past the viewport's bottom
+     edge by that same amount is what puts the navbar back on the real bottom.
+     Scoped to standalone: in ordinary Safari the viewport is correct and this
+     would push .screen off-screen. */
+  @media (display-mode: standalone){
+    .screen{ bottom:calc(-1 * env(safe-area-inset-top, 0px)); }
+  }
   svg.ic{width:19px; height:19px; stroke:currentColor; stroke-width:1.6; fill:none; stroke-linecap:round; stroke-linejoin:round; flex-shrink:0;}
 
   /* .navbar is a normal flex child (flex:none, last in DOM order), never
@@ -192,7 +195,7 @@
      silently failing to reach the device cost a long debugging detour once. */
   .app-build{text-align:center; font-size:10px; line-height:1.5; color:#c2b8a8; padding:0 12px 8px; font-family:'JetBrains Mono',monospace; word-break:break-word;}
 
-  .navbar{ flex:none; display:flex; align-items:stretch; justify-content:space-around; padding:2px 6px 36px; background:rgba(247,245,240,.94); -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px); border-top:1px solid #e2e0d8; box-shadow:0 -2px 8px rgba(20,15,12,.05); }
+  .navbar{ flex:none; display:flex; align-items:stretch; justify-content:space-around; padding:2px 6px calc(2px + env(safe-area-inset-bottom, 0px)); background:rgba(247,245,240,.94); -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px); border-top:1px solid #e2e0d8; box-shadow:0 -2px 8px rgba(20,15,12,.05); }
   .navbar.kb-hidden{display:none;}
   .navbtn{ flex:1; background:none; border:none; color:#a89b89; font-family:'Archivo',sans-serif; font-size:9.5px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; padding:4px 4px; min-height:44px; cursor:pointer; -webkit-tap-highlight-color:transparent; touch-action:manipulation; }
   .navbtn.active{color:#5b2333;}
@@ -320,7 +323,7 @@
   .camera-overlay video{width:100%; height:100%; object-fit:cover;}
   .camera-close{position:absolute; top:calc(env(safe-area-inset-top) + 14px); left:14px; width:34px; height:34px; border-radius:50%; background:rgba(20,15,12,.5); display:flex; align-items:center; justify-content:center; cursor:pointer;}
   .camera-hint{position:absolute; top:calc(env(safe-area-inset-top) + 20px); left:0; right:0; text-align:center; color:#fff; font-size:12.5px; font-weight:600; text-shadow:0 1px 3px rgba(0,0,0,.5);}
-  .camera-shutter-wrap{position:absolute; bottom:62px; left:0; right:0; display:flex; justify-content:center;}
+  .camera-shutter-wrap{position:absolute; bottom:calc(env(safe-area-inset-bottom, 0px) + 28px); left:0; right:0; display:flex; justify-content:center;}
   .camera-shutter{width:64px; height:64px; border-radius:50%; background:#fff; border:4px solid rgba(255,255,255,.4); cursor:pointer;}
   .camera-shutter-wrap.hidden{display:none;}
   .camera-spinner{display:none; width:42px; height:42px; border-radius:50%; border:4px solid rgba(255,255,255,.25); border-top-color:#fff; animation:camera-spin .8s linear infinite;}
