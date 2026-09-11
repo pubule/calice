@@ -1,11 +1,17 @@
-import { ITALY_REGIONS } from '../data/italy-regions.js';
+import { COUNTRIES } from '../data/wine-atlas.js';
 
 const TYPE_COLOR = { rosso: '#5b2333', bianco: '#b9a750', bollicine: '#6b7a4f', rosato: '#a24a5a' };
 const TYPE_LABEL = { rosso: 'Rosso', bianco: 'Bianco', bollicine: 'Bollicine', rosato: 'Rosato' };
 
-const MENU_REGIONS = ITALY_REGIONS.filter((r) => r.hasData);
+let countryId = 'it';
+let regionId = null; // per-country selected region, reset on country switch
 
-let selectedId = MENU_REGIONS[0].id;
+function currentCountry() {
+  return COUNTRIES.find((c) => c.id === countryId) || COUNTRIES[0];
+}
+function menuRegions(country) {
+  return country.hasMap ? country.regions.filter((r) => r.hasData) : [];
+}
 
 function openDropdown() {
   document.getElementById('explore-dd').classList.add('open');
@@ -13,34 +19,53 @@ function openDropdown() {
 function closeDropdown() {
   document.getElementById('explore-dd').classList.remove('open');
 }
-
-function renderMap() {
-  const svg = ITALY_REGIONS.map((r) => {
-    const active = r.id === selectedId;
-    const fill = active ? '#5b2333' : r.hasData ? '#d9a9b3' : '#e5e1d4';
-    return `<path data-id="${r.id}" d="${r.d}" fill="${fill}" stroke="#ffffff" stroke-width="1.3" stroke-linejoin="round"/>`;
-  }).join('');
-  document.getElementById('explore-map').innerHTML = `<svg viewBox="0 0 610 793">${svg}</svg>`;
+function openCountrySheet() {
+  renderCountryRows();
+  document.getElementById('explore-country-sheet').classList.add('open');
+}
+function closeCountrySheet() {
+  document.getElementById('explore-country-sheet').classList.remove('open');
 }
 
-function renderDropdown() {
-  const current = ITALY_REGIONS.find((r) => r.id === selectedId);
-  document.getElementById('explore-dd-label').textContent = current.name;
-  document.getElementById('explore-dd-list').innerHTML = MENU_REGIONS.map(
-    (r) => `<div class="opt ${r.id === selectedId ? 'active' : ''}" data-id="${r.id}">${r.name}</div>`,
-  ).join('');
-}
-
-function renderDetail() {
-  const current = ITALY_REGIONS.find((r) => r.id === selectedId);
-  const el = document.getElementById('explore-detail');
-  if (!current.hasData) {
-    el.innerHTML = `
-      <h3 style="font-family:'Newsreader',serif; font-weight:500; font-size:18px; letter-spacing:-0.01em; margin:0 0 4px;">${current.name}</h3>
-      <div class="explore-no-data">Dati in arrivo per questa regione.<br>Presto disponibili denominazioni, uve e stili.</div>`;
+function renderMap(country) {
+  const el = document.getElementById('explore-map');
+  if (!country.hasMap) {
+    el.style.display = 'none';
+    document.querySelector('.explore-map-credit').style.display = 'none';
     return;
   }
-  const wines = current.wines
+  el.style.display = '';
+  document.querySelector('.explore-map-credit').style.display = '';
+  const svg = country.regions
+    .map((r) => {
+      const active = r.id === regionId;
+      const fill = active ? '#5b2333' : r.hasData ? '#d9a9b3' : '#e5e1d4';
+      return `<path data-id="${r.id}" d="${r.d}" fill="${fill}" stroke="#ffffff" stroke-width="1.3" stroke-linejoin="round"/>`;
+    })
+    .join('');
+  el.innerHTML = `<svg viewBox="${country.viewBox}">${svg}</svg>`;
+}
+
+function renderDropdownAndHint(country) {
+  const dd = document.getElementById('explore-dd');
+  const hint = document.getElementById('explore-hint');
+  if (!country.hasMap) {
+    dd.style.display = 'none';
+    hint.style.display = 'none';
+    return;
+  }
+  dd.style.display = '';
+  hint.style.display = '';
+  const menu = menuRegions(country);
+  const current = country.regions.find((r) => r.id === regionId);
+  document.getElementById('explore-dd-label').textContent = current ? current.name : '…';
+  document.getElementById('explore-dd-list').innerHTML = menu
+    .map((r) => `<div class="opt ${r.id === regionId ? 'active' : ''}" data-id="${r.id}">${r.name}</div>`)
+    .join('');
+}
+
+function detailTemplate(name, wines, grapes, categories) {
+  const winesHtml = wines
     .map(
       (w) => `
       <div class="list-row">
@@ -52,8 +77,8 @@ function renderDetail() {
       </div>`,
     )
     .join('');
-  const grapes = current.grapes.map((g) => `<div class="chip">${g}</div>`).join('');
-  const categories = current.categories
+  const grapesHtml = grapes.map((g) => `<div class="chip">${g}</div>`).join('');
+  const categoriesHtml = categories
     .map(
       (c) => `
       <div class="type-row">
@@ -64,22 +89,70 @@ function renderDetail() {
       </div>`,
     )
     .join('');
-  el.innerHTML = `
-    <h3 style="font-family:'Newsreader',serif; font-weight:500; font-size:18px; letter-spacing:-0.01em; margin:0 0 16px;">${current.name}</h3>
+  return `
+    <h3 style="font-family:'Newsreader',serif; font-weight:500; font-size:18px; letter-spacing:-0.01em; margin:0 0 16px;">${name}</h3>
     <div class="chip-label">Vini pi&ugrave; famosi</div>
-    <div style="margin-bottom:16px;">${wines}</div>
+    <div style="margin-bottom:16px;">${winesHtml}</div>
     <div class="chip-label">Uve principali</div>
-    <div class="chips" style="margin:0 0 16px; overflow-x:visible; flex-wrap:wrap;">${grapes}</div>
+    <div class="chips" style="margin:0 0 16px; overflow-x:visible; flex-wrap:wrap;">${grapesHtml}</div>
     <div class="chip-label">Categorie</div>
-    ${categories}`;
+    ${categoriesHtml}`;
+}
+
+function renderDetail(country) {
+  const el = document.getElementById('explore-detail');
+  if (!country.hasMap) {
+    el.innerHTML = detailTemplate(country.name, country.national.wines, country.national.grapes, country.national.categories);
+    return;
+  }
+  const current = country.regions.find((r) => r.id === regionId);
+  if (!current) {
+    el.innerHTML = '';
+    return;
+  }
+  if (!current.hasData) {
+    el.innerHTML = `
+      <h3 style="font-family:'Newsreader',serif; font-weight:500; font-size:18px; letter-spacing:-0.01em; margin:0 0 4px;">${current.name}</h3>
+      <div class="explore-no-data">Dati in arrivo per questa regione.<br>Presto disponibili denominazioni, uve e stili.</div>`;
+    return;
+  }
+  el.innerHTML = detailTemplate(current.name, current.wines, current.grapes, current.categories);
+}
+
+function renderCountryRows() {
+  document.getElementById('explore-country-rows').innerHTML = COUNTRIES.map(
+    (c) => `
+    <div class="list-row ${c.id === countryId ? 'active' : ''}" data-country="${c.id}">
+      <div class="radio"></div>
+      <div class="lbody"><div class="lname">${c.name}</div></div>
+    </div>`,
+  ).join('');
+}
+
+function renderAll() {
+  const country = currentCountry();
+  document.getElementById('explore-country-name').textContent = country.name;
+  renderMap(country);
+  renderDropdownAndHint(country);
+  renderDetail(country);
 }
 
 function selectRegion(id) {
-  selectedId = id;
+  regionId = id;
   closeDropdown();
-  renderMap();
-  renderDropdown();
-  renderDetail();
+  renderAll();
+}
+
+function selectCountry(id) {
+  if (id === countryId) {
+    closeCountrySheet();
+    return;
+  }
+  countryId = id;
+  const country = currentCountry();
+  regionId = country.hasMap ? menuRegions(country)[0]?.id ?? null : null;
+  closeCountrySheet();
+  renderAll();
 }
 
 function wireStaticControls() {
@@ -100,25 +173,21 @@ function wireStaticControls() {
     if (path) selectRegion(path.dataset.id);
   });
 
-  // Only Italy has data today, so the sheet's other rows (.explore-country-soon)
-  // are informational placeholders, not wired to anything.
-  document.getElementById('explore-country-switch')?.addEventListener('click', () => {
-    document.getElementById('explore-country-sheet').classList.add('open');
-  });
-  document.getElementById('explore-country-sheet-close')?.addEventListener('click', () => {
-    document.getElementById('explore-country-sheet').classList.remove('open');
-  });
-  document.getElementById('explore-country-it')?.addEventListener('click', () => {
-    document.getElementById('explore-country-sheet').classList.remove('open');
+  document.getElementById('explore-country-switch')?.addEventListener('click', openCountrySheet);
+  document.getElementById('explore-country-sheet-close')?.addEventListener('click', closeCountrySheet);
+  document.getElementById('explore-country-rows')?.addEventListener('click', (e) => {
+    const row = e.target.closest('[data-country]');
+    if (row) selectCountry(row.dataset.country);
   });
 }
 
 wireStaticControls();
 
 export async function mountExplore() {
-  selectedId = MENU_REGIONS[0].id;
+  countryId = 'it';
+  const country = currentCountry();
+  regionId = menuRegions(country)[0]?.id ?? null;
   closeDropdown();
-  renderMap();
-  renderDropdown();
-  renderDetail();
+  closeCountrySheet();
+  renderAll();
 }

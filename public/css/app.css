@@ -451,5 +451,3 @@
   .explore-map path{cursor:pointer;}
   .explore-map-credit{font-size:9.5px; color:#c3bca9; text-align:right; margin-top:-8px;}
   .explore-no-data{padding:6px 0 10px; text-align:center; color:#a89b89; font-size:12.5px; line-height:1.5;}
-  .explore-country-soon{opacity:.55;}
-  .explore-country-soon .lname{color:#8f8474;}

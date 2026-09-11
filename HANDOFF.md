@@ -17,37 +17,49 @@ questo file è il riassunto "dove eravamo rimasti".
 
 ## Lavoro recente (sessione corrente)
 
-1. **Feature "Esplora vini per paese"** — nuova voce in Home → mappa
-   dell'Italia (confini reali da `@svg-maps/italy`, CC BY 4.0) con 20
-   regioni, dropdown di selezione, card dettaglio (vini/uve/categorie)
-   per le 10 regioni con dati curati; le altre mostrano "dati in arrivo".
-   Dato statico in `public/js/data/italy-regions.js`, schermata in
-   `public/js/screens/explore.js`, route `#/esplora`. Nessuna modifica
-   backend (contenuto editoriale, non dati utente).
-2. **Deploy da remoto senza credenziali locali** — aggiunto il workflow
-   GitHub Actions manuale sopra, per poter deployare da telefono/browser
-   quando non c'è accesso a un terminale.
+1. **Feature "Esplora vini per paese"** — nuova voce in Home → mappa +
+   dropdown + card dettaglio (vini/uve/categorie), route `#/esplora`.
+   Nessuna modifica backend (contenuto editoriale, non dati utente).
+   Dato in `public/js/data/wine-atlas.js`, schermata in
+   `public/js/screens/explore.js`. Copertura attuale:
+   - **Italia**: 20/20 regioni con dati reali (mappa completa).
+   - **Francia, Spagna, Germania, Stati Uniti, Australia**: mappa reale
+     (confini da `@svg-maps`, CC BY 4.0) con dati curati per un
+     sottoinsieme di regioni/stati (quelli enologicamente rilevanti);
+     il resto mostra "dati in arrivo".
+   - **Portogallo, Argentina, Cile**: dati reali a livello nazionale ma
+     **senza mappa** — nessun pacchetto npm con confini regionali per
+     questi 3 paesi è stato trovato (controllato `@svg-maps`,
+     `@svg-country-maps`, `world-geojson`: solo Portogallo ha
+     `areas/portugal` ma limitato a mainland/Azzorre/Madeira, non ai
+     distretti enologici). Lo switch paese mostra comunque la card
+     dettaglio, solo senza mappa/dropdown regione.
+2. **Deploy da remoto senza credenziali locali** — workflow GitHub
+   Actions manuale, per deployare da telefono/browser senza terminale.
 3. **Bug PWA iOS (status bar / viewport)** — vedi `CLAUDE.md` per la
    cronologia completa. Stato finale: `status-bar-style: default`
-   (male minore, già scelto in passato), e in `main.js` la chiamata
-   eager di `applyViewportHeight()` al load è stata rimossa (causava
-   una zona grigia al cold-launch da icona Home).
+   (male minore, già scelto in passato), niente chiamata eager di
+   `applyViewportHeight()` al load (causava zona grigia al cold-launch).
 
 ## Cose note, non (ancora) da rifare
 
 - La barra di stato grigia in alto, in modalità PWA da Home Screen, **non
   è un bug** — è il compromesso già scelto rispetto a `black-translucent`
   (che sta peggio). Non ritentare senza leggere `CLAUDE.md` prima.
-- La mappa Italia in Esplora copre solo 10/20 regioni con dati reali
-  (vini/uve/categorie); le altre 10 sono placeholder "in arrivo" —
-  scelta deliberata per non inventare dati non verificati.
-- Il selettore paese nella sheet "Cambia" mostra solo l'Italia come
-  attiva; gli altri paesi sono voci mute "presto disponibile", nessuna
-  mappa dietro per ora.
+- Dentro ogni mappa, le regioni senza dati curati sono deliberatamente
+  "dati in arrivo" invece di contenuto inventato — vale per tutti i
+  paesi, non solo l'Italia.
+- Portogallo/Argentina/Cile sono senza mappa per mancanza di una fonte
+  dati affidabile (vedi sopra), non per scelta di design — se si trova
+  un pacchetto npm con i confini regionali di uno di questi, si può
+  aggiungere seguendo lo stesso pattern di `wine-atlas.js`.
 
 ## Prossimi passi possibili (non richiesti, solo spunti)
 
-- Coprire le altre 10 regioni italiane in Esplora, se serve.
+- Ampliare la copertura regionale nei paesi con mappa (oggi solo un
+  sottoinsieme di regioni/stati ha dati curati).
+- Cercare una fonte per i confini di Portogallo/Argentina/Cile (es. un
+  file GeoJSON/TopoJSON esterno, non solo pacchetti npm).
 - Valutare se aprire una vera PR invece di push diretti su `master`.
 - Se il deploy manuale diventa scomodo, si può passare a un trigger
   automatico su push a `master` nello stesso workflow (attualmente
