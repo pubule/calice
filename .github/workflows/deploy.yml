@@ -1,0 +1,36 @@
+name: Deploy
+
+# Manual only, on purpose: this does not deploy automatically on every push
+# to master. Trigger it by hand from the Actions tab (works fine from
+# GitHub's mobile web UI, no local machine needed) once CLOUDFLARE_API_TOKEN
+# is set as a repository secret (Settings -> Secrets and variables ->
+# Actions -> New repository secret). The token needs the "Workers Scripts:
+# Edit" permission for this account (see README's deploy notes).
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # Deps (incl. the pinned wrangler version) live in worker/package.json;
+      # deploy still runs from the repo root so it picks up the root
+      # wrangler.jsonc (main = worker/src/index.ts, assets = public/, the
+      # real D1/R2/AI bindings and the production ACCESS_AUD).
+      - name: Install worker dependencies
+        working-directory: worker
+        run: npm ci
+
+      - name: Deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: ./worker/node_modules/.bin/wrangler deploy
