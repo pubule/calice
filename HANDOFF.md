@@ -27,13 +27,18 @@ questo file è il riassunto "dove eravamo rimasti".
      (confini da `@svg-maps`, CC BY 4.0) con dati curati per un
      sottoinsieme di regioni/stati (quelli enologicamente rilevanti);
      il resto mostra "dati in arrivo".
-   - **Portogallo, Argentina, Cile**: dati reali a livello nazionale ma
-     **senza mappa** — nessun pacchetto npm con confini regionali per
-     questi 3 paesi è stato trovato (controllato `@svg-maps`,
-     `@svg-country-maps`, `world-geojson`: solo Portogallo ha
-     `areas/portugal` ma limitato a mainland/Azzorre/Madeira, non ai
+   - **Portogallo, Argentina, Cile, Sudafrica**: dati reali a livello
+     nazionale ma **senza mappa** — nessun pacchetto npm con confini
+     regionali per questi paesi è stato trovato (controllato
+     `@svg-maps`, `@svg-country-maps`, `world-geojson`: solo Portogallo
+     ha `areas/portugal` ma limitato a mainland/Azzorre/Madeira, non ai
      distretti enologici). Lo switch paese mostra comunque la card
-     dettaglio, solo senza mappa/dropdown regione.
+     dettaglio, solo senza mappa/dropdown regione. Sudafrica è l'unico
+     paese africano coperto — è di fatto l'unico produttore vinicolo
+     africano con denominazioni ben documentate (Stellenbosch, Paarl,
+     Swartland...); Marocco/Tunisia/Algeria non hanno dati verificabili
+     altrettanto solidi, non aggiunti per lo stesso motivo delle
+     regioni "dati in arrivo".
 2. **Deploy da remoto senza credenziali locali** — workflow GitHub
    Actions manuale, per deployare da telefono/browser senza terminale.
 3. **Bug PWA iOS (status bar / viewport)** — vedi `CLAUDE.md` per la
@@ -49,10 +54,10 @@ questo file è il riassunto "dove eravamo rimasti".
 - Dentro ogni mappa, le regioni senza dati curati sono deliberatamente
   "dati in arrivo" invece di contenuto inventato — vale per tutti i
   paesi, non solo l'Italia.
-- Portogallo/Argentina/Cile sono senza mappa per mancanza di una fonte
-  dati affidabile (vedi sopra), non per scelta di design — se si trova
-  un pacchetto npm con i confini regionali di uno di questi, si può
-  aggiungere seguendo lo stesso pattern di `wine-atlas.js`.
+- Portogallo/Argentina/Cile/Sudafrica sono senza mappa per mancanza di
+  una fonte dati affidabile (vedi sopra), non per scelta di design — se
+  si trova un pacchetto npm con i confini regionali di uno di questi, si
+  può aggiungere seguendo lo stesso pattern di `wine-atlas.js`.
 
 ## Prossimi passi possibili (non richiesti, solo spunti)
 
