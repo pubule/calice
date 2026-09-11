@@ -41,55 +41,41 @@ questo file è il riassunto "dove eravamo rimasti".
      regioni "dati in arrivo".
 2. **Deploy da remoto senza credenziali locali** — workflow GitHub
    Actions manuale, per deployare da telefono/browser senza terminale.
-3. **Bug PWA iOS (status bar / viewport)** — vedi `CLAUDE.md` per la
-   cronologia completa, è cambiata più volte in questa sessione.
-   - L'override di `--app-height` in `main.js` scatta **solo** se c'è
-     un `input`/`textarea` con focus reale (tastiera davvero aperta) —
-     non più dedotto dalla sola variazione di `visualViewport.height`,
-     che sparava (con valori transitori sbagliati) anche al
-     cold-launch e al resume da background, causando una zona
-     grigia/gap in entrambi i casi. Verificato che `.screen` resta a
-     `top:0`/altezza piena a riposo anche dopo eventi resize/scroll
-     simulati senza focus.
-   - **`status-bar-style` è tornato a `black-translucent`** (era
-     `default`): l'utente ha confermato che la parte superiore è ora
-     correttamente color crema — ipotesi confermata che il precedente
-     rifiuto di `black-translucent` (3 settembre e primo tentativo di
-     questa sessione) fosse causato dal bug di cui sopra, non da un
-     vero limite di iOS.
-   - **Bug distinto trovato subito dopo** (utente: "regressione in
-     basso"): il fallback CSS di `.screen` quando `--app-height` non è
-     impostato (cioè quasi sempre, col fix del focus-gating) era
-     `100dvh` — già scartato il 2 settembre su device reale (commit
-     `9d64542`) per lo stesso sintomo (fascia nera in fondo in
-     standalone), e poi silenziosamente reintrodotto da un commit
-     successivo (`7d0c953`).
-   - **Primo tentativo di fix (peggiorato, non risolto)**: fallback
-     riportato al pattern `9d64542` ma tenuto dentro `var()`:
-     `height:var(--app-height, 100%); height:var(--app-height, -webkit-fill-available);`.
-     L'utente ha riportato che sul device la fascia nera è diventata
-     **più grande**, non è sparita ("Ancora peggio"). Causa: `var()`
-     con un fallback vendor-prefixed (`-webkit-fill-available`) è una
-     combinazione fragile su WebKit (bug noti nella risoluzione dei
-     fallback di `var()`) — se la risoluzione fallisce, la proprietà
-     diventa invalida e `.screen` torna a `height:auto`, cioè si
-     restringe al contenuto invece di riempire lo schermo: molto peggio
-     della piccola discrepanza di `100dvh` da cui si era partiti.
-   - **Fix corretto**: eliminate del tutto le custom property CSS per
-     la geometria di `.screen`. A riposo, pattern "progressive
-     enhancement" puro (parse-time, non `var()`), identico a
-     `html`/`body`: `top:0; height:100%; height:-webkit-fill-available;`.
-     L'override per tastiera aperta in `main.js` ora scrive/rimuove
-     `style.top`/`style.height` **direttamente sull'elemento `.screen`**
-     (inline style), non più su custom property lette da `var()` — un
-     inline style non passa da nessuna risoluzione di fallback.
-     Verificato in locale (Chromium/Playwright) che `.screen` a riposo
-     combacia con `window.innerHeight` e che eventi resize/scroll
-     simulati senza focus non applicano alcun override — ma Playwright
-     non riproduce il bug reale di `100dvh`/`var()` su iOS standalone,
-     quindi **da confermare sul device**: cold-launch E resume da
-     background, controllando che la cima resti crema E il fondo non
-     torni nero.
+3. **Bug PWA iOS (status bar / viewport)** — chiuso il ping-pong fra
+   "grigio in alto" e "nero in basso", si è scoperto che erano tre cose
+   diverse. Vedi `CLAUDE.md` per la storia e le regole da non violare.
+   - L'override di altezza in `main.js` scatta **solo** se c'è un
+     `input`/`textarea` con focus reale (tastiera davvero aperta) — non
+     più dedotto dalla sola variazione di `visualViewport.height`, che
+     sparava (con valori transitori sbagliati) anche al cold-launch e al
+     resume da background.
+   - **`status-bar-style` è `black-translucent`** (era `default`):
+     confermato dall'utente che la cima è ora crema. Il rifiuto
+     precedente (3 settembre) era causato dal bug qui sopra, non da un
+     limite di iOS.
+   - **La "fascia nera in fondo" non era canvas nativo non dipinto**:
+     campionando il pixel dallo screenshot del device risulta
+     `rgb(16,16,16)` = `#111011`, cioè `--page-bg` in dark mode. Era lo
+     sfondo di `body`, l'unico elemento dell'app che reagiva a
+     `prefers-color-scheme`, mentre `html` e `.screen` sono crema fissi e
+     non esiste alcun tema scuro (le 4 variabili `--page-*` erano usate
+     solo lì). Il telefono dell'utente è in modalità scura, quindi ogni
+     errore di altezza di `.screen` si vedeva come una fascia nera.
+     Variabili e blocchi dark-mode **eliminati**, `body` ora è crema
+     fisso: un eventuale divario residuo è invisibile.
+   - **Causa radice dell'altezza**: due tentativi consecutivi hanno
+     prodotto screenshot **identici pixel per pixel**, il che ha
+     dimostrato che `-webkit-fill-available` risolveva sì, ma al valore
+     sbagliato (`.screen` 734pt su 852pt). Anche il fix del 2 settembre
+     (`9d64542`) era valido solo in `status-bar-style: default`, non in
+     `black-translucent`+`viewport-fit=cover`. Ora `.screen` non usa
+     **nessuna** unità di altezza: si stira fra `top:0` e `bottom:0`, che
+     riempie il viewport senza risolvere nessuna lunghezza.
+   - Verificato in locale con Chromium in dark mode (riproducibile,
+     a differenza di tutto il resto): `body` è crema anche con
+     `prefers-color-scheme: dark`, e `.screen` copre esattamente il
+     viewport. **Da confermare sul device**: cold-launch E resume da
+     background.
 4. **Fix layout "Uve principali" su più righe** (Esplora) — quando i
    chip delle uve vanno a capo, l'etichetta `.chip-label` di default ha
    un margine negativo (`-4px`, pensato per un solo rigo) che la incolla
@@ -102,13 +88,17 @@ questo file è il riassunto "dove eravamo rimasti".
 
 ## Cose note, non (ancora) da rifare
 
-- `status-bar-style` è ora `black-translucent` (non più `default`) e
-  `.screen` usa `height:100%`/`-webkit-fill-available` come fallback,
-  **mai** `100dvh` (scartato due volte su device reale per una fascia
-  nera in fondo, vedi `CLAUDE.md`). Se in futuro riappare grigio in alto
-  o nero in fondo, leggere `CLAUDE.md` per intero prima di ritoccare —
-  sono due bug distinti già risolti una volta ciascuno, facile
-  confonderli o rifare la stessa regressione.
+- `status-bar-style` è `black-translucent` (non più `default`), `.screen`
+  si stira fra `top:0` e `bottom:0` senza **nessuna** unità di altezza
+  (`100dvh` e `-webkit-fill-available` sono stati entrambi scartati su
+  device reale), e `body` è crema fisso senza dark mode. Se in futuro
+  riappare grigio in alto o scuro in fondo, leggere `CLAUDE.md` per
+  intero prima di ritoccare: sono bug distinti, già scambiati l'uno per
+  l'altro più volte.
+- Prima di teorizzare su una zona "non dipinta": **campionare il colore
+  del pixel** dallo screenshot del device. `#000000` = canvas nativo,
+  qualsiasi altro colore = un elemento dell'app. Questo singolo controllo
+  avrebbe risparmiato settimane di diagnosi sbagliata.
 - Dentro ogni mappa, le regioni senza dati curati sono deliberatamente
   "dati in arrivo" invece di contenuto inventato — vale per tutti i
   paesi, non solo l'Italia.

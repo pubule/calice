@@ -39,22 +39,16 @@ if (vv) {
     // input/textarea (rather than trying to guess from vv.height alone) is
     // the one signal that's actually true only when the keyboard is really
     // up, so cold-launch and background-resume always fall through to
-    // .screen's own correct CSS defaults (top:0, height:100%/-webkit-fill-available)
-    // instead of sometimes latching onto a bad transient value.
+    // .screen's own correct CSS default (stretched top:0/bottom:0) instead
+    // of sometimes latching onto a bad transient value.
     const screen = document.querySelector('.screen');
     const active = document.activeElement;
     const editing = active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA');
     const shrunk = editing && vv.height < fullHeight - 100;
     if (shrunk) {
-      // Set directly on .screen's inline style, not via a CSS custom
-      // property consumed through var(--x, fallback) in the stylesheet:
-      // WebKit has a history of bugs resolving var() fallbacks (see
-      // CLAUDE.md), and mixing that with a vendor-prefixed fallback value
-      // (-webkit-fill-available) is exactly the fragile combination that
-      // broke — .screen fell back to auto-height (shrink-to-fit content)
-      // instead of filling the screen. Inline styles have no such fallback
-      // resolution step, and removing them cleanly restores the plain,
-      // proven-correct stylesheet rule below.
+      // Setting top AND height over-constrains the box, so the stylesheet's
+      // bottom:0 is dropped for the duration — exactly the intent. Removing
+      // both inline values restores the stretch.
       screen?.style.setProperty('top', `${vv.offsetTop}px`);
       screen?.style.setProperty('height', `${vv.height}px`);
     } else {

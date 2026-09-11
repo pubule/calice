@@ -79,75 +79,86 @@ solo quando c'è davvero un `input`/`textarea` con `document.activeElement`
 differenza di dedurlo dalla sola variazione di `visualViewport.height`
 (fragile, dipende da soglie in pixel e dal timing di iOS). Cold-launch,
 resume da background, rotazione: nessuno di questi ha un input attivo,
-quindi cadono sempre nel ramo che lascia `.screen` sul fallback CSS
-(`top:0`, altezza — vedi sezione sotto: **non** `100dvh`, quello era un
-altro bug).
+quindi cadono sempre nel ramo che lascia `.screen` sul suo default CSS
+(`top:0`/`bottom:0`, vedi sezione sotto).
 
-### Bug distinto: fascia nera in fondo — `.screen` non deve usare `100dvh` come fallback
+### La "fascia nera in fondo": NON era canvas non dipinto — era `body` in dark mode
 
-Il fallback CSS di `.screen` quando `--app-height` non è impostato (cioè
-quasi sempre, dato il fix sopra) era `height:var(--app-height, 100dvh)`.
-Sembra innocuo ma **non lo è**: il 2 settembre (commit `9d64542`, su
-device reale) `100dvh` da solo era già stato scartato per lo stesso
-identico sintomo (fascia nera in fondo in modalità standalone) — `dvh`
-ha problemi noti su iOS standalone/fullscreen PWA, a volte risolve a
-un'altezza minore di quella reale dello schermo. Il fix di allora era
-`height:100%` con fallback esplicito `-webkit-fill-available` (stesso
-pattern già usato per `html`/`body` in questo stesso file). Un commit
-successivo (`7d0c953`, quello che ha introdotto tutto il meccanismo
-`--app-top`/`--app-height`) ha **silenziosamente reintrodotto** `100dvh`
-come fallback, perdendo il fix di `9d64542` — mascherato per un po'
-perché l'override JS applicava `--app-height` quasi sempre, finché il
-fix di focus-gating sopra non ha reso il fallback il caso comune,
-riportando a galla il bug originale (osservato dall'utente come
-"regressione in basso" subito dopo la riprova di `black-translucent`,
-che in realtà non c'entrava — erano due bug distinti sovrapposti).
+Questa è stata diagnosticata male per settimane (dal 2 settembre in poi),
+quindi vale la pena essere espliciti: **la fascia scura in fondo allo
+schermo non è mai stata "canvas nativo non dipinto"**. È il background di
+`body`, che era l'unico elemento dell'app a reagire a
+`prefers-color-scheme: dark`:
 
-**Primo tentativo di fix (insufficiente, vedi correzione sotto)**: fallback
-di `.screen` riportato al pattern `9d64542`, ma tenuto dentro `var()`:
 ```css
-height:var(--app-height, 100%); height:var(--app-height, -webkit-fill-available);
+/* com'era — RIMOSSO */
+:root{ --page-bg:#f4f2ee; ... }
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){ --page-bg:#111011; ... } }
+body{ ...; background:var(--page-bg); }
 ```
-Su device reale l'utente ha riportato il problema **peggiorato**, non
-risolto — fascia nera in fondo più grande di prima, non più piccola.
 
-### Correzione: `var()` con fallback a un valore vendor-prefixed non è affidabile su WebKit
+Prova: campionando il pixel della fascia in uno screenshot del device
+risulta `rgb(16,16,16)`, cioè **`#111011`** — esattamente `--page-bg` in
+dark mode, non `#000000`. L'utente ha il telefono in modalità scura,
+quindi ogni striscia che `.screen` non copriva veniva dipinta quasi nera
+e sembrava un buco nel rendering.
 
-Motivo del peggioramento: `height:var(--app-height, -webkit-fill-available)`
-mescola due cose fragili insieme. Il pattern "progressive enhancement"
-`height:100%; height:-webkit-fill-available;` (usato con successo per
-`html`/`body` in questo stesso file) funziona perché il *parser* scarta
-a tempo di parsing la riga con un valore che non riconosce, lasciando
-intatta la riga precedente — dei due browser, uno slot vince e basta.
-Ma appena il valore passa dentro `var(--x, fallback)`, la riga con
-`var()` è **sempre sintatticamente valida** (il parser non sa ancora
-cosa risolverà `--x`), quindi vince sempre in cascata sull'altra riga;
-`-webkit-fill-available` viene *poi* risolto a tempo di valore
-calcolato, e WebKit ha una storia nota di bug proprio nella
-risoluzione dei fallback di `var()` (Safari Technology Preview 248,
-luglio 2026, ha dovuto correggere quando un fallback viene valutato).
-Se la risoluzione fallisce, la proprietà diventa "guaranteed-invalid"
-e `.screen` torna al suo valore iniziale `height:auto` — cioè si
-restringe al contenuto flex invece di riempire lo schermo, lasciando
-un'area vuota (nera, canvas non dipinto) molto più grande della
-piccola discrepanza di `100dvh` da cui si era partiti.
+Il resto dell'app non ha alcun tema scuro: `html` è `color-scheme:light`
+con sfondo crema fisso e `.screen` ha `background:#f7f5f0` hardcoded. Le
+quattro variabili `--page-*` erano usate **solo** per lo sfondo di `body`
+e per nient'altro (nessun toggle di tema in tutto il JS) — quindi erano
+puro debito: l'unico loro effetto pratico era rendere visibile,
+in nero, qualsiasi errore di altezza di `.screen`.
 
-**Fix corretto**: `.screen` non usa più **nessuna** custom property CSS
-per la sua geometria. Il fallback a riposo è il pattern
-"progressive enhancement" puro, senza `var()`, identico a `html`/`body`:
+**Fix (parte 1 — rende il sintomo impossibile)**: variabili `--page-*` e
+blocchi dark-mode eliminati; `body` ha lo stesso crema fisso di `html` e
+`.screen`. Anche se in futuro `.screen` sbagliasse di qualche pixel,
+adesso il divario è crema e invisibile invece che nero.
+
+### `.screen`: niente unità di altezza, si stira tra `top:0` e `bottom:0`
+
+Storico dei tentativi, tutti sullo stesso punto (l'altezza di `.screen`)
+e tutti falliti perché misuravano il sintomo sbagliato (vedi sopra):
+
+| quando | valore | esito su device |
+|---|---|---|
+| 2 set (`9d64542`) | `100dvh` → `100%`/`-webkit-fill-available` | corretto **in `status-bar-style: default`** |
+| `7d0c953` | tornato a `var(--app-height, 100dvh)` | regressione silenziosa |
+| questa sessione | `var(--app-height, 100%)`/`var(..., -webkit-fill-available)` | **peggiorato** |
+| questa sessione | `100%`/`-webkit-fill-available` piani | identico al precedente, pixel per pixel |
+
+Le ultime due righe sono la chiave: gli screenshot dei due tentativi sono
+risultati **identici pixel per pixel** (verificato campionando le
+transizioni di colore), il che dimostra che `-webkit-fill-available`
+risolveva benissimo in entrambi i casi — solo che risolveva al valore
+**sbagliato**: `.screen` alta 734pt su uno schermo da 852pt, ~118pt
+corti. Quindi la teoria del "bug di WebKit nei fallback di `var()`" era
+sbagliata, e anche il fix del 2 settembre non era universalmente valido:
+era corretto **in `status-bar-style: default`**, non in
+`black-translucent` + `viewport-fit=cover`, dove il viewport è
+edge-to-edge e le due unità risolvono diversamente.
+
+**Fix (parte 2 — causa radice)**: `.screen` non usa più **nessuna** unità
+di altezza. Si stira tra i due bordi:
 ```css
-.screen{ position:fixed; top:0; ...; height:100%; height:-webkit-fill-available; ... }
+.screen{ position:fixed; top:0; bottom:0; /* niente height */ ... }
 ```
-L'override per tastiera aperta (in `main.js`, `applyViewportHeight`) non
-scrive più `--app-top`/`--app-height` su `document.documentElement` —
-scrive direttamente `style.top`/`style.height` **sull'elemento `.screen`
-stesso** (inline style), e li rimuove con `removeProperty` quando la
-tastiera si chiude o non c'è focus reale. Un inline style non passa da
-nessuna risoluzione di fallback: o è impostato con un valore concreto in
-px, o è assente e la regola CSS sopra (comprovata) si applica di nuovo.
+Un elemento `position:fixed` con `top` e `bottom` entrambi a 0 e
+`height:auto` riempie esattamente il containing block iniziale senza
+risolvere nessuna lunghezza — quindi non può sbagliare come hanno
+sbagliato `100dvh` e `-webkit-fill-available`, ciascuno in una modalità
+diversa. L'override per tastiera aperta (`main.js`) imposta inline `top`
+e `height` su `.screen`: la scatola diventa sovra-vincolata e `bottom`
+viene ignorato per quella durata, che è esattamente l'intento; rimuovendo
+i due valori inline si torna allo stiramento.
 
-**Regola generale per questo progetto**: mai usare `var(--x, fallback)`
-quando `fallback` è un valore vendor-prefixed o comunque non-standard
-(`-webkit-fill-available`, `-webkit-*` in genere). O il fallback è un
-valore "normale" (es. `0px`), o il default va espresso come riga CSS
-piana (parse-time), mai dentro `var()`.
+**Regole da non violare in questo progetto**:
+- Mai `100dvh` né `-webkit-fill-available` per l'altezza di `.screen`:
+  sono già stati scartati su device reale, ognuno in una modalità di
+  status bar diversa.
+- Mai reintrodurre un background dipendente da `prefers-color-scheme` su
+  `html`/`body`: l'app è light-only e quello è l'unico motivo per cui un
+  errore di layout diventava una fascia nera visibile.
+- Prima di teorizzare sul perché una zona non è dipinta, **campionare il
+  colore del pixel** in uno screenshot del device: distingue in un colpo
+  solo tra canvas nativo (`#000000`) e un elemento dell'app dipinto male.
