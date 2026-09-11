@@ -224,14 +224,32 @@ che l'hanno invece chiusa in fretta, da riusare:
 
 ### Service worker: gli aggiornamenti possono non arrivare mai a una PWA standalone
 
-`public/sw.js` è network-first, quindi in teoria un utente online prende
-sempre i file freschi. In pratica, durante il debug della navbar, tre
-deploy consecutivi non hanno prodotto **nessun** cambiamento sul device.
-Un motivo strutturale c'era: senza `skipWaiting()` un service worker
-nuovo resta in stato *waiting* finché tutti i client non si chiudono — e
-una PWA iOS lanciata dall'icona Home non viene quasi mai chiusa davvero
-(tornarci dall'app switcher è un resume, non un reload). Aggiunti
+`public/sw.js` si dichiara network-first, ma per mesi **non lo è stato**:
+durante il debug della navbar quattro deploy consecutivi non hanno
+prodotto **nessun** cambiamento sul device, con la navbar a 141.0pt
+identici al pixel anche dopo aver messo un `padding` completamente
+statico — cioè un valore che non può fallire il parsing. Quella è la
+prova che il CSS non arrivava affatto.
+**Causa principale**: il fetch handler chiamava
+`fetch(event.request, { cache: 'no-store' })`. Passare un init object fa
+**ricostruire** la Request, e ricostruire una richiesta con
+`mode: "navigate"` lancia un `TypeError`; in più il supporto WebKit
+all'opzione `cache` dentro un service worker è lacunoso. Ogni eccezione
+finiva nel `.catch()` che serve `caches.match()`, quindi l'app rendeva
+per sempre quello che era in cache all'ultimo install, e i deploy
+sembravano non fare niente a meno di alzare `CACHE`. Ora è un
+`fetch(event.request)` nudo, **senza init object** — non toccarlo.
+
+**Causa secondaria**: senza `skipWaiting()` un service worker nuovo resta
+in stato *waiting* finché tutti i client non si chiudono — e una PWA iOS
+lanciata dall'icona Home non viene quasi mai chiusa davvero (tornarci
+dall'app switcher è un resume, non un reload). Aggiunti
 `self.skipWaiting()` in `install` e `self.clients.claim()` in `activate`.
+
+**Indicatore di build**: la schermata Profilo mostra in fondo `build NN`
+(`.app-build` in `index.html`), allineato a `CACHE` in `sw.js`. Serve a
+capire da uno screenshot **quale versione sta girando davvero**, invece
+di dedurlo: alzarlo insieme a `CACHE` ad ogni cambio dello shell.
 
 **Quando si cambiano file dello shell, alzare sempre `CACHE`**
 (`calice-shell-vNN`): è quello che forza il reinstall e il `cache.addAll`

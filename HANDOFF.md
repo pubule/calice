@@ -114,10 +114,17 @@ questo file è il riassunto "dove eravamo rimasti".
   riporta gonfiato in `black-translucent` e i tentativi di limitarlo con
   `min()` non hanno avuto effetto sul device. Si usa un valore statico
   (34px), vedi `CLAUDE.md`.
-- **Alzare sempre `CACHE` in `public/sw.js`** quando si toccano i file
-  dello shell, altrimenti un aggiornamento può non raggiungere mai una
-  PWA standalone. Aggiunti `skipWaiting()`/`clients.claim()` proprio
-  perché tre deploy di fila non erano arrivati sul device.
+- **Il service worker non consegnava gli aggiornamenti.** Il fetch
+  handler passava un init object (`{ cache: 'no-store' }`) a `fetch()`,
+  che fa ricostruire la Request: su una richiesta `mode:"navigate"` questo
+  lancia, e ogni eccezione cadeva nel `.catch()` che serve la cache. Per
+  questo quattro deploy di fila non hanno cambiato **niente** sul device,
+  anche con un `padding` statico. Ora è `fetch(event.request)` nudo,
+  **senza init object**: non rimetterlo. Aggiunti anche
+  `skipWaiting()`/`clients.claim()`.
+- **La schermata Profilo mostra `build NN` in fondo**, allineato a `CACHE`
+  in `sw.js`: serve a sapere da uno screenshot quale versione gira
+  davvero. Alzarlo insieme a `CACHE` ad ogni cambio dello shell.
 - Prima di teorizzare su una zona "non dipinta": **campionare il colore
   del pixel** dallo screenshot del device. `#000000` = canvas nativo,
   qualsiasi altro colore = un elemento dell'app. Questo singolo controllo

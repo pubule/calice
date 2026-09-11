@@ -1,4 +1,4 @@
-const CACHE = 'calice-shell-v60';
+const CACHE = 'calice-shell-v61';
 const SHELL_FILES = [
   '/', '/index.html', '/css/app.css',
   '/js/main.js', '/js/api-client.js', '/js/router.js', '/js/auth.js', '/js/util.js', '/js/modal.js',
@@ -34,8 +34,17 @@ self.addEventListener('fetch', (event) => {
   // installed the PWA to whatever was cached at install time, forever).
   // Falling back to the cache keeps the offline-shell guarantee when the
   // network fetch fails (e.g. offline).
+  //
+  // fetch(event.request) is deliberately called with NO init object. Passing
+  // one (this used to pass { cache: 'no-store' }) makes fetch reconstruct the
+  // Request, and reconstructing a request whose mode is "navigate" throws —
+  // while WebKit's support for the `cache` option in a service worker is
+  // patchy on top of that. Every throw landed in the .catch() below and
+  // quietly served the cached copy, so the app kept rendering whatever was
+  // cached at the last install and deploys appeared to do nothing at all
+  // unless CACHE was bumped. Keep this a bare fetch.
   event.respondWith(
-    fetch(event.request, { cache: 'no-store' })
+    fetch(event.request)
       .then((res) => {
         if (res.ok) {
           const copy = res.clone();
