@@ -43,24 +43,36 @@ questo file è il riassunto "dove eravamo rimasti".
    Actions manuale, per deployare da telefono/browser senza terminale.
 3. **Bug PWA iOS (status bar / viewport)** — vedi `CLAUDE.md` per la
    cronologia completa, è cambiata più volte in questa sessione.
-   - L'override di `--app-height` in `main.js` ora scatta **solo** se
-     c'è un `input`/`textarea` con focus reale (tastiera davvero
-     aperta) — non più dedotto dalla sola variazione di
-     `visualViewport.height`, che sparava (con valori transitori
-     sbagliati) anche al cold-launch e al resume da background,
-     causando una zona grigia/gap in entrambi i casi. Verificato che
-     `.screen` resta a `top:0`/altezza piena a riposo anche dopo eventi
-     resize/scroll simulati senza focus.
+   - L'override di `--app-height` in `main.js` scatta **solo** se c'è
+     un `input`/`textarea` con focus reale (tastiera davvero aperta) —
+     non più dedotto dalla sola variazione di `visualViewport.height`,
+     che sparava (con valori transitori sbagliati) anche al
+     cold-launch e al resume da background, causando una zona
+     grigia/gap in entrambi i casi. Verificato che `.screen` resta a
+     `top:0`/altezza piena a riposo anche dopo eventi resize/scroll
+     simulati senza focus.
    - **`status-bar-style` è tornato a `black-translucent`** (era
-     `default`): ipotesi è che il precedente rifiuto di
-     `black-translucent` (sia il 3 settembre sia in questa sessione)
-     fosse causato dal bug di cui sopra, non da un vero limite di iOS.
-     **Da confermare su device reale** — Playwright headless non
-     riproduce la status bar nativa. Se l'utente conferma che ora è
-     davvero color crema (con le icone bianche, inevitabili in questa
-     modalità), il trade-off è risolto; se mostra ancora uno scrim
-     scuro, tornare a `default` (era già la scelta deliberata prima) e
-     annotarlo chiaramente come limite reale di iOS, non riprovare oltre.
+     `default`): l'utente ha confermato che la parte superiore è ora
+     correttamente color crema — ipotesi confermata che il precedente
+     rifiuto di `black-translucent` (3 settembre e primo tentativo di
+     questa sessione) fosse causato dal bug di cui sopra, non da un
+     vero limite di iOS.
+   - **Bug distinto trovato subito dopo** (utente: "regressione in
+     basso"): il fallback CSS di `.screen` quando `--app-height` non è
+     impostato (cioè quasi sempre, col fix del focus-gating) era
+     `100dvh` — già scartato il 2 settembre su device reale (commit
+     `9d64542`) per lo stesso sintomo (fascia nera in fondo in
+     standalone), e poi silenziosamente reintrodotto da un commit
+     successivo (`7d0c953`). Fallback riportato al pattern
+     `9d64542`-testato: `height:100%` con `-webkit-fill-available`
+     esplicito, combinato con la var JS:
+     `height:var(--app-height, 100%); height:var(--app-height, -webkit-fill-available);`.
+     Verificato in locale (Chromium/Playwright) che `.screen` a riposo
+     combacia con `window.innerHeight` col nuovo fallback — ma
+     Playwright non riproduce il bug reale di `100dvh` su iOS
+     standalone, quindi **da confermare sul device**: cold-launch E
+     resume da background, controllando che la cima resti crema E il
+     fondo non torni nero.
 4. **Fix layout "Uve principali" su più righe** (Esplora) — quando i
    chip delle uve vanno a capo, l'etichetta `.chip-label` di default ha
    un margine negativo (`-4px`, pensato per un solo rigo) che la incolla
@@ -73,9 +85,13 @@ questo file è il riassunto "dove eravamo rimasti".
 
 ## Cose note, non (ancora) da rifare
 
-- La barra di stato grigia in alto, in modalità PWA da Home Screen, **non
-  è un bug** — è il compromesso già scelto rispetto a `black-translucent`
-  (che sta peggio). Non ritentare senza leggere `CLAUDE.md` prima.
+- `status-bar-style` è ora `black-translucent` (non più `default`) e
+  `.screen` usa `height:100%`/`-webkit-fill-available` come fallback,
+  **mai** `100dvh` (scartato due volte su device reale per una fascia
+  nera in fondo, vedi `CLAUDE.md`). Se in futuro riappare grigio in alto
+  o nero in fondo, leggere `CLAUDE.md` per intero prima di ritoccare —
+  sono due bug distinti già risolti una volta ciascuno, facile
+  confonderli o rifare la stessa regressione.
 - Dentro ogni mappa, le regioni senza dati curati sono deliberatamente
   "dati in arrivo" invece di contenuto inventato — vale per tutti i
   paesi, non solo l'Italia.

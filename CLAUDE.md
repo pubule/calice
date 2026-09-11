@@ -79,5 +79,35 @@ solo quando c'è davvero un `input`/`textarea` con `document.activeElement`
 differenza di dedurlo dalla sola variazione di `visualViewport.height`
 (fragile, dipende da soglie in pixel e dal timing di iOS). Cold-launch,
 resume da background, rotazione: nessuno di questi ha un input attivo,
-quindi cadono sempre nel ramo che lascia `.screen` sui default CSS
-(`top:0`, `100dvh`, già corretti a riposo).
+quindi cadono sempre nel ramo che lascia `.screen` sul fallback CSS
+(`top:0`, altezza — vedi sezione sotto: **non** `100dvh`, quello era un
+altro bug).
+
+### Bug distinto: fascia nera in fondo — `.screen` non deve usare `100dvh` come fallback
+
+Il fallback CSS di `.screen` quando `--app-height` non è impostato (cioè
+quasi sempre, dato il fix sopra) era `height:var(--app-height, 100dvh)`.
+Sembra innocuo ma **non lo è**: il 2 settembre (commit `9d64542`, su
+device reale) `100dvh` da solo era già stato scartato per lo stesso
+identico sintomo (fascia nera in fondo in modalità standalone) — `dvh`
+ha problemi noti su iOS standalone/fullscreen PWA, a volte risolve a
+un'altezza minore di quella reale dello schermo. Il fix di allora era
+`height:100%` con fallback esplicito `-webkit-fill-available` (stesso
+pattern già usato per `html`/`body` in questo stesso file). Un commit
+successivo (`7d0c953`, quello che ha introdotto tutto il meccanismo
+`--app-top`/`--app-height`) ha **silenziosamente reintrodotto** `100dvh`
+come fallback, perdendo il fix di `9d64542` — mascherato per un po'
+perché l'override JS applicava `--app-height` quasi sempre, finché il
+fix di focus-gating sopra non ha reso il fallback il caso comune,
+riportando a galla il bug originale (osservato dall'utente come
+"regressione in basso" subito dopo la riprova di `black-translucent`,
+che in realtà non c'entrava — erano due bug distinti sovrapposti).
+
+**Fix**: fallback di `.screen` riportato al pattern `9d64542`, combinato
+con la variabile JS:
+```css
+height:var(--app-height, 100%); height:var(--app-height, -webkit-fill-available);
+```
+**Mai** usare `100dvh` da solo (né come valore fisso né come fallback di
+`var()`) per `.screen`, `html` o `body` in questo progetto — è già stato
+scartato due volte su device reale.
