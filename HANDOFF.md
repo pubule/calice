@@ -42,13 +42,25 @@ questo file è il riassunto "dove eravamo rimasti".
 2. **Deploy da remoto senza credenziali locali** — workflow GitHub
    Actions manuale, per deployare da telefono/browser senza terminale.
 3. **Bug PWA iOS (status bar / viewport)** — vedi `CLAUDE.md` per la
-   cronologia completa. Stato finale: `status-bar-style: default`
-   (male minore, già scelto in passato). L'override di `--app-height`
-   in `main.js` ora scatta **solo** se c'è un `input`/`textarea` con
-   focus reale (tastiera davvero aperta) — non più dedotto dalla sola
-   variazione di `visualViewport.height`, che sparava (con valori
-   transitori sbagliati) anche al cold-launch e al resume da
-   background, ricreando la zona grigia in entrambi i casi.
+   cronologia completa, è cambiata più volte in questa sessione.
+   - L'override di `--app-height` in `main.js` ora scatta **solo** se
+     c'è un `input`/`textarea` con focus reale (tastiera davvero
+     aperta) — non più dedotto dalla sola variazione di
+     `visualViewport.height`, che sparava (con valori transitori
+     sbagliati) anche al cold-launch e al resume da background,
+     causando una zona grigia/gap in entrambi i casi. Verificato che
+     `.screen` resta a `top:0`/altezza piena a riposo anche dopo eventi
+     resize/scroll simulati senza focus.
+   - **`status-bar-style` è tornato a `black-translucent`** (era
+     `default`): ipotesi è che il precedente rifiuto di
+     `black-translucent` (sia il 3 settembre sia in questa sessione)
+     fosse causato dal bug di cui sopra, non da un vero limite di iOS.
+     **Da confermare su device reale** — Playwright headless non
+     riproduce la status bar nativa. Se l'utente conferma che ora è
+     davvero color crema (con le icone bianche, inevitabili in questa
+     modalità), il trade-off è risolto; se mostra ancora uno scrim
+     scuro, tornare a `default` (era già la scelta deliberata prima) e
+     annotarlo chiaramente come limite reale di iOS, non riprovare oltre.
 4. **Fix layout "Uve principali" su più righe** (Esplora) — quando i
    chip delle uve vanno a capo, l'etichetta `.chip-label` di default ha
    un margine negativo (`-4px`, pensato per un solo rigo) che la incolla

@@ -11,31 +11,47 @@ cosa resta aperto. Non è un changelog di ogni commit — è lo snapshot
 utile a chi (o quale sessione) arriva dopo, quindi riscrivere/potare le
 sezioni superate invece di limitarsi ad aggiungere in fondo.
 
-## PWA su iOS: status bar / viewport — non ritoccare senza guardare prima la storia
+## PWA su iOS: status bar / viewport — stato in evoluzione, leggere questa nota per intero prima di toccare
 
-`public/index.html`'s `apple-mobile-web-app-status-bar-style` è su **`default`**
-e va lasciato così. È già stato provato `black-translucent` e revertato
-(commit `d0d2bd8`, 3 settembre): su questo tema chiaro (sfondo crema),
-`black-translucent` forza icone/testo bianchi della status bar tramite uno
-scrim scuro, che stona quanto (o più di) `default`'s barra grigio chiara —
-e il contenuto è già impaginato sotto `env(safe-area-inset-top)` invece di
-disegnare sotto la barra, quindi il vantaggio "immersivo" di
-`black-translucent` non serve comunque a nulla qui. Nessuna delle due
-opzioni è perfetta: `default` è il male minore già scelto deliberatamente.
+`public/index.html`'s `apple-mobile-web-app-status-bar-style` è tornato su
+**`black-translucent`** (era `default` fino a poco fa). Cronologia completa:
 
-Il blocco `visualViewport` in `public/js/main.js` (gestisce il gap da
-tastiera in modalità standalone) è stato scritto e testato **solo** in
-combinazione con `status-bar-style: default` — con `black-translucent`
-(`viewport-fit=cover` edge-to-edge) `visualViewport.height` diverge da
-`window.innerHeight` anche a riposo, e quel blocco lascia una fascia nera
-non dipinta in fondo allo schermo. Se in futuro serve rivisitare la status
-bar, il blocco `visualViewport` va rivisto insieme, non trattato come
-indipendente.
+1. **3 settembre** (commit `d0d2bd8`): `black-translucent` provato e
+   revertato a `default` — osservato uno "scrim scuro" sulla barra di
+   stato, giudicato peggio della barra grigio chiara di `default`.
+2. **Questa sessione, primo tentativo**: rifatto lo stesso passaggio a
+   `black-translucent` senza saperlo (non avevo ancora letto la storia),
+   causando anche una fascia nera in fondo allo schermo — il blocco
+   `visualViewport` in `main.js` non era mai stato testato in
+   combinazione con `black-translucent`/edge-to-edge, e in quella
+   modalità `visualViewport.height` diverge da `window.innerHeight`
+   anche a riposo.
+3. **Rivalutazione**: revertato tutto a `default`, poi trovato e risolto
+   un bug distinto (vedi sotto) nel blocco `visualViewport` — non
+   legato allo status bar in sé, ma che si manifestava come zona
+   grigia/gap di contenuto al cold-launch e al resume da background.
+4. **Riprova consapevole di `black-translucent`**: col bug del punto 3
+   ormai risolto (l'override di `--app-top`/`--app-height` scatta solo
+   con un input davvero a fuoco — vedi sotto), è plausibile che lo
+   "scrim scuro" osservato sia sempre stato **quello stesso bug di
+   contenuto**, non un'imposizione reale di iOS — né il 3 settembre né
+   il tentativo di questa sessione lo avevano mai escluso, perché
+   nessuno dei due aveva ancora isolato il bug. Verificato in locale
+   (Playwright) che `.screen` resta a `top:0`/altezza piena sia a
+   riposo sia dopo eventi resize/scroll simulati senza focus — ma
+   Playwright headless **non riproduce la resa reale della status bar
+   iOS**, quindi questo va confermato su device reale.
+5. **Vincolo che resta comunque fisso**, qualunque cosa succeda: in
+   `black-translucent` iOS forza le icone della barra (ora/batteria/
+   segnale) in bianco — nessun modo di sceglierle scure. Se lo sfondo
+   sotto risulta davvero crema ma il contrasto delle icone bianche non
+   convince, quello è il limite reale e non altro codice da scrivere;
+   a quel punto la scelta è tra questo trade-off e tornare a `default`.
 
 **Prima di ritoccare uno dei due**: `git log --oneline -i --grep="status.bar\|viewport\|safe-area\|black-translucent"`
-— c'è una lunga serie di tentativi già fatti (vedi commit da `3a8468a` a
-`d0d2bd8`) prima di arrivare allo stato attuale. Leggere quelli prima di
-riprovare varianti già scartate.
+— leggere tutti i tentativi precedenti (da `3a8468a` in poi) prima di
+cambiare ancora, e soprattutto non giudicare `black-translucent` da solo
+senza aver prima verificato lo stato del blocco `visualViewport` sotto.
 
 ### Bug distinto: zona grigia al cold-launch E al resume da background
 
