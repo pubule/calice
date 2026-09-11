@@ -286,3 +286,54 @@ Per farsi mandare un test attendibile dall'utente: il deploy da GitHub
 Actions impiega ~45s, quindi va aspettato che il run sia **completato**, e
 poi l'app va **chiusa davvero** (scorrendola via dall'app switcher) e
 rilanciata dall'icona — un semplice ritorno all'app non ricarica nulla.
+
+## Home: tab "Da bere / Regioni / Attività" (era tre sezioni separate)
+
+Riprogettata su richiesta esplicita dell'utente ("troppo ricca e caotica")
+dopo un giro di mockup su una canvas di design (tre direzioni: essenziale,
+editoriale con tab, orientata all'azione — scelta la B). Cambi:
+
+- Tolto `.hero`/`.ring` dalla Home: i tre numeri (bottiglie/valore/da bere)
+  sono ora una riga semplice senza card (`.stat-row-plain`, non
+  `.stat-row` — quest'ultima ha `flex:1` che assume un genitore flex-row
+  come `.hero`; usata come figlio diretto di `.view`, che è flex-column,
+  `flex:1` la farebbe crescere in altezza per riempire lo spazio
+  rimanente della colonna).
+- `.explore-entry` non è più una card bianca: bordi solo sopra/sotto,
+  sfondo trasparente — stesso trattamento del resto della Home dopo
+  questo redesign.
+- "Da bere presto" (card fotografiche orizzontali, `.wine-card`),
+  "Regioni principali" e "Attività amici" (due card bianche separate)
+  sono diventate un unico blocco: un segmentato (riusa `.segmented`, già
+  usato in Cantina) con tre pannelli, uno visibile alla volta. Il "Da
+  bere" ora usa `.list-row`/`.type-dot`/`.lbody` (già esistenti,
+  usate da Elementi cantina ed Esplora) invece delle card fotografiche —
+  `.wine-card`/`.scroller`/`.card-photo`/`.card-body` erano usate solo
+  qui e sono state rimosse come CSS morto (le card non erano comunque
+  mai state cliccabili: vedi il commento storico in `index.html` sui
+  listener delegati mai davvero collegati).
+- Il tab selezionato si azzera su "Da bere" ad ogni `mountHome()`
+  (naviga via e torna, es. Cantina → Home): senza reset, la vista
+  `#view-home` resta nel DOM tra una navigazione e l'altra, quindi la
+  tab lasciata aperta l'ultima volta resterebbe attiva.
+
+### Bug trovato durante l'implementazione: l'attributo nativo `hidden` viene battuto da una regola con `display`
+
+Primo tentativo: nascondere i pannelli non attivi con l'attributo nativo
+HTML `hidden` (`<div class="home-tab-panel" hidden>`) e la proprietà
+`.hidden` in JS. Risultato: **tutti e tre i pannelli restavano visibili
+contemporaneamente**, sovrapposti. Causa: `.home-tab-panel{display:flex;
+...}` è una regola d'autore, e le regole d'autore battono sempre lo
+user-agent stylesheet (che è dove vive `[hidden]{display:none}`) —
+**a prescindere dalla specificità**, perché l'origine (UA < autore) viene
+prima nel calcolo della cascata. Bastava che una classe con `display`
+esplicito si applicasse allo stesso elemento perché l'attributo nativo
+smettesse di funzionare.
+
+Il progetto in realtà non usa mai l'attributo nativo `hidden` altrove —
+usa una classe `.hidden{display:none}` esplicita (es.
+`.camera-shutter-wrap.hidden`). Adeguato a quella convenzione: i pannelli
+si nascondono con `classList.toggle('hidden', ...)`, non con la proprietà
+`.hidden`. **Mai usare l'attributo `hidden` nudo in questo progetto** se
+l'elemento (o una sua classe) ha già un `display` impostato altrove —
+usare sempre la classe `.hidden`.

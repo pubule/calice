@@ -1,13 +1,25 @@
 import { api } from '../api-client.js';
 import { me } from '../auth.js';
-import { escapeHtml, photoClass, skeletonBar } from '../util.js';
+import { escapeHtml, skeletonBar } from '../util.js';
 import { navigate } from '../router.js';
+
+// Duplicated per-screen rather than shared, matching stats.js/explore.js —
+// b.type is unvalidated API data, so an unrecognised key falls back to
+// DEFAULT_COLOR instead of rendering as undefined.
+const TYPE_COLOR = { rosso: '#5b2333', bianco: '#b9a750', bollicine: '#6b7a4f', rosato: '#a24a5a' };
+const DEFAULT_COLOR = '#5b2333';
 
 document.getElementById('home-explore-entry')?.addEventListener('click', () => navigate('#/esplora'));
 
-function scoreBadge(score) {
-  return score == null ? '' : `<span class="badge-score">${score.toFixed(1)}</span>`;
+function selectHomeTab(tab) {
+  document.querySelectorAll('#home-tabs button').forEach((b) => b.classList.toggle('active', b.dataset.tab === tab));
+  document.querySelectorAll('.home-tab-panel').forEach((p) => { p.classList.toggle('hidden', p.dataset.tabPanel !== tab); });
 }
+
+document.getElementById('home-tabs')?.addEventListener('click', (e) => {
+  const btn = e.target.closest('button[data-tab]');
+  if (btn) selectHomeTab(btn.dataset.tab);
+});
 
 function showLoadingSkeletons() {
   document.getElementById('home-stats').innerHTML = `
@@ -16,10 +28,7 @@ function showLoadingSkeletons() {
     <div class="stat">${skeletonBar('60%', 20)}</div>
   `;
   document.getElementById('home-soon').innerHTML = Array.from({ length: 3 }, () => `
-    <div class="wine-card">
-      <div class="card-photo">${skeletonBar('100%', 98)}</div>
-      <div class="card-body">${skeletonBar('85%', 11)}<div style="margin-top:6px;">${skeletonBar('60%', 9)}</div></div>
-    </div>`).join('');
+    <div class="list-row">${skeletonBar('8px', 8)}<div class="lbody">${skeletonBar('70%', 12)}<div style="margin-top:4px;">${skeletonBar('45%', 9)}</div></div></div>`).join('');
   document.getElementById('home-regions').innerHTML = Array.from({ length: 3 }, () => `
     <div class="region-row">${skeletonBar('74px', 10)}${skeletonBar('100%', 8)}${skeletonBar('22px', 10)}</div>`).join('');
   document.getElementById('home-feed').innerHTML = Array.from({ length: 3 }, () => `
@@ -56,13 +65,13 @@ function renderSoon() {
   document.getElementById('home-soon').innerHTML = list
     .map(
       (b) => `
-      <div class="wine-card">
-        <div class="card-photo photo ${photoClass(b.type)}">${scoreBadge(b.score)}</div>
-        <div class="card-body">
-          <div class="name">${escapeHtml(b.name)}</div>
-          <div class="sub">${escapeHtml(b.producer)} · ${escapeHtml(b.vintage ?? '')} · ${escapeHtml(b.region ?? b.country)}</div>
-          <span class="status-tag ready">pronto</span>
+      <div class="list-row">
+        <span class="type-dot" style="background:${TYPE_COLOR[b.type] || DEFAULT_COLOR}"></span>
+        <div class="lbody">
+          <div class="lname">${escapeHtml(b.name)}</div>
+          <div class="lsub">${escapeHtml(b.producer)} · ${escapeHtml(b.region ?? b.country)}</div>
         </div>
+        <span class="status-tag ready">pronto</span>
       </div>`,
     )
     .join('');
@@ -103,6 +112,7 @@ function renderAll() {
 }
 
 export async function mountHome() {
+  selectHomeTab('soon');
   showLoadingSkeletons();
   const user = await me();
   document.getElementById('home-greet-name').textContent = user.name;

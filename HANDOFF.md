@@ -109,6 +109,26 @@ questo file è il riassunto "dove eravamo rimasti".
    `#filter-sheet` in `app.css`) con un override `margin:0 0 6px`
    — aggiunto `#view-explore` alla stessa regola invece di inventarne
    una nuova.
+5. **Redesign Home** ("troppo ricca e caotica") — dopo un giro di mockup
+   su una canvas di design (tre direzioni), scelta quella con tab. Tolto
+   `.hero`/`.ring` (i tre numeri sono una riga semplice), `.explore-entry`
+   non è più una card bianca (solo hairline sopra/sotto), e le tre sezioni
+   "Da bere presto"/"Regioni principali"/"Attività amici" sono diventate
+   un segmentato (riusa `.segmented` di Cantina) con un pannello alla
+   volta — "Da bere" ora usa `.list-row` invece delle vecchie card
+   fotografiche `.wine-card` (mai state cliccabili comunque, rimosse come
+   CSS morto insieme a `.scroller`/`.card-photo`/`.card-body`). Il tab si
+   azzera su "Da bere" ad ogni ingresso in Home.
+   - **Bug trovato e fisso durante l'implementazione**: i pannelli
+     nascosti con l'attributo nativo `hidden` restavano visibili tutti
+     insieme, perché una regola d'autore con `display` (la mia
+     `.home-tab-panel{display:flex}`) batte sempre lo user-agent
+     stylesheet dove vive `[hidden]{display:none}` — a prescindere dalla
+     specificità. Il progetto non usa mai `hidden` nudo altrove (usa una
+     classe `.hidden{display:none}`, es. `.camera-shutter-wrap.hidden`):
+     adeguato a quella convenzione. Vedi `CLAUDE.md` per il dettaglio —
+     è un'insidia facile da ripetere se in futuro si nasconde qualcos'altro
+     con l'attributo nativo.
 
 ## Cose note, non (ancora) da rifare
 
