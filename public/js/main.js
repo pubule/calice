@@ -63,36 +63,11 @@ if (vv) {
   // at load anyway, so it would be a no-op.
 }
 
-// TEMPORARY diagnostics in the Profile build line. The bottom-of-screen layout
-// bug has survived several rounds of reasoning from screenshots alone, so let
-// the device report its own numbers instead. Remove once it's settled.
-function renderBuildLine() {
-  const el = document.querySelector('.app-build');
-  if (!el) return;
-  const probe = (prop) => {
-    const d = document.createElement('div');
-    d.style.cssText = `position:fixed;left:-9999px;top:0;width:1px;height:env(${prop},0px);`;
-    document.body.appendChild(d);
-    const h = Math.round(d.getBoundingClientRect().height);
-    d.remove();
-    return h;
-  };
-  const screen = document.querySelector('.screen')?.getBoundingClientRect();
-  const nav = document.querySelector('.navbar');
-  const navRect = nav?.getBoundingClientRect();
-  const r = (n) => Math.round(n);
-  el.textContent =
-    `build 64 · win ${window.innerHeight} · vv ${r(window.visualViewport?.height ?? 0)}` +
-    ` · screen ${r(screen?.top ?? 0)}→${r(screen?.bottom ?? 0)}` +
-    ` · nav h${r(navRect?.height ?? 0)} pb${nav ? getComputedStyle(nav).paddingBottom : '?'}` +
-    ` · inset top ${probe('safe-area-inset-top')} bottom ${probe('safe-area-inset-bottom')}`;
-}
-
 registerRoute('#/home', async () => { showView('view-home'); await mountHome(); });
 registerRoute('#/cellar', async () => { showView('view-cellar'); await mountCellar(); });
 registerRoute('#/add', async () => { showView('view-add'); await mountAdd(); });
 registerRoute('#/stats', async () => { showView('view-stats'); await mountStats(); });
-registerRoute('#/profile', async () => { showView('view-profile'); await mountProfile(); renderBuildLine(); });
+registerRoute('#/profile', async () => { showView('view-profile'); await mountProfile(); });
 registerRoute('#/invite/:code', async (search, params) => { showView('view-invite'); await mountInviteAccept(search, params); });
 registerRoute('#/esplora', async () => { showView('view-explore'); await mountExplore(); });
 

@@ -135,15 +135,10 @@ questo file è il riassunto "dove eravamo rimasti".
 - **La schermata Profilo mostra `build NN` in fondo**, allineato a `CACHE`
   in `sw.js`: serve a sapere da uno screenshot quale versione gira
   davvero. Alzarlo insieme a `CACHE` ad ogni cambio dello shell.
-- **In corso (build 62)**: quella riga porta temporaneamente anche dei
-  numeri diagnostici (`win`, `vv`, `screen top→bottom`, altezza e padding
-  della navbar, safe-area insets reali) — vedi `renderBuildLine()` in
-  `main.js`. Serve a capire perché in fondo resta spazio: build 61 ha
-  dimostrato che il `padding` statico della navbar **arriva** al device
-  eppure non sposta nulla, quindi la navbar non è alta 141pt — è `.screen`
-  che non arriva in fondo, e il suo bordo è invisibile ora che `body` è
-  crema. **Rimuovere la diagnostica** una volta risolto, lasciando solo
-  `build NN`.
+  La diagnostica temporanea che stampava i numeri del device
+  (`renderBuildLine()`) è stata **rimossa** una volta risolto il layout:
+  resta solo `build NN`. I numeri che avevano chiuso il caso sono
+  riportati in `CLAUDE.md`.
 - Prima di teorizzare su una zona "non dipinta": **campionare il colore
   del pixel** dallo screenshot del device. `#000000` = canvas nativo,
   qualsiasi altro colore = un elemento dell'app. Questo singolo controllo
