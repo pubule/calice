@@ -1,6 +1,9 @@
 import { api } from '../api-client.js';
 import { me } from '../auth.js';
 import { escapeHtml, photoClass, skeletonBar } from '../util.js';
+import { navigate } from '../router.js';
+
+document.getElementById('home-explore-entry')?.addEventListener('click', () => navigate('#/esplora'));
 
 function scoreBadge(score) {
   return score == null ? '' : `<span class="badge-score">${score.toFixed(1)}</span>`;

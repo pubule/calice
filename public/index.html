@@ -22,6 +22,12 @@
 
     <div id="home-alerts"></div>
 
+    <div class="explore-entry" id="home-explore-entry">
+      <div class="badge"><svg viewBox="0 0 24 24" fill="none" stroke="#5b2333" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3c2.8 2.6 2.8 15.4 0 18"/><path d="M12 3c-2.8 2.6-2.8 15.4 0 18"/></svg></div>
+      <div class="body"><div class="title">Esplora vini per paese</div><div class="sub">Denominazioni, uve e stili regione per regione</div></div>
+      <svg viewBox="0 0 24 24" fill="none" stroke="#c8c0b0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;flex-shrink:0;"><path d="M9 6l6 6-6 6"/></svg>
+    </div>
+
     <div>
       <div class="section-head"><h3>Da bere presto</h3><a id="home-soon-toggle"></a></div>
       <div class="scroller" id="home-soon"></div>
@@ -185,6 +191,47 @@
     </div>
     <div class="logout">Esci</div>
   </div>
+  <div class="view" id="view-explore">
+    <div class="topbar">
+      <div class="back-btn" id="explore-back-btn"><svg viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg></div>
+      <h2 class="screen-title" style="font-size:16px;">Esplora &middot; <span id="explore-country-name">Italia</span></h2>
+      <div class="cantina-switch" id="explore-country-switch">Cambia<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></div>
+    </div>
+
+    <div class="explore-dd" id="explore-dd">
+      <div class="explore-dd-head" id="explore-dd-head">
+        <div class="lbl"><svg viewBox="0 0 24 24" fill="none" stroke="#a89b89" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;flex-shrink:0;"><path d="M12 21s7-7.2 7-12a7 7 0 1 0-14 0c0 4.8 7 12 7 12Z"/><circle cx="12" cy="9" r="2.4"/></svg><span id="explore-dd-label">…</span></div>
+        <svg class="explore-dd-chevron" viewBox="0 0 24 24" fill="none" stroke="#756b60" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+      </div>
+      <div class="explore-dd-list" id="explore-dd-list"></div>
+    </div>
+
+    <div class="results-count">oppure tocca una regione sulla mappa</div>
+
+    <div class="explore-map" id="explore-map"></div>
+    <div class="explore-map-credit">Confini regionali: svg-maps.com, CC BY 4.0</div>
+
+    <div class="card" id="explore-detail"></div>
+  </div>
+
+  <!-- SHEET: cambio paese -->
+  <div class="compare-overlay" id="explore-country-sheet">
+    <div class="compare-sheet">
+      <div class="compare-head"><h3>Scegli un paese</h3><div class="close" id="explore-country-sheet-close"><svg viewBox="0 0 24 24" style="width:14px;height:14px;" fill="none" stroke="#241e1a" stroke-width="1.8" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="6" y1="18" x2="18" y2="6"/></svg></div></div>
+      <div>
+        <div class="list-row active" id="explore-country-it"><div class="radio"></div><div class="lbody"><div class="lname">Italia</div></div></div>
+        <div class="list-row explore-country-soon"><div class="lbody"><div class="lname">Francia</div><div class="lsub">Presto disponibile</div></div></div>
+        <div class="list-row explore-country-soon"><div class="lbody"><div class="lname">Spagna</div><div class="lsub">Presto disponibile</div></div></div>
+        <div class="list-row explore-country-soon"><div class="lbody"><div class="lname">Portogallo</div><div class="lsub">Presto disponibile</div></div></div>
+        <div class="list-row explore-country-soon"><div class="lbody"><div class="lname">Germania</div><div class="lsub">Presto disponibile</div></div></div>
+        <div class="list-row explore-country-soon"><div class="lbody"><div class="lname">Stati Uniti</div><div class="lsub">Presto disponibile</div></div></div>
+        <div class="list-row explore-country-soon"><div class="lbody"><div class="lname">Argentina</div><div class="lsub">Presto disponibile</div></div></div>
+        <div class="list-row explore-country-soon"><div class="lbody"><div class="lname">Cile</div><div class="lsub">Presto disponibile</div></div></div>
+        <div class="list-row explore-country-soon"><div class="lbody"><div class="lname">Australia</div><div class="lsub">Presto disponibile</div></div></div>
+      </div>
+    </div>
+  </div>
+
   <div class="view" id="view-invite">
     <div class="topbar"><h2 class="screen-title">Invito</h2></div>
     <div id="invite-message" style="font-size:12px; color:#8f8474; padding:16px;">Accesso alla cantina condivisa in corso…</div>

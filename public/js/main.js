@@ -6,6 +6,7 @@ import { mountAdd } from './screens/add.js';
 import { mountStats } from './screens/stats.js';
 import { mountProfile } from './screens/profile.js';
 import { mountInviteAccept } from './screens/invite.js';
+import { mountExplore } from './screens/explore.js';
 
 function showView(id) {
   document.querySelectorAll('.view').forEach((v) => v.classList.remove('active'));
@@ -43,6 +44,7 @@ registerRoute('#/add', async () => { showView('view-add'); await mountAdd(); });
 registerRoute('#/stats', async () => { showView('view-stats'); await mountStats(); });
 registerRoute('#/profile', async () => { showView('view-profile'); await mountProfile(); });
 registerRoute('#/invite/:code', async (search, params) => { showView('view-invite'); await mountInviteAccept(search, params); });
+registerRoute('#/esplora', async () => { showView('view-explore'); await mountExplore(); });
 
 document.querySelector('.logout')?.addEventListener('click', () => {
   // Cloudflare Access, not the app, owns the session: this clears the

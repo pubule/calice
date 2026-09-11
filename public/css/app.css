@@ -425,3 +425,31 @@
   .modal-actions .modal-btn-cancel{flex:1; background:none; border:1px solid #e2e0d8; border-radius:9999px; padding:11px; font-size:12.5px; font-weight:600; color:#756b60; cursor:pointer; font-family:'Archivo',sans-serif;}
   .modal-actions .primary-btn{flex:1; margin-top:0;}
   .modal-actions .primary-btn.danger{background:#8a3244;}
+
+  /* ---- home: punto di accesso a "esplora vini per paese" ---- */
+  .explore-entry{background:#ffffff; border:1px solid #e2e0d8; border-radius:12px; padding:14px 16px; display:flex; align-items:center; gap:13px; cursor:pointer;}
+  .explore-entry .badge{width:40px; height:40px; border-radius:10px; background:#f4e8eb; display:flex; align-items:center; justify-content:center; flex-shrink:0;}
+  .explore-entry .badge svg{width:20px; height:20px;}
+  .explore-entry .body{flex:1; min-width:0;}
+  .explore-entry .title{font-family:'Newsreader',serif; font-weight:500; font-size:15px; letter-spacing:-0.01em;}
+  .explore-entry .sub{margin-top:2px;}
+
+  /* ---- esplora vini per paese: dropdown regione ---- */
+  .explore-dd-head{display:flex; align-items:center; justify-content:space-between; background:#ffffff; border:1px solid #e2e0d8; border-radius:10px; padding:12px 14px; cursor:pointer;}
+  .explore-dd-head .lbl{display:flex; align-items:center; gap:9px; font-size:13px; font-weight:600;}
+  .explore-dd-chevron{width:14px; height:14px; flex-shrink:0; transition:transform .2s ease;}
+  .explore-dd.open .explore-dd-chevron{transform:rotate(180deg);}
+  .explore-dd-list{display:none; flex-direction:column; background:#ffffff; border:1px solid #e2e0d8; border-radius:10px; margin-top:6px; max-height:260px; overflow-y:auto;}
+  .explore-dd.open .explore-dd-list{display:flex;}
+  .explore-dd-list .opt{padding:10px 14px; font-size:12.5px; cursor:pointer; border-bottom:1px solid #ece8de;}
+  .explore-dd-list .opt:last-of-type{border-bottom:none;}
+  .explore-dd-list .opt.active{font-weight:600; color:#5b2333; background:#f8eef0;}
+
+  /* ---- esplora vini per paese: mappa e dettaglio regione ---- */
+  .explore-map{background:#ffffff; border:1px solid #e2e0d8; border-radius:14px; padding:10px;}
+  .explore-map svg{width:100%; height:auto; display:block;}
+  .explore-map path{cursor:pointer;}
+  .explore-map-credit{font-size:9.5px; color:#c3bca9; text-align:right; margin-top:-8px;}
+  .explore-no-data{padding:6px 0 10px; text-align:center; color:#a89b89; font-size:12.5px; line-height:1.5;}
+  .explore-country-soon{opacity:.55;}
+  .explore-country-soon .lname{color:#8f8474;}
