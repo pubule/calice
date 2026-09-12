@@ -161,10 +161,52 @@ questo file è il riassunto "dove eravamo rimasti".
    - Dati scritti a mano da conoscenza enologica diretta (nessuna
      ricerca web), poi verificati con uno script: nessun duplicato per
      regione, nessun campo mancante, nessun `type` fuori dall'insieme
-     valido (`rosso`/`bianco`/`bollicine`/`rosato`). Non è stata rifatta
-     una verifica fattuale esterna caso per caso — se si nota un nome o
-     una classificazione palesemente sbagliata, segnalarlo per la
-     correzione puntuale invece di rifare l'intero elenco.
+     valido (`rosso`/`bianco`/`bollicine`/`rosato`).
+7. **Verifica web della lista vini/uve** — 8 agenti in parallelo (uno per
+   Italia×2, Francia, Spagna, Germania, Stati Uniti, Australia, paesi
+   nazionali), ciascuno con ~10-15 ricerche web mirate contro fonti
+   ufficiali (disciplinari DOC/DOCG, INAO, consorzi DO, Wine Australia
+   GI register, TTB, Wikipedia). **23 correzioni applicate**, tutte solo
+   sostituzioni puntuali (nome/appellation/type/uva), mai riscritture
+   intere — verificato via diff strutturale che nient'altro sia cambiato:
+   - Appellation sbagliata (il nome "semplice" era DOCG/DOC quando in
+     realtà solo una sotto-denominazione lo è): Prosecco e Soave in
+     Veneto (DOCG→DOC, il DOCG è solo "Superiore"), Castel del Monte in
+     Puglia (DOCG→DOC), Frascati nel Lazio (DOCG→DOC, il DOCG è solo
+     "Superiore"/"Cannellino"); Casauria in Abruzzo (DOC→DOCG, promossa
+     nel 2025); due vini di Pago in Castilla-La Mancha (DO→VP, categoria
+     spagnola distinta e superiore al DO).
+   - Type sbagliato: Ribolla Gialla in Friuli (bollicine→bianco, è
+     prevalentemente ferma), Cerasuolo di Vittoria in Sicilia
+     (rosato→rosso, il disciplinare lo classifica rosso nonostante il
+     nome), Gaillac in Occitania (bianco→rosso, maggioranza rossa),
+     Tierra del Vino de Zamora in Castilla y León (bianco→rosso), Anjou
+     in Pays de la Loire (rosato→bianco, il rosé ha una AOC a parte).
+   - Regione geografica sbagliata: Madiran spostato da Nouvelle-Aquitaine
+     a Occitanie (il comune e il cuore storico della denominazione sono
+     in Occitania).
+   - Nome duplicato/ridondante: "Cafayate Torrontés" in Argentina
+     rimosso (stessa area di "Salta Torrontés", non una regione
+     distinta) — Argentina scende onestamente da 10 a 9.
+   - Uve non rappresentative (sostituite con quelle davvero principali
+     per ettari/riconoscibilità, secondo le fonti): Verdeca→Nero di
+     Troia (Puglia), Moscato→Greco (Basilicata), Cariañena→Cariñena
+     (Catalogna, era solo un refuso), Macabeo→Merseguera (Valencia),
+     Viognier→Cabernet Sauvignon (Texas), Viognier+Petit
+     Verdot→Chardonnay+Merlot (Virginia, tenuto Cabernet Franc), Pinot
+     Meunier→Sauvignon Blanc (Tasmania), Alvarinho→Touriga Franca
+     (Portogallo).
+   - Rinominato "Navarra" in "Navarra Rosado" (senza cambiare `type`)
+     per evitare un doppione di fatto con "Navarra Tinto" già aggiunto,
+     dato che la DO base non è più a maggioranza rosé.
+   - **Non toccato deliberatamente** (segnalato dagli agenti come caso
+     limite o convenzione consolidata, non errore): Cabernet Sauvignon
+     come 3° vitigno in Argentina, Pinotage in Sudafrica, Carménère in
+     Cile — tutti minoritari per ettari coltivati ma è così che vengono
+     comunemente identificati quei paesi nel mercato del vino; Jerez
+     come "bianco" (è un vino fortificato, lo schema dell'app non ha una
+     categoria dedicata); Sierras de Málaga (DO con produzione mista,
+     confidenza bassa sulla correzione).
 
 ## Cose note, non (ancora) da rifare
 

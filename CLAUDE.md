@@ -337,3 +337,25 @@ si nascondono con `classList.toggle('hidden', ...)`, non con la proprietà
 `.hidden`. **Mai usare l'attributo `hidden` nudo in questo progetto** se
 l'elemento (o una sua classe) ha già un `display` impostato altrove —
 usare sempre la classe `.hidden`.
+
+## Dati di `wine-atlas.js`: verificati via web una volta, non riverificare da zero
+
+I dati vini/uve per regione sono stati scritti a mano da conoscenza
+enologica diretta, poi passati per una verifica web sistematica (8
+agenti paralleli, uno per area geografica, ~10-15 ricerche mirate
+ciascuno contro fonti ufficiali: disciplinari DOC/DOCG italiani, INAO
+francese, consorzi DO spagnoli, Wine Australia GI register, TTB
+statunitense, Wikipedia). 23 correzioni puntuali sono state applicate
+(dettaglio in `HANDOFF.md`) — solo sostituzioni di singoli campi, mai
+riscritture, verificato con un diff strutturale che path SVG/viewBox/
+altri campi non fossero toccati.
+
+Se si nota un errore specifico, **correggerlo puntualmente** (stesso
+pattern: trovare l'entry per nome, cambiare il campo sbagliato) invece
+di rifare l'intera verifica da capo. Alcuni casi sono stati lasciati
+apposta come non-errori perché rappresentano l'identità enologica
+convenzionale di un paese anche se minoritari per ettari coltivati
+(es. Cabernet Sauvignon come vitigno "principale" argentino, Pinotage
+per il Sudafrica, Carménère per il Cile) — non "correggerli" di nuovo
+verso il vitigno più coltivato in assoluto, è una scelta editoriale
+consapevole.
