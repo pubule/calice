@@ -1,6 +1,7 @@
 import { api } from '../api-client.js';
 import { escapeHtml, photoClass } from '../util.js';
 import { alertModal, promptModal } from '../modal.js';
+import { tastingProfileHtml, wireTastingProfile, resetTastingProfile, readTastingProfile, isTastingProfileEmpty } from '../tasting-profile.js';
 
 let currentCellarId = null;
 
@@ -349,7 +350,38 @@ let pendingImageUrl;
 let pendingBarcode;
 let pendingPhotoFile;
 
+// The sheet is shared by three entry points that all end up at the same
+// fields: a recognized/found wine under review, a fully manual add, and
+// editing a wine already in the cellar (from Cantina's "Modifica" icon).
+// Only 'edit' changes what saveRecognizedWine() does on submit — the note
+// composer is identical and always starts blank in every case (notes are
+// append-only tasting entries, not a single mutable record, so there is
+// never a past note to restore here even when editing the wine's own data).
+let sheetMode = 'create'; // 'create' | 'edit'
+let editingWineId = null;
+let editingBottleId = null;
+let editSavedCallback = null;
+
+const recognizeTaste = document.getElementById('recognize-taste');
+if (recognizeTaste) {
+  recognizeTaste.innerHTML = tastingProfileHtml();
+  wireTastingProfile(recognizeTaste);
+}
+
+function resetNoteComposer() {
+  document.getElementById('rec-note-text').value = '';
+  document.querySelectorAll('#rec-note-stars span.on').forEach((s) => s.classList.remove('on'));
+  if (recognizeTaste) resetTastingProfile(recognizeTaste);
+}
+
 function openRecognizeSheet(suggestion, capturedPhotoDataUrl) {
+  sheetMode = 'create';
+  editingWineId = null;
+  editingBottleId = null;
+  editSavedCallback = null;
+  document.getElementById('recognize-title').textContent = 'Rivedi e conferma';
+  document.getElementById('recognize-save').textContent = 'Salva';
+
   document.getElementById('rec-name').value = suggestion.name ?? '';
   document.getElementById('rec-producer').value = suggestion.producer ?? '';
   document.getElementById('rec-country').value = suggestion.country ?? 'Italia';
@@ -358,6 +390,7 @@ function openRecognizeSheet(suggestion, capturedPhotoDataUrl) {
   document.getElementById('rec-vintage').value = suggestion.vintage ?? '';
   document.getElementById('rec-grape').value = suggestion.grapeVariety ?? '';
   document.getElementById('rec-denomination').value = suggestion.denomination ?? '';
+  resetNoteComposer();
   pendingImageUrl = suggestion.imageUrl;
   pendingBarcode = suggestion.barcode;
   pendingPhotoFile = undefined;
@@ -392,8 +425,75 @@ function openRecognizeSheet(suggestion, capturedPhotoDataUrl) {
   document.getElementById('recognize-overlay').classList.add('open');
 }
 
+// Opened from Cantina's per-row "Modifica" icon — bottle already carries its
+// wine fields flattened in (same join cellar.js's list renders from), plus
+// its own id and wine_id, so every field can come pre-filled and stay fully
+// editable, unlike the partial data a scan/search result returns.
+export function openEditWineSheet(bottle, onSaved) {
+  sheetMode = 'edit';
+  editingWineId = bottle.wine_id;
+  editingBottleId = bottle.id;
+  editSavedCallback = onSaved ?? null;
+  document.getElementById('recognize-title').textContent = 'Modifica vino';
+  document.getElementById('recognize-save').textContent = 'Salva modifiche';
+
+  document.getElementById('rec-name').value = bottle.name ?? '';
+  document.getElementById('rec-producer').value = bottle.producer ?? '';
+  document.getElementById('rec-country').value = bottle.country ?? '';
+  document.getElementById('rec-region').value = bottle.region ?? '';
+  document.getElementById('rec-type').value = bottle.type ?? 'rosso';
+  document.getElementById('rec-vintage').value = bottle.vintage ?? '';
+  document.getElementById('rec-grape').value = bottle.grape_variety ?? '';
+  document.getElementById('rec-denomination').value = bottle.denomination ?? '';
+  resetNoteComposer();
+  pendingImageUrl = undefined;
+  pendingBarcode = undefined;
+  pendingPhotoFile = undefined;
+  document.getElementById('rec-photo-input').value = '';
+
+  const photoWrap = document.getElementById('recognize-photo-wrap');
+  const photoImg = document.getElementById('recognize-photo');
+  if (bottle.image_url) {
+    photoImg.src = bottle.image_url;
+    photoWrap.style.display = '';
+  } else {
+    photoWrap.style.display = 'none';
+  }
+  document.getElementById('recognize-rawtext').style.display = 'none';
+
+  document.getElementById('recognize-overlay').classList.add('open');
+}
+
 function closeRecognizeSheet() {
   document.getElementById('recognize-overlay').classList.remove('open');
+}
+
+// Reads the composer's current state and, if anything was actually filled
+// in, posts one new tasting note for the given bottle — silently does
+// nothing otherwise, since the whole section is optional in every context
+// it appears in.
+async function maybeSaveNote(bottleId) {
+  const text = document.getElementById('rec-note-text').value.trim();
+  const starsOn = document.querySelectorAll('#rec-note-stars span.on').length;
+  const profile = recognizeTaste ? readTastingProfile(recognizeTaste) : null;
+  const profileEmpty = !profile || isTastingProfileEmpty(profile);
+  if (!text && starsOn === 0 && profileEmpty) return;
+  const rating = starsOn || (text ? 3 : 0);
+  try {
+    await api.post(`/api/bottles/${bottleId}/notes`, {
+      rating,
+      text,
+      flavorTags: profile?.flavorTags ?? [],
+      foodPairings: profile?.foodPairings ?? [],
+      tasteAcidity: profile?.tasteAcidity,
+      tasteSweetness: profile?.tasteSweetness,
+      tasteTannin: profile?.tasteTannin,
+      tasteBody: profile?.tasteBody,
+    });
+  } catch (err) {
+    console.error(err);
+    await alertModal('Vino salvato, ma il salvataggio della nota di degustazione è fallito.');
+  }
 }
 
 async function saveRecognizedWine() {
@@ -411,6 +511,27 @@ async function saveRecognizedWine() {
   const grapeVariety = document.getElementById('rec-grape').value.trim() || undefined;
   const denomination = document.getElementById('rec-denomination').value.trim() || undefined;
 
+  if (sheetMode === 'edit') {
+    try {
+      await api.patch(`/api/wines/${editingWineId}`, { name, producer, country, region, type, vintage, grapeVariety, denomination });
+      closeRecognizeSheet();
+      await maybeSaveNote(editingBottleId);
+      if (pendingPhotoFile) {
+        try {
+          await uploadBottlePhoto(editingBottleId, pendingPhotoFile);
+        } catch (err) {
+          console.error(err);
+          await alertModal('Vino modificato, ma il caricamento della foto è fallito.');
+        }
+      }
+      editSavedCallback?.();
+    } catch (err) {
+      console.error(err);
+      await alertModal('Impossibile salvare le modifiche: controlla i dati inseriti e riprova.');
+    }
+    return;
+  }
+
   // imageUrl comes from Open Food Facts, outside user control and outside
   // the review form's editable fields — drop it rather than sending an
   // oversized value the backend will reject (imageUrl is cosmetic, never
@@ -421,12 +542,15 @@ async function saveRecognizedWine() {
     const wine = await api.post('/api/wines', { name, producer, country, region, type, vintage, grapeVariety, denomination, imageUrl, barcode: pendingBarcode });
     closeRecognizeSheet();
     const bottle = await addWineToCellar(wine.id);
-    if (bottle && pendingPhotoFile) {
-      try {
-        await uploadBottlePhoto(bottle.id, pendingPhotoFile);
-      } catch (err) {
-        console.error(err);
-        await alertModal('Vino salvato, ma il caricamento della foto è fallito.');
+    if (bottle) {
+      await maybeSaveNote(bottle.id);
+      if (pendingPhotoFile) {
+        try {
+          await uploadBottlePhoto(bottle.id, pendingPhotoFile);
+        } catch (err) {
+          console.error(err);
+          await alertModal('Vino salvato, ma il caricamento della foto è fallito.');
+        }
       }
     }
   } catch (err) {

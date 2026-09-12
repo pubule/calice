@@ -1,6 +1,7 @@
 import { api } from '../api-client.js';
 import { escapeHtml, photoClass } from '../util.js';
 import { openLocationPicker, locationLabel } from './cellar.js';
+import { tastingProfileHtml, wireTastingProfile, resetTastingProfile, readTastingProfile, isTastingProfileEmpty, tasteSummary } from '../tasting-profile.js';
 
 let currentBottleId = null;
 let currentBottle = null; // same object reference cellar.js's currentBottles holds, mutated in place on save
@@ -13,11 +14,24 @@ function noteHtml(n) {
   // that would blank the whole notes list, and escape every string field
   // before it goes into innerHTML.
   const rating = Math.min(5, Math.max(0, Math.round(Number(n.rating)) || 0));
+  const flavorTags = Array.isArray(n.flavor_tags) ? n.flavor_tags : [];
+  const foodPairings = Array.isArray(n.food_pairings) ? n.food_pairings : [];
+  const tags = [...flavorTags, ...foodPairings];
+  const tagsHtml = tags.length
+    ? `<div class="chip-row" style="margin-top:8px;">${tags.map((t) => `<span class="chip">${escapeHtml(t)}</span>`).join('')}</div>`
+    : '';
+  // Only the leaning sides are shown (same dominant/neutral rule as the
+  // sliders themselves) — a full bar per axis would be a lot of visual
+  // weight to repeat for every historical note.
+  const summary = tasteSummary(n);
+  const summaryHtml = summary ? `<div class="note-taste-summary">${escapeHtml(summary)}</div>` : '';
   return `
     <div class="rev-card">
       <div class="rev-head"><div class="rev-avatar">${escapeHtml(n.author_name.slice(0, 2).toUpperCase())}</div><div class="rev-name">${escapeHtml(n.author_name)}</div><span class="rev-src">${new Date(n.created_at).toLocaleDateString('it-IT')}</span></div>
       <div class="rev-stars">${'★'.repeat(rating)}${'☆'.repeat(5 - rating)}</div>
-      <div class="rev-text">${escapeHtml(n.text)}</div>
+      ${n.text ? `<div class="rev-text">${escapeHtml(n.text)}</div>` : ''}
+      ${summaryHtml}
+      ${tagsHtml}
     </div>`;
 }
 
@@ -97,19 +111,47 @@ function wireStaticControls() {
     });
   });
 
-  document.querySelectorAll('.stars-input span').forEach((s, i, arr) => {
-    s.addEventListener('click', () => arr.forEach((el, j) => el.classList.toggle('on', j <= i)));
+  // Scoped per .stars-input group, not globally: the page now has two star
+  // groups (this sheet's note composer and the add/edit-wine sheet's), and a
+  // single document-wide querySelectorAll would toggle both groups together
+  // from either one's clicks.
+  document.querySelectorAll('.stars-input').forEach((group) => {
+    const spans = Array.from(group.querySelectorAll('span'));
+    spans.forEach((s, i) => {
+      s.addEventListener('click', () => spans.forEach((el, j) => el.classList.toggle('on', j <= i)));
+    });
   });
+
+  const detailTaste = document.getElementById('detail-taste');
+  detailTaste.innerHTML = tastingProfileHtml();
+  wireTastingProfile(detailTaste);
 
   document.getElementById('note-submit')?.addEventListener('click', async () => {
     if (currentBottleId == null) return;
     const textEl = document.getElementById('note-text');
     const text = textEl.value.trim();
-    if (!text) return;
-    const rating = document.querySelectorAll('.stars-input span.on').length || 3;
-    await api.post(`/api/bottles/${currentBottleId}/notes`, { rating, text });
+    const starsGroup = document.querySelector('#detail-overlay .stars-input');
+    const starsOn = starsGroup.querySelectorAll('span.on').length;
+    const profile = readTastingProfile(detailTaste);
+    if (!text && starsOn === 0 && isTastingProfileEmpty(profile)) return;
+    // 0 stars defaults to 3 only when there's free text to go with it (the
+    // original behaviour: writing something implies a decent rating even if
+    // no star was tapped) — a profile-only save with no stars stays 0
+    // (genuinely unrated) instead of inventing a rating nobody gave.
+    const rating = starsOn || (text ? 3 : 0);
+    await api.post(`/api/bottles/${currentBottleId}/notes`, {
+      rating,
+      text,
+      flavorTags: profile.flavorTags,
+      foodPairings: profile.foodPairings,
+      tasteAcidity: profile.tasteAcidity,
+      tasteSweetness: profile.tasteSweetness,
+      tasteTannin: profile.tasteTannin,
+      tasteBody: profile.tasteBody,
+    });
     textEl.value = '';
-    document.querySelectorAll('.stars-input span.on').forEach((s) => s.classList.remove('on'));
+    starsGroup.querySelectorAll('span.on').forEach((s) => s.classList.remove('on'));
+    resetTastingProfile(detailTaste);
     await loadNotes(currentBottleId);
   });
 

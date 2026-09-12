@@ -128,7 +128,8 @@
   /* Real form fields need >=16px or iOS Safari zooms the page in on focus. */
   input.search, select.search, textarea{ font-size:16px; }
   .chips{display:flex; gap:7px; overflow-x:auto; margin:0 -20px; padding:2px 20px;}
-  .chip{ flex:0 0 auto; padding:6px 13px; border-radius:9999px; font-size:11.5px; border:1px solid #e2e0d8; color:#756b60; white-space:nowrap; background:#ffffff; }
+  .chip-row{display:flex; flex-wrap:wrap; gap:8px;}
+  .chip{ flex:0 0 auto; padding:6px 13px; border-radius:9999px; font-size:11.5px; border:1px solid #e2e0d8; color:#756b60; white-space:nowrap; background:#ffffff; cursor:pointer; }
   .chip.active{background:#5b2333; border-color:#5b2333; color:#f7f5f0;}
   .chip-label{font-family:'JetBrains Mono',monospace; font-size:9.5px; letter-spacing:.08em; text-transform:uppercase; color:#a89b89; margin:2px 0 -4px;}
 
@@ -261,6 +262,23 @@
   .add-note .stars-input span{font-size:15px; color:#d8ceb8; cursor:pointer;}
   .add-note .stars-input span.on{color:#8a6a1a;}
   .add-note button{background:#5b2333; color:#f7f5f0; border:none; border-radius:9999px; padding:7px 14px; font-size:11px; font-weight:600; font-family:'Archivo',sans-serif; cursor:pointer;}
+
+  /* ---- profilo di gusto: card di sapore, slider, abbinamenti (tasting-profile.js) ---- */
+  .taste-profile{margin-top:8px; padding-top:16px; border-top:1px solid #ece8de; display:flex; flex-direction:column; gap:16px;}
+  .flavor-row{display:flex; gap:10px; overflow-x:auto; padding-bottom:2px; scrollbar-width:none;}
+  .flavor-row::-webkit-scrollbar{display:none;}
+  .flavor-card{flex:0 0 auto; width:84px; height:92px; border-radius:14px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; cursor:pointer; border:1.5px solid transparent; box-sizing:border-box;}
+  .flavor-card svg{width:26px; height:26px;}
+  .flavor-card span{font-size:10.5px; font-weight:600; color:#5c5346; text-align:center;}
+  .flavor-card.active{border-color:#5b2333;}
+  .flavor-chip-panel{display:flex; flex-wrap:wrap; gap:8px;}
+  .flavor-chip-panel.hidden{display:none;}
+  .taste-slider{display:flex; flex-direction:column; gap:7px;}
+  .taste-labels{display:flex; justify-content:space-between; font-size:11.5px; color:#a89b89;}
+  .taste-labels span.dominant{color:#241e1a; font-weight:600;}
+  .taste-track{position:relative; height:34px; border-radius:9999px; background:#efece3; touch-action:none; cursor:pointer;}
+  .taste-thumb{position:absolute; top:3px; width:46px; height:28px; border-radius:9999px; background:#5b2333;}
+  .note-taste-summary{font-size:10.5px; color:#8f8474; margin-top:4px;}
 
   /* ---- notifica finestra di consumo ---- */
   .alert-banner{display:flex; align-items:center; gap:10px; background:#faf3e6; border:1px solid #ecdcb8; border-radius:12px; padding:11px 12px;}

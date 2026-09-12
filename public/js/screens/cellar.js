@@ -1,6 +1,7 @@
 import { api } from '../api-client.js';
 import { escapeHtml, photoClass, skeletonBar } from '../util.js';
 import { openDetail } from './detail.js';
+import { openEditWineSheet } from './add.js';
 import { me } from '../auth.js';
 import { confirmModal, promptModal } from '../modal.js';
 
@@ -160,6 +161,13 @@ function renderList(bottles) {
       currentBottles = await api.get(`/api/cellars/${currentCellarId}/bottles`);
       renderChips();
       applyFilters();
+    }),
+  );
+  list.querySelectorAll('.edit-btn').forEach((btn) =>
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const bottle = currentBottles.find((b) => b.id === Number(btn.dataset.id));
+      if (bottle) openEditWineSheet(bottle, () => loadCellarData());
     }),
   );
   list.querySelectorAll('.cellar-row').forEach((row) =>

@@ -82,10 +82,59 @@ describe('tasting notes visibility', () => {
     expect(res.status).toBe(400);
   });
 
-  it('rejects an empty text with 400', async () => {
+  it('accepts an empty text alongside a tasting profile (tags/sliders/pairings are their own reason to save)', async () => {
     const res = await app.request(
       `/api/bottles/${bottleId}/notes`,
-      { method: 'POST', body: JSON.stringify({ rating: 4, text: '' }), headers: { ...ownerAuth, 'content-type': 'application/json' } },
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          rating: 0,
+          text: '',
+          flavorTags: ['Frutti di bosco', 'Prugna'],
+          foodPairings: ['Manzo'],
+          tasteAcidity: 35,
+          tasteSweetness: 20,
+          tasteTannin: 50,
+          tasteBody: 78,
+        }),
+        headers: { ...ownerAuth, 'content-type': 'application/json' },
+      },
+      env,
+    );
+    expect(res.status).toBe(200);
+    const note = await res.json<any>();
+    expect(note.text).toBe('');
+    expect(note.flavor_tags).toEqual(['Frutti di bosco', 'Prugna']);
+    expect(note.food_pairings).toEqual(['Manzo']);
+    expect(note.taste_acidity).toBe(35);
+    expect(note.taste_body).toBe(78);
+
+    const listed = await (await app.request(`/api/bottles/${bottleId}/notes`, { headers: ownerAuth }, env)).json<any[]>();
+    expect(listed[0].flavor_tags).toEqual(['Frutti di bosco', 'Prugna']);
+  });
+
+  it('rejects text over 2000 chars with 400', async () => {
+    const res = await app.request(
+      `/api/bottles/${bottleId}/notes`,
+      { method: 'POST', body: JSON.stringify({ rating: 4, text: 'x'.repeat(2001) }), headers: { ...ownerAuth, 'content-type': 'application/json' } },
+      env,
+    );
+    expect(res.status).toBe(400);
+  });
+
+  it('rejects a taste axis outside 0-100 with 400', async () => {
+    const res = await app.request(
+      `/api/bottles/${bottleId}/notes`,
+      { method: 'POST', body: JSON.stringify({ rating: 4, text: 'ok', tasteBody: 150 }), headers: { ...ownerAuth, 'content-type': 'application/json' } },
+      env,
+    );
+    expect(res.status).toBe(400);
+  });
+
+  it('rejects a non-array flavorTags with 400', async () => {
+    const res = await app.request(
+      `/api/bottles/${bottleId}/notes`,
+      { method: 'POST', body: JSON.stringify({ rating: 4, text: 'ok', flavorTags: 'Prugna' }), headers: { ...ownerAuth, 'content-type': 'application/json' } },
       env,
     );
     expect(res.status).toBe(400);

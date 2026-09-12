@@ -323,6 +323,76 @@ questo file è il riassunto "dove eravamo rimasti".
      regione nudo condiviso globalmente — vedi `CLAUDE.md` per la
      lezione generale (id brevi non sono garantiti unici tra paesi
      diversi in questo dataset).
+10. **Profilo di gusto per le note di degustazione** — implementato dopo
+    un giro di mockup su canvas (vedi punto 9 per lo stile: card icona per
+    categoria, riprese da "Ricco visivo"). Ogni nota di degustazione
+    (testo + stelle, già esistente) può ora includere anche: chip di
+    sapore raggruppati per categoria (Frutta/Floreale/Spezie/Legno/Altro),
+    4 slider di gusto trascinabili (Piatto↔Acidulo, Secco↔Dolce,
+    Morbido↔Tannico, Leggero↔Strutturato), e chip di abbinamento cibo —
+    tutto opzionale. Nuovo modulo condiviso
+    `public/js/tasting-profile.js` (`tastingProfileHtml()`,
+    `wireTastingProfile()`, `resetTastingProfile()`, `readTastingProfile()`,
+    `isTastingProfileEmpty()`, `tasteSummary()`) montato identico sia nel
+    foglio "Rivedi e conferma" (`add.js`, dietro `#recognize-taste`) sia
+    nella scheda dettaglio bottiglia (`detail.js`, dietro `#detail-taste`)
+    — stesso componente, non due implementazioni.
+    - **Migrazione `0006_tasting_profile.sql`**: aggiunge a
+      `tasting_notes` le colonne `flavor_tags`/`food_pairings` (JSON
+      testo, non esiste un tipo array in D1) e 4 colonne intere
+      `taste_acidity`/`taste_sweetness`/`taste_tannin`/`taste_body`
+      (0-100). `worker/src/routes/notes.ts` valida i nuovi campi
+      (array ≤20 elementi, ogni stringa ≤40 char; interi 0-100) e
+      parsa i JSON in array veri nella risposta (funzione `parseNote`).
+    - **`text` non è più obbligatorio** nella nota: prima il backend
+      rifiutava un testo vuoto con 400, ora una nota può esistere anche
+      solo con chip/slider/abbinamenti (o solo un rating). Il rating
+      resta 0-5; se non ci sono stelle selezionate resta il default a 3
+      **solo se c'è del testo** (comportamento originale invariato),
+      altrimenti resta genuinamente 0 (non inventato) — vedi il
+      commento in `detail.js`/`add.js` accanto a questo calcolo.
+    - **"Modifica" su una bottiglia in cantina, finalmente collegata**:
+      `cellar.js` aveva già un'icona a matita `.edit-btn` su ogni riga,
+      presente nel markup ma mai wired a nulla. Ora apre lo stesso
+      foglio "Rivedi e conferma" (`openEditWineSheet(bottle, onSaved)`,
+      esportata da `add.js`), precompilato con **tutti** i campi del
+      vino esistente (non solo nome/produttore) via `PATCH
+      /api/wines/:id` — nuovo endpoint, non esisteva prima.
+      `onSaved` è `() => loadCellarData()`, per rinfrescare la lista
+      subito dopo. La nota di degustazione in quel foglio parte sempre
+      vuota anche in modalità modifica (non c'è una nota "corrente" da
+      precompilare: le note sono voci di diario append-only, non un
+      record mutabile — editare i dati del vino e scrivere una nuova
+      nota di degustazione sono due azioni distinte che capitano solo
+      di condividere lo stesso foglio).
+    - **`PATCH /api/wines/:id` fa un overwrite completo, non un
+      coalesce**: a differenza di `PATCH /api/bottles/:id` (che usa
+      `coalesce(?, colonna)` per aggiornare solo i campi inviati), qui
+      il form invia sempre lo stato intero, quindi un campo opzionale
+      (regione/annata/vitigno/denominazione) svuotato deve arrivare al
+      DB come NULL — cosa che `coalesce` non può mai fare (non
+      distingue "campo omesso" da "campo esplicitamente svuotato").
+      Controllo di accesso: chiunque abbia quel vino in una cantina di
+      cui è membro può modificarlo (query su `bottles`+`cellar_members`
+      per `wine_id`), non solo chi l'ha creato — è un catalogo
+      condiviso fra cantine, non un record per-utente.
+    - **Bug corretto durante l'implementazione, non prima**: la nuova
+      nota nel foglio "Rivedi e conferma" ha il suo gruppo di stelle
+      (`#rec-note-stars`), separato da quello della scheda dettaglio
+      (`#note-text` + `.stars-input` in `#detail-overlay`). Il wiring
+      esistente in `detail.js` selezionava `.stars-input span`
+      **globalmente su tutto il documento** — con due gruppi di stelle
+      ora presenti insieme nel DOM (uno per foglio, entrambi sempre
+      presenti anche se solo uno è visibile), un click in un gruppo
+      avrebbe acceso/spento le stelle dell'**altro** gruppo insieme al
+      proprio. Corretto iterando `.stars-input` come contenitori
+      separati e scopando la ricerca `span` a ciascuno.
+    - Testato in locale con `wrangler dev` + Playwright sulle tre
+      strade (aggiunta manuale con profilo, modifica vino da matita in
+      Cantina con verifica campi precompilati e nota sempre vuota, nota
+      di degustazione dalla scheda dettaglio) e con la suite di test
+      del worker (120 test, inclusi 7 nuovi/aggiornati per `notes.ts` e
+      4 nuovi per `PATCH /api/wines/:id`).
 
 ## Cose note, non (ancora) da rifare
 

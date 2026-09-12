@@ -181,3 +181,82 @@ describe('POST /api/wines', () => {
     expect(res.status).toBe(400);
   });
 });
+
+describe('PATCH /api/wines/:id', () => {
+  async function setUpWineInACellar(email: string) {
+    const auth = signup(email);
+    await app.request('/api/auth/me', { headers: auth }, env); // creates the user + their first cellar
+    const cellarId = (await (await app.request('/api/cellars', { headers: auth }, env)).json<any[]>())[0].id;
+    const wine = await env.DB
+      .prepare(`insert into wines (name, producer, region, country, type, vintage, grape_variety, denomination, source) values (?, ?, ?, ?, ?, ?, ?, ?, 'custom') returning id`)
+      .bind('Le due torri rebel', 'Le Due Torri', 'Veneto', 'Italia', 'bianco', 2021, 'Garganega', 'IGT')
+      .first<{ id: number }>();
+    await app.request(
+      `/api/cellars/${cellarId}/bottles`,
+      { method: 'POST', body: JSON.stringify({ wineId: wine!.id, quantity: 1 }), headers: { ...auth, 'content-type': 'application/json' } },
+      env,
+    );
+    return { auth, wineId: wine!.id };
+  }
+
+  it('edits every field, including clearing an optional one back to null', async () => {
+    const { auth, wineId } = await setUpWineInACellar('editor1@b.com');
+    const res = await app.request(
+      `/api/wines/${wineId}`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify({ name: 'Le due torri rebel', producer: 'Le Due Torri', country: 'Italia', region: 'Veneto', type: 'bianco', vintage: 2021, grapeVariety: 'Garganega', denomination: null }),
+        headers: { ...auth, 'content-type': 'application/json' },
+      },
+      env,
+    );
+    expect(res.status).toBe(200);
+    const body = await res.json<{ denomination: string | null; grape_variety: string }>();
+    expect(body.denomination).toBeNull();
+    expect(body.grape_variety).toBe('Garganega');
+  });
+
+  it('rejects a caller who has no cellar containing this wine with 404', async () => {
+    const { wineId } = await setUpWineInACellar('editor2@b.com');
+    const outsider = signup('outsider-edit@b.com');
+    await app.request('/api/auth/me', { headers: outsider }, env);
+    const res = await app.request(
+      `/api/wines/${wineId}`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify({ name: 'Hijacked', producer: 'x', country: 'Italia', type: 'rosso' }),
+        headers: { ...outsider, 'content-type': 'application/json' },
+      },
+      env,
+    );
+    expect(res.status).toBe(404);
+  });
+
+  it('rejects a missing required field with 400', async () => {
+    const { auth, wineId } = await setUpWineInACellar('editor3@b.com');
+    const res = await app.request(
+      `/api/wines/${wineId}`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify({ name: '', producer: 'Le Due Torri', country: 'Italia', type: 'bianco' }),
+        headers: { ...auth, 'content-type': 'application/json' },
+      },
+      env,
+    );
+    expect(res.status).toBe(400);
+  });
+
+  it('rejects an invalid type with 400', async () => {
+    const { auth, wineId } = await setUpWineInACellar('editor4@b.com');
+    const res = await app.request(
+      `/api/wines/${wineId}`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify({ name: 'x', producer: 'y', country: 'Italia', type: 'not-a-type' }),
+        headers: { ...auth, 'content-type': 'application/json' },
+      },
+      env,
+    );
+    expect(res.status).toBe(400);
+  });
+});

@@ -18,7 +18,10 @@ beforeEach(async () => {
     'DELETE FROM activity_feed; DELETE FROM photos; DELETE FROM tasting_notes; DELETE FROM bottles; DELETE FROM wines; DELETE FROM cellar_members; DELETE FROM cellars; DELETE FROM users;',
   );
   const wine = await env.DB
-    .prepare(`insert into wines (name, producer, country, type, source, image_url) values ('Barolo DOCG', 'Elio Altare', 'Italia', 'rosso', 'catalog', 'https://x/barolo.jpg') returning id`)
+    .prepare(
+      `insert into wines (name, producer, country, type, source, image_url, grape_variety, denomination)
+       values ('Barolo DOCG', 'Elio Altare', 'Italia', 'rosso', 'catalog', 'https://x/barolo.jpg', 'Nebbiolo', 'Barolo DOCG') returning id`,
+    )
     .first<{ id: number }>();
   wineId = wine!.id;
 });
@@ -41,6 +44,10 @@ describe('bottles', () => {
     expect(bottles[0].score).toBeNull();
     expect(bottles[0].name).toBe('Barolo DOCG');
     expect(bottles[0].image_url).toBe('https://x/barolo.jpg');
+    // Needed so the "Modifica" edit sheet can pre-fill every wine field, not
+    // just the ones already selected here before this feature existed.
+    expect(bottles[0].grape_variety).toBe('Nebbiolo');
+    expect(bottles[0].denomination).toBe('Barolo DOCG');
 
     const feed = await env.DB.prepare('select count(*) as n from activity_feed where action = ?').bind('added').first<{ n: number }>();
     expect(feed!.n).toBe(1);

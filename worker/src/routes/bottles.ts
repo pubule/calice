@@ -12,6 +12,7 @@ cellarBottleRoutes.get('/:cellarId/bottles', async (c) => {
   const rows = await c.env.DB
     .prepare(
       `select bottles.*, wines.name, wines.producer, wines.region, wines.country, wines.type, wines.vintage, wines.image_url,
+              wines.grape_variety, wines.denomination,
               (select avg(rating) from tasting_notes where tasting_notes.bottle_id = bottles.id) as score,
               cellar_elements.name as element_name, cellar_elements.kind as element_kind
        from bottles

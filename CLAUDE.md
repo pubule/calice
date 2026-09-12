@@ -461,3 +461,71 @@ deve indicizzare/matchare per **coppia** `(countryId, regionId)`, mai per
 `regionId` da solo — anche se sembra improbabile una collisione, non lo
 è (sigle di stati/province ricorrono tra paesi: `wa`, `sa`, `ca`... da
 verificare caso per caso prima di assumere unicità globale).
+
+## `wrangler d1 migrations apply` e `wrangler dev`: `--persist-to` di default dipende da dove sta il file di config, non dalla cwd
+
+Trovato testando in locale la migrazione del profilo di gusto
+(`HANDOFF.md` punto 10). Lanciando `wrangler d1 migrations apply
+--config worker/wrangler.jsonc` da una parte e poi `wrangler dev
+--config wranglertest.jsonc` (config di scratch alla radice del repo,
+vedi sezione più sotto) dall'altra, il secondo comando falliva con "no
+such table: users" **anche se la migrazione era già stata applicata**.
+Causa: senza un `--persist-to` esplicito, wrangler risolve la directory
+di stato locale di D1 **relativa alla posizione del file di config**,
+non alla cwd da cui lo si lancia — due config in due directory diverse
+producono due SQLite fisicamente diversi anche con lo stesso
+`database_id`/binding, senza nessun errore che lo segnali.
+
+**Fix**: passare lo stesso `--persist-to <path assoluto>` esplicito a
+**entrambi** i comandi (sia `migrations apply` sia `dev`), così puntano
+alla stessa directory di stato indipendentemente da quale config
+usano.
+
+## Endpoint PATCH che sovrascrive dati opzionali: mai `coalesce`, serve un overwrite completo
+
+Deciso per `PATCH /api/wines/:id` (`HANDOFF.md` punto 10), ma è una
+regola generale per ogni futuro endpoint PATCH in questo progetto.
+`coalesce(?, colonna)` (già usato in `PATCH /api/bottles/:id`) va bene
+**solo** quando il client invia aggiornamenti genuinamente parziali
+(campo omesso = non toccare), perché `coalesce` non può mai distinguere
+"campo omesso" da "campo esplicitamente svuotato a null" — un client
+che invia sempre lo stato intero del form e prova a svuotare un campo
+opzionale (es. "Regione") con `coalesce` fallisce silenziosamente a
+cancellarlo nel DB.
+
+**Regola**: se il client invia sempre lo stato completo del form (come
+i fogli "Rivedi e conferma"/modifica vino), l'endpoint deve fare un
+overwrite completo di tutti i campi ad ogni chiamata, accettando `null`
+esplicito per i campi opzionali — pattern già usato in
+`PATCH /api/bottles/:id/location`, riusato per `wines.ts`. Usare
+`coalesce` solo per endpoint dove il client invia davvero un
+sottoinsieme dei campi.
+
+## Selettori DOM globali (`document.querySelectorAll`) su componenti che possono comparire più volte nella pagina
+
+Trovato mentre si aggiungeva un secondo gruppo di stelle
+(`#rec-note-stars`) accanto a quello già esistente nella scheda
+dettaglio (`HANDOFF.md` punto 10). In questo progetto i fogli/overlay
+convivono **sempre** tutti nel DOM (solo uno è visibile per volta, gli
+altri sono lì ma nascosti) — quindi qualunque markup ripetuto tra due
+fogli (stelle, chip, slider...) esiste in **due o più copie
+contemporaneamente** anche quando sembra essercene solo una visibile
+sullo schermo in quel momento.
+
+Il wiring esistente di `detail.js` selezionava `.stars-input span`
+**globalmente su tutto il documento**: funzionava finché esisteva un
+solo gruppo di stelle nella pagina, ma è diventato un bug di
+cross-wiring reale (click su un gruppo che accende le stelle
+dell'altro) nel momento in cui è comparso un secondo gruppo altrove nel
+DOM, anche se logicamente "in un altro foglio".
+
+**Regola**: qualunque nuovo componente interattivo ripetibile
+(stelle, chip, slider, contenitori generici) va sempre wired iterando
+prima il contenitore che lo identifica univocamente (es. ogni
+`.stars-input`) e scopando la query dei figli a quel contenitore
+(`container.querySelectorAll(...)`), mai con un selettore
+`document.querySelectorAll` diretto sui figli — anche se al momento in
+cui si scrive il codice sembra esserci una sola istanza nella pagina.
+Il modulo condiviso `public/js/tasting-profile.js` segue già questo
+pattern (tutte le funzioni prendono un `root` e scopano le query a
+quello) proprio per evitarlo in partenza.
