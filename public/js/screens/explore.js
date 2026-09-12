@@ -77,7 +77,16 @@ function detailTemplate(name, wines, grapes, categories) {
       </div>`,
     )
     .join('');
-  const grapesHtml = grapes.map((g) => `<div class="chip">${g}</div>`).join('');
+  const grapesHtml = grapes
+    .map(
+      (g) => `
+      <div class="list-row">
+        <div class="lbody">
+          <div class="lname">${g}</div>
+        </div>
+      </div>`,
+    )
+    .join('');
   const categoriesHtml = categories
     .map(
       (c) => `
@@ -97,9 +106,7 @@ function detailTemplate(name, wines, grapes, categories) {
       <button data-tab="categories">Categorie</button>
     </div>
     <div class="explore-tab-panel" data-tab-panel="wines">${winesHtml}</div>
-    <div class="explore-tab-panel hidden" data-tab-panel="grapes">
-      <div class="chips" style="overflow-x:visible; flex-wrap:wrap;">${grapesHtml}</div>
-    </div>
+    <div class="explore-tab-panel hidden" data-tab-panel="grapes">${grapesHtml}</div>
     <div class="explore-tab-panel hidden" data-tab-panel="categories">${categoriesHtml}</div>`;
 }
 

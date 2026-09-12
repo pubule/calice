@@ -145,6 +145,11 @@ questo file è il riassunto "dove eravamo rimasti".
    per cui Home usa la stessa tecnica). `#view-explore .chip-label` è
    diventata morta con questo cambio (non c'è più nessun `.chip-label`
    nel template) ed è stata tolta dalla regola condivisa in `app.css`.
+   Il tab "Uve" è stato poi allineato allo stile del tab "Vini" su
+   richiesta esplicita: da chip a pillola (`.chip`, layout orizzontale)
+   a `.list-row`/`.lbody`/`.lname` (elenco verticale con separatori),
+   stessa classe già usata dai vini — senza `.type-dot` perché le uve
+   non hanno un colore/tipo associato nei dati.
    - **Liste vini espanse da 1-3 a fino a 10 per regione/paese**, in
      `wine-atlas.js`. Solo aggiunte in coda — le entry già curate (le
      prime 1-3 per regione) sono rimaste **byte-identiche**, verificato
