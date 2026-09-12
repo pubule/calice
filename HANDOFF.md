@@ -224,6 +224,40 @@ questo file è il riassunto "dove eravamo rimasti".
      come "bianco" (è un vino fortificato, lo schema dell'app non ha una
      categoria dedicata); Sierras de Málaga (DO con produzione mista,
      confidenza bassa sulla correzione).
+8. **Transizione di caricamento Home/Statistiche** — segnalato dall'utente:
+   "la pagina si carica a pezzi e si vede". Prima di implementare, tre
+   mockup HTML (dissolvenza semplice, fade+assestamento, tutto insieme a
+   cascata) mostrati su una canvas; l'utente ha scelto la terza (C).
+   Causa reale in `home.js`: `mountHome()` faceva quattro `await` in
+   sequenza (utente → cantina → bottiglie → attività), quindi il nome
+   compariva ~subito e il resto arrivava in momenti diversi tra loro —
+   non un problema di CSS ma di come i dati venivano richiesti. Fix:
+   - Le quattro chiamate ora partono in parallelo con un unico
+     `Promise.all` (la dipendenza cantina→bottiglie resta annidata dentro
+     un solo branch del `Promise.all`, le altre tre sono indipendenti):
+     tutti i dati sono pronti nello stesso istante, non più sfalsati.
+   - Da lì, la sequenza visiva che si vede non è più un sintomo ma una
+     scelta: `revealSections()` in `home.js` rimuove/riaggiunge
+     `reveal-target` su cinque elementi (nome, stat, alert, voce Esplora,
+     blocco tab) e aggiunge `revealed` con 55ms di scarto ciascuno,
+     top-to-bottom — CSS in `app.css` (`.reveal-target`/`.revealed`,
+     opacity+translateY, rispetta `prefers-reduced-motion`). Stessa
+     tecnica applicata a `stats.js` (4 sezioni, `mountStats()` aveva già
+     un solo blocco di rendering dopo l'unica catena di await necessaria
+     — cantina→bottiglie è una dipendenza vera, non parallelizzabile —
+     mancava solo la cascata visiva, ora aggiunta).
+   - **Cantina (`cellar.js`) lasciata invariata deliberatamente**: la
+     schermata principale è un'unica lista (non tre widget separati come
+     Home), quindi non ha lo stesso sintomo di "pezzi che compaiono in
+     momenti diversi" — l'unica sequenza di await lì (bottiglie →
+     elementi → wishlist) alimenta rispettivamente la lista principale,
+     un overlay chiuso di default, e un tab non attivo di default, quindi
+     l'utente non vede comunque nulla arrivare a pezzi.
+   - Verificato in locale (`wrangler dev` + Playwright, endpoint
+     `/api/cellars/*/bottles` e `/api/me/activity` rallentati
+     artificialmente) che gli eventi `revealed` arrivano a ~55ms esatti
+     l'uno dall'altro e che tutti i dati risultano pronti nello stesso
+     istante (niente più comparsa progressiva del nome prima del resto).
 
 ## Cose note, non (ancora) da rifare
 
@@ -269,6 +303,13 @@ questo file è il riassunto "dove eravamo rimasti".
   una fonte dati affidabile (vedi sopra), non per scelta di design — se
   si trova un pacchetto npm con i confini regionali di uno di questi, si
   può aggiungere seguendo lo stesso pattern di `wine-atlas.js`.
+- Pattern di reveal a cascata (`.reveal-target`/`.revealed` in
+  `app.css`, `revealSections()` in `home.js`/`stats.js`): riusarlo così
+  com'è per qualunque altra schermata con più sezioni indipendenti che
+  oggi appaiono in un unico blocco dopo l'ultimo `await`. Prerequisito:
+  i dati vanno prima resi effettivamente simultanei (`Promise.all` al
+  posto di `await` in sequenza) — la cascata è presentazione voluta, non
+  un modo per camuffare un caricamento ancora sfalsato.
 
 ## Prossimi passi possibili (non richiesti, solo spunti)
 

@@ -359,3 +359,54 @@ convenzionale di un paese anche se minoritari per ettari coltivati
 per il Sudafrica, Carménère per il Cile) — non "correggerli" di nuovo
 verso il vitigno più coltivato in assoluto, è una scelta editoriale
 consapevole.
+
+## Cascata di reveal (Home/Statistiche): prima la causa, poi l'effetto
+
+Segnalazione utente: "la pagina si carica a pezzi e si vede" (Home).
+Prima di scrivere codice, tre mockup HTML (dissolvenza semplice,
+fade+assestamento, tutto insieme a cascata) su una canvas di design —
+l'utente ha scelto il terzo, che a differenza degli altri due cambia
+anche la causa del problema, non solo il suo effetto visivo.
+
+**Causa reale**: `mountHome()` faceva quattro `await` in sequenza
+(utente → cantina → bottiglie → attività). Ogni sezione popolava il DOM
+non appena il proprio dato arrivava, quindi il nome utente compariva
+quasi subito e il resto arrivava sfalsato — non un problema di
+transizioni CSS ma di *quando* i dati diventano disponibili. Un fade
+aggiunto sopra a quello (le direzioni A/B dei mockup) avrebbe reso lo
+scatto più morbido senza eliminare lo sfasamento reale.
+
+**Fix, in due parti**:
+1. Le quattro fetch ora partono tutte insieme in un unico `Promise.all`
+   (la dipendenza cantina→bottiglie resta annidata dentro un branch: non
+   si può recuperare l'id della cantina prima di averla scaricata). Ogni
+   sezione popola il DOM solo dopo che *tutti* i dati sono pronti, quindi
+   arrivano nello stesso istante — non più in momenti diversi tra loro.
+2. Da lì, `revealSections()` (`home.js`/`stats.js`) applica una cascata
+   *voluta*, non più un sintomo: rimuove `reveal-target`/`revealed` da
+   ogni sezione, forza un reflow (`void document.body.offsetHeight`),
+   poi riaggiunge `reveal-target` (opacity 0) e con `setTimeout(…, i*55)`
+   aggiunge `revealed` (fade+translateY, CSS in `app.css`) sezione per
+   sezione, dall'alto in basso.
+
+**Perché il force-reflow**: senza quella riga, rimuovere e poi
+riaggiungere `reveal-target` nello stesso tick può essere coalescato dal
+browser in un solo ricalcolo di stile — il "prima" (opacity 0, appena
+riaggiunto) non viene mai dipinto separatamente, quindi quando
+`revealed` arriva via `setTimeout` non c'è alcuna transizione da cui
+partire e la sezione scatta direttamente al valore finale invece di
+sfumare. Leggere `document.body.offsetHeight` forza il browser a
+calcolare e "committare" lo stile prima di procedere.
+
+**Ordine che conta**: `revealSections()` va chiamato *dopo* che ogni
+sezione ha già il suo `innerHTML`/testo reale — non prima. Applica solo
+la transizione di comparsa, non sostituisce il rendering: se lo si
+chiama con lo skeleton ancora nel DOM, è lo skeleton a dissolversi in
+vista, non il contenuto vero.
+
+**Cantina (`cellar.js`) lasciata fuori deliberatamente**: la sua
+schermata principale è un'unica lista, non più widget indipendenti come
+Home — non ha lo stesso sintomo di "pezzi visibili in momenti diversi",
+quindi non è stata toccata. Se in futuro Cantina mostra più sezioni
+indipendenti visibili insieme, riusare lo stesso pattern
+`reveal-target`/`revealed`, non inventarne uno nuovo.

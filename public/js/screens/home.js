@@ -111,24 +111,51 @@ function renderAll() {
   renderFeed();
 }
 
+// Order top-to-bottom matches the visual layout, so the cascade reads as one
+// thing loading together rather than pieces arriving in an arbitrary order.
+const REVEAL_IDS = ['home-greet-name', 'home-stats', 'home-alerts', 'home-explore-entry', 'home-tabs-block'];
+const REVEAL_STEP_MS = 55;
+
+// Called once, after every section's real content is already in the DOM
+// (mountHome awaits everything via Promise.all first) — the stagger here is
+// deliberate presentation, not a symptom of data arriving at different times.
+function revealSections() {
+  const els = REVEAL_IDS.map((id) => document.getElementById(id)).filter(Boolean);
+  els.forEach((el) => el.classList.remove('reveal-target', 'revealed'));
+  // Force a style flush so the removal above lands in its own frame instead
+  // of being coalesced with the class added right below — otherwise the
+  // browser can skip straight to the end state and the transition never runs.
+  void document.body.offsetHeight;
+  els.forEach((el, i) => {
+    el.classList.add('reveal-target');
+    setTimeout(() => el.classList.add('revealed'), i * REVEAL_STEP_MS);
+  });
+}
+
 export async function mountHome() {
   selectHomeTab('soon');
   showLoadingSkeletons();
-  const user = await me();
-  document.getElementById('home-greet-name').textContent = user.name;
 
-  const cellars = await api.get('/api/cellars');
-  const cellar = cellars[0];
-  // quantity/price_paid come from the API as unvalidated JSON (no backend
-  // schema check) — coerce to Number here so a malicious non-numeric string
-  // can't survive into arithmetic (string concatenation) and then into the
-  // unescaped stat/banner HTML below.
-  const bottles = (await api.get(`/api/cellars/${cellar.id}/bottles`)).map((b) => ({
-    ...b,
-    quantity: Number(b.quantity) || 0,
-    price_paid: b.price_paid != null ? Number(b.price_paid) || 0 : null,
-  }));
-  const activity = await api.get('/api/me/activity');
+  // All four sources fetched in parallel (was four sequential awaits) so
+  // every section becomes ready at the same instant — the only staggering
+  // left is the deliberate one in revealSections() below.
+  const [user, bottles, activity] = await Promise.all([
+    me(),
+    api.get('/api/cellars').then((cellars) =>
+      // quantity/price_paid come from the API as unvalidated JSON (no
+      // backend schema check) — coerce to Number here so a malicious
+      // non-numeric string can't survive into arithmetic (string
+      // concatenation) and then into the unescaped stat/banner HTML below.
+      api.get(`/api/cellars/${cellars[0].id}/bottles`).then((rows) => rows.map((b) => ({
+        ...b,
+        quantity: Number(b.quantity) || 0,
+        price_paid: b.price_paid != null ? Number(b.price_paid) || 0 : null,
+      }))),
+    ),
+    api.get('/api/me/activity'),
+  ]);
+
+  document.getElementById('home-greet-name').textContent = user.name;
 
   const totalBottles = bottles.reduce((n, b) => n + b.quantity, 0);
   const totalValue = bottles.reduce((n, b) => n + (b.price_paid || 0) * b.quantity, 0);
@@ -164,4 +191,6 @@ export async function mountHome() {
   document.querySelectorAll('#home-alerts .alert-dismiss').forEach((btn) => {
     btn.addEventListener('click', () => btn.closest('.alert-banner').remove());
   });
+
+  revealSections();
 }

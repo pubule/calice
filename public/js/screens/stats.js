@@ -54,6 +54,23 @@ function skeletonBarRow() {
   return `<div class="region-row">${skeletonBar('74px', 10)}${skeletonBar('100%', 8)}${skeletonBar('22px', 10)}</div>`;
 }
 
+// Same cascade as home.js: all four sections are already set together right
+// after the single await chain resolves, so any stagger here is deliberate
+// presentation (see app.css .reveal-target), not sections arriving at
+// different times.
+const REVEAL_IDS = ['stats-summary', 'stats-type', 'stats-country', 'stats-region'];
+const REVEAL_STEP_MS = 55;
+
+function revealSections() {
+  const els = REVEAL_IDS.map((id) => document.getElementById(id)).filter(Boolean);
+  els.forEach((el) => el.classList.remove('reveal-target', 'revealed'));
+  void document.body.offsetHeight;
+  els.forEach((el, i) => {
+    el.classList.add('reveal-target');
+    setTimeout(() => el.classList.add('revealed'), i * REVEAL_STEP_MS);
+  });
+}
+
 export async function mountStats() {
   document.getElementById('stats-summary').innerHTML = `
     <div class="stat">${skeletonBar('60%', 20)}</div>
@@ -91,4 +108,6 @@ export async function mountStats() {
   document.getElementById('stats-type').innerHTML = typeRows(bottles);
   document.getElementById('stats-country').innerHTML = barRows(groupBy(bottles, (b) => b.country));
   document.getElementById('stats-region').innerHTML = barRows(groupBy(bottles, (b) => b.region || b.country));
+
+  revealSections();
 }
