@@ -500,3 +500,20 @@
   .explore-no-data{padding:6px 0 10px; text-align:center; color:#a89b89; font-size:12.5px; line-height:1.5;}
   .explore-tab-panel{margin-top:14px;}
   .explore-tab-panel.hidden{display:none;}
+  /* Wine rows expand in place to show their grape composition — .wine-item
+     wraps the clickable row + its (initially collapsed) grape panel so the
+     row-separator border lives on the wrapper, not on .list-row itself
+     (.list-row's own :last-of-type border rule is shared with other screens
+     and would otherwise fire on every row here, since each is the only
+     .list-row inside its .wine-item). */
+  .wine-item{border-bottom:1px solid #ece8de;}
+  .wine-item:last-of-type{border-bottom:none;}
+  .wine-item .list-row{border-bottom:none;}
+  .wine-row{cursor:pointer;}
+  .wine-row .chevron{width:14px; height:14px; flex-shrink:0; color:#c8c0b0; transition:transform .2s ease;}
+  .wine-row.open .chevron{transform:rotate(180deg);}
+  .wine-grapes{display:none; flex-wrap:wrap; gap:6px; padding:0 2px 12px 19px;}
+  .wine-grapes.open{display:flex;}
+  .grape-chip{display:inline-flex; align-items:center; gap:5px; background:#f4f2ea; border-radius:9999px; padding:4px 10px 4px 8px; font-size:11px; color:#5c5346;}
+  .grape-chip .dot{width:6px; height:6px; border-radius:50%; flex-shrink:0;}
+  .grape-chip.muted{background:none; padding-left:0; color:#a89b89; font-style:italic;}

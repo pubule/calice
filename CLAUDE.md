@@ -416,3 +416,28 @@ niente da cui sfumare) così ogni cambio di vista è un fade-in di
 dal reveal dei dati sopra: questo anima il **cambio di schermata**, quello
 anima il passaggio da skeleton a contenuto reale dentro la stessa
 schermata.
+
+## Righe espandibili in lista: mai un pannello come fratello diretto di `.list-row`
+
+Trovato implementando l'espansione "vino → uve che lo compongono" in
+Esplora (vedi `HANDOFF.md` per lo stato di questa feature, ancora in
+corso sul lato dati). `.list-row` ha una regola condivisa con altre
+schermate: `.list-row:last-of-type{border-bottom:none}` — pensata per
+un elenco piatto dove l'ultimo elemento non deve avere il bordo
+inferiore.
+
+Se si aggiunge un pannello espandibile come **fratello diretto** di
+`.list-row` (es. `<div class="list-row">...</div><div class="detail-panel">...</div>`
+ripetuto per ogni riga), `:last-of-type` smette di individuare "l'ultima
+riga della lista": ora individua "l'ultimo `.list-row` dentro il suo
+genitore immediato" — e siccome ogni `.list-row` è di nuovo l'unico
+`.list-row` tra i figli del suo contenitore (l'altro figlio è un `div`
+di classe diversa), la regola scatta su **ogni singola riga**, non solo
+sull'ultima: tutti i separatori spariscono.
+
+**Fix**: avvolgere riga + pannello in un contenitore dedicato (qui
+`.wine-item`), spostare il bordo separatore lì (`.wine-item{border-bottom:...}`,
+`.wine-item:last-of-type{border-bottom:none}`), e togliere il bordo da
+`.list-row` dentro quel contesto (`.wine-item .list-row{border-bottom:none}`).
+Vale ogni volta che si aggiunge un pannello/dettaglio accanto a un
+`.list-row` esistente altrove nel progetto — non solo per le uve.

@@ -98,29 +98,33 @@ function renderDropdownAndHint(country) {
     .join('');
 }
 
-function detailTemplate(name, wines, grapes, categories) {
+// Wines and grapes used to be separate tabs (a wine list, and a flat list of
+// the region's 3 principal grapes with no link back to which wine used
+// which). Merged on request: each wine row now expands in place to show its
+// own grape composition, so "Uve" as a standalone tab is gone — the
+// region/country-level `grapes` field this used to read is unused now.
+function detailTemplate(name, wines, categories) {
   const winesHtml = wines
-    .map(
-      (w) => `
-      <div class="list-row">
-        <span class="type-dot" style="background:${TYPE_COLOR[w.type]}"></span>
-        <div class="lbody">
-          <div class="lname">${w.name}</div>
-          <div class="lsub">${w.appellation} &middot; ${TYPE_LABEL[w.type]}</div>
+    .map((w, i) => {
+      const grapesHtml = (w.grapes || [])
+        .map(
+          (g) => `
+        <span class="grape-chip"><i class="dot" style="background:${TYPE_COLOR[GRAPE_COLOR[g] || DEFAULT_GRAPE_COLOR]}"></i>${g}</span>`,
+        )
+        .join('');
+      return `
+      <div class="wine-item">
+        <div class="list-row wine-row" data-idx="${i}">
+          <span class="type-dot" style="background:${TYPE_COLOR[w.type]}"></span>
+          <div class="lbody">
+            <div class="lname">${w.name}</div>
+            <div class="lsub">${w.appellation} &middot; ${TYPE_LABEL[w.type]}</div>
+          </div>
+          <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
         </div>
-      </div>`,
-    )
-    .join('');
-  const grapesHtml = grapes
-    .map(
-      (g) => `
-      <div class="list-row">
-        <span class="type-dot" style="background:${TYPE_COLOR[GRAPE_COLOR[g] || DEFAULT_GRAPE_COLOR]}"></span>
-        <div class="lbody">
-          <div class="lname">${g}</div>
-        </div>
-      </div>`,
-    )
+        <div class="wine-grapes" data-idx="${i}">${grapesHtml || '<span class="grape-chip muted">Composizione non disponibile</span>'}</div>
+      </div>`;
+    })
     .join('');
   const categoriesHtml = categories
     .map(
@@ -137,27 +141,35 @@ function detailTemplate(name, wines, grapes, categories) {
     <h3 style="font-family:'Newsreader',serif; font-weight:500; font-size:18px; letter-spacing:-0.01em; margin:0 0 16px;">${name}</h3>
     <div class="segmented">
       <button class="active" data-tab="wines">Vini</button>
-      <button data-tab="grapes">Uve</button>
       <button data-tab="categories">Categorie</button>
     </div>
     <div class="explore-tab-panel" data-tab-panel="wines">${winesHtml}</div>
-    <div class="explore-tab-panel hidden" data-tab-panel="grapes">${grapesHtml}</div>
     <div class="explore-tab-panel hidden" data-tab-panel="categories">${categoriesHtml}</div>`;
 }
 
 // The detail card's innerHTML (tabs included) is replaced wholesale on every
-// region/country switch, so the tabs are wired once via delegation on the
-// never-replaced #explore-detail container, not per-render.
+// region/country switch, so the tabs and the wine-row expanders are wired
+// once via delegation on the never-replaced #explore-detail container, not
+// per-render.
 function selectDetailTab(tab) {
   const detail = document.getElementById('explore-detail');
   detail.querySelectorAll('.segmented button[data-tab]').forEach((b) => b.classList.toggle('active', b.dataset.tab === tab));
   detail.querySelectorAll('.explore-tab-panel').forEach((p) => p.classList.toggle('hidden', p.dataset.tabPanel !== tab));
 }
 
+function toggleWineGrapes(idx) {
+  const detail = document.getElementById('explore-detail');
+  const row = detail.querySelector(`.wine-row[data-idx="${idx}"]`);
+  const panel = detail.querySelector(`.wine-grapes[data-idx="${idx}"]`);
+  if (!row || !panel) return;
+  const open = panel.classList.toggle('open');
+  row.classList.toggle('open', open);
+}
+
 function renderDetail(country) {
   const el = document.getElementById('explore-detail');
   if (!country.hasMap) {
-    el.innerHTML = detailTemplate(country.name, country.national.wines, country.national.grapes, country.national.categories);
+    el.innerHTML = detailTemplate(country.name, country.national.wines, country.national.categories);
     return;
   }
   const current = country.regions.find((r) => r.id === regionId);
@@ -171,7 +183,7 @@ function renderDetail(country) {
       <div class="explore-no-data">Dati in arrivo per questa regione.<br>Presto disponibili denominazioni, uve e stili.</div>`;
     return;
   }
-  el.innerHTML = detailTemplate(current.name, current.wines, current.grapes, current.categories);
+  el.innerHTML = detailTemplate(current.name, current.wines, current.categories);
 }
 
 function renderCountryRows() {
@@ -230,7 +242,9 @@ function wireStaticControls() {
 
   document.getElementById('explore-detail')?.addEventListener('click', (e) => {
     const btn = e.target.closest('.segmented button[data-tab]');
-    if (btn) selectDetailTab(btn.dataset.tab);
+    if (btn) { selectDetailTab(btn.dataset.tab); return; }
+    const row = e.target.closest('.wine-row[data-idx]');
+    if (row) toggleWineGrapes(row.dataset.idx);
   });
 
   document.getElementById('explore-country-switch')?.addEventListener('click', openCountrySheet);
