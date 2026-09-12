@@ -420,9 +420,9 @@ schermata.
 ## Righe espandibili in lista: mai un pannello come fratello diretto di `.list-row`
 
 Trovato implementando l'espansione "vino → uve che lo compongono" in
-Esplora (vedi `HANDOFF.md` per lo stato di questa feature, ancora in
-corso sul lato dati). `.list-row` ha una regola condivisa con altre
-schermate: `.list-row:last-of-type{border-bottom:none}` — pensata per
+Esplora (vedi `HANDOFF.md` per il dettaglio della feature, completa).
+`.list-row` ha una regola condivisa con altre schermate:
+`.list-row:last-of-type{border-bottom:none}` — pensata per
 un elenco piatto dove l'ultimo elemento non deve avere il bordo
 inferiore.
 
@@ -441,3 +441,23 @@ sull'ultima: tutti i separatori spariscono.
 `.list-row` dentro quel contesto (`.wine-item .list-row{border-bottom:none}`).
 Vale ogni volta che si aggiunge un pannello/dettaglio accanto a un
 `.list-row` esistente altrove nel progetto — non solo per le uve.
+
+## `wine-atlas.js`: gli `id` di regione sono unici solo DENTRO un paese, non tra paesi
+
+Trovato durante il merge dei dati uva-per-vino (523 vini, vedi
+`HANDOFF.md` punto 9). Stati Uniti e Australia usano entrambi `wa` come
+id regione (Washington / Western Australia) — id brevi e "ovvi" per chi
+scrive i dati, ma **non globalmente unici** nel dataset. Uno script che
+costruisce una mappa piatta `{ [regionId]: dataset }` iterando su tutti
+i paesi va silenziosamente in collisione: l'ultimo paese processato
+sovrascrive il precedente nella mappa, senza errori, senza avvisi — è
+esattamente il tipo di bug che *non* si nota finché non si controllano i
+dati risultanti a mano (è stato lo stesso agente di ricerca ad
+accorgersene, notando che i nomi dei vini nel proprio batch non
+corrispondevano al paese assegnato).
+
+**Regola**: qualunque script che processa `wine-atlas.js` per regione
+deve indicizzare/matchare per **coppia** `(countryId, regionId)`, mai per
+`regionId` da solo — anche se sembra improbabile una collisione, non lo
+è (sigle di stati/province ricorrono tra paesi: `wa`, `sa`, `ca`... da
+verificare caso per caso prima di assumere unicità globale).

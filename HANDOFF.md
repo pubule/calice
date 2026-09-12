@@ -270,58 +270,59 @@ questo file è il riassunto "dove eravamo rimasti".
      istante (non più scaglionati), e il crossfade di navigazione mostra
      un'opacità intermedia (~0.26) a metà transizione prima di
      assestarsi su 1.
-9. **IN CORSO — fusione tab Vini/Uve in Esplora (vedi "cose note" per lo
-   stato esatto)**: su richiesta esplicita ("fondere vini con uve...
-   clicco su un vino, si espande e vedo le uve che lo compongono"), il tab
-   "Uve" a sé stante (lista piatta delle 3 uve principali della regione,
-   senza legame con quale vino le usa) è stato tolto. Ogni riga vino in
-   `explore.js`/`detailTemplate()` ora è un `.wine-item` (row `.wine-row`
-   cliccabile + pannello `.wine-grapes` inizialmente chiuso) che si espande
-   in loco mostrando le uve di **quel** vino specifico, come chip colorati
-   (`.grape-chip`, riusa `GRAPE_COLOR`/`TYPE_COLOR` già esistenti per il
-   pallino). Il segmentato è sceso da 3 a 2 pulsanti (Vini/Categorie).
-   Wiring via delegazione su `#explore-detail` (`toggleWineGrapes()`),
-   stesso pattern di `selectDetailTab()`. Verificato in locale (Playwright):
-   2 tab, chevron ruota all'apertura, click ripetuto apre/chiude,
-   fallback "Composizione non disponibile" per vini senza dati.
+9. **Fusione tab Vini/Uve in Esplora** — su richiesta esplicita ("fondere
+   vini con uve... clicco su un vino, si espande e vedo le uve che lo
+   compongono"). Il tab "Uve" a sé stante (lista piatta delle 3 uve
+   principali della regione, senza legame con quale vino le usa) è stato
+   tolto. Ogni riga vino in `explore.js`/`detailTemplate()` ora è un
+   `.wine-item` (row `.wine-row` cliccabile + pannello `.wine-grapes`
+   inizialmente chiuso) che si espande in loco mostrando le uve di
+   **quel** vino specifico, come chip colorati (`.grape-chip`, riusa
+   `GRAPE_COLOR`/`TYPE_COLOR` già esistenti per il pallino). Il segmentato
+   è sceso da 3 a 2 pulsanti (Vini/Categorie). Wiring via delegazione su
+   `#explore-detail` (`toggleWineGrapes()`), stesso pattern di
+   `selectDetailTab()`.
    - **Perché `.wine-item` e non solo `.list-row`**: `.list-row` ha una
      regola condivisa `:last-of-type{border-bottom:none}` che, se il
      pannello uve fosse un fratello diretto di `.list-row`, romperebbe
      quella regola per OGNI riga (ognuna sarebbe l'unico `.list-row`
      dentro il proprio genitore). Il bordo separatore vive quindi su
-     `.wine-item`, non più su `.list-row` dentro Esplora.
-   - **Dato mancante, causa del blocco**: i vini in `wine-atlas.js` non
-     avevano mai un campo `grapes` per-vino (solo un campo `grapes`
-     regione-level con 3 uve, ora inutilizzato — lasciato nei dati, non
-     rimosso, per non rifare un edit di massa su 59 dataset senza motivo).
-     523 vini su 59 dataset necessitano di un array `grapes` reale
-     (supporta blend multi-uva, non solo monovitigno — richiesto
-     esplicitamente dall'utente). **Lanciati 8 agenti paralleli in
-     background** (stesso schema geografico della verifica web del punto
-     7: Italia Nord, Italia Centro-Sud, Francia, Spagna, Germania, Stati
-     Uniti, Australia, Nazionali senza mappa), ciascuno con istruzioni di
-     scrivere un JSON `{ datasetKey: { "Nome vino esatto": ["Uva1", "Uva2"] } }`
-     più una mappa `_newGrapes` per le uve nuove non ancora in
-     `GRAPE_COLOR`, verso file scratch in
-     `/tmp/.../scratchpad/result-<batch>.json`. Un primo giro di 6 agenti
-     su 8 è fallito per rate limit di sessione (`resets 10:40am UTC`) —
-     rilanciati con successo dopo il reset. **A questo push, alcuni batch
-     potrebbero non essere ancora tornati** — se riprendi questa sessione
-     e trovi `wine-atlas.js` ancora senza `grapes` per-vino, controlla
-     `/tmp/claude-0/-home-user-calice/*/scratchpad/result-*.json` (8 file
-     attesi: italia-nord, italia-centro-sud, francia, spagna, germania,
-     usa, australia, nazionali) — se mancano, rilanciare gli agenti
-     mancanti con lo stesso schema (vedi `batch-*.json` nello stesso
-     scratchpad per l'input già partizionato). Una volta tutti presenti,
-     il passo finale è: scrivere uno script Node che (a) unisce ogni
-     risultato nel campo `wines[].grapes` di `wine-atlas.js` per
-     `datasetKey`+nome esatto, verificando che ogni vino riceva un array
-     non vuoto e che nessun altro campo cambi (diff strutturale, stesso
-     metodo del punto 7); (b) estende `GRAPE_COLOR` in `explore.js` con
-     ogni voce di `_newGrapes` da tutti i batch. **Finché questo passo non
-     è fatto, ogni vino nell'app mostra "Composizione non disponibile"
-     invece delle uve reali** — la UI è già corretta e pronta, manca solo
-     il dato.
+     `.wine-item`, non più su `.list-row` dentro Esplora — vedi
+     `CLAUDE.md` per il dettaglio, è un'insidia riusabile.
+   - **Dato aggiunto**: campo `grapes` per-vino (array, supporta blend
+     multi-uva) su tutti i **523 vini** dei 59 dataset in `wine-atlas.js`
+     — prima esisteva solo un `grapes` regione-level con 3 uve generiche,
+     ora inutilizzato (lasciato nei dati, non rimosso, per non rifare un
+     edit di massa su 59 dataset senza motivo). Scritto da 9 agenti
+     paralleli in background (stesso schema geografico della verifica web
+     del punto 7: Italia Nord, Italia Centro-Sud, Francia, Spagna,
+     Germania, Stati Uniti, Australia, Nazionali senza mappa, più un nono
+     agente di fix mirato — vedi sotto), verificato via ricerche web
+     mirate contro disciplinari/cahiers des charges/DO/AVA/GI ufficiali
+     per le denominazioni meno note. **109 uve nuove** (non ancora in
+     `GRAPE_COLOR`) raccolte e aggiunte alla tabella in `explore.js` (108
+     effettive, 1 duplicato — "Viognier" — scartato). Merge fatto con
+     script Node (`Function('return '+objText)()` per parsare/riscrivere
+     l'oggetto letterale, JSON.parse/stringify per `wine-atlas.js`),
+     **verificato con diff strutturale che l'unico campo cambiato sia
+     `grapes[]`** (stesso metodo del punto 7) e che tutti i 523 vini
+     abbiano un array non vuoto — nessuno è rimasto sul fallback
+     "Composizione non disponibile".
+   - **Bug trovato durante il merge, non durante la scrittura dei dati**:
+     gli id regione "wa" **collidono** tra Stati Uniti (Washington) e
+     Australia (Western Australia) — sono paesi diversi ma usano lo
+     stesso id regionale breve. Il primo script di partizionamento (batch
+     per gli agenti) indicizzava tutti i dataset in una mappa piatta per
+     `id` **senza tenere conto del paese**, quindi il batch "usa" ha
+     ricevuto per errore la lista vini della Western Australia invece di
+     quella del Washington reale (l'agente stesso se n'è accorto e l'ha
+     segnalato, elaborando comunque quello che gli era stato dato). Fix:
+     un agente dedicato ha rifatto la ricerca sui 10 vini reali del
+     Washington, e lo script di merge finale applica ogni file-risultato
+     **scoperto per paese esplicito** (`{file: countryId}`), mai per id
+     regione nudo condiviso globalmente — vedi `CLAUDE.md` per la
+     lezione generale (id brevi non sono garantiti unici tra paesi
+     diversi in questo dataset).
 
 ## Cose note, non (ancora) da rifare
 
