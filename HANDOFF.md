@@ -136,6 +136,35 @@ questo file è il riassunto "dove eravamo rimasti".
      mockup. Bug preesistente da quando `.explore-entry` era ancora una
      card bianca, rimasto nascosto finché non gli si è tolta intorno la
      card in questo stesso redesign.
+6. **Tab nella card dettaglio regione + vini portati a top 10** (Esplora)
+   — su richiesta esplicita. La card regione ora ha lo stesso pattern a
+   tab di Home (`Vini` / `Uve` / `Categorie`, un pannello alla volta,
+   riusa `.segmented`); il tab si azzera su "Vini" ad ogni cambio
+   regione/paese, wiring via delegazione su `#explore-detail` visto che
+   il suo `innerHTML` viene rigenerato ad ogni selezione (stesso motivo
+   per cui Home usa la stessa tecnica). `#view-explore .chip-label` è
+   diventata morta con questo cambio (non c'è più nessun `.chip-label`
+   nel template) ed è stata tolta dalla regola condivisa in `app.css`.
+   - **Liste vini espanse da 1-3 a fino a 10 per regione/paese**, in
+     `wine-atlas.js`. Solo aggiunte in coda — le entry già curate (le
+     prime 1-3 per regione) sono rimaste **byte-identiche**, verificato
+     via diff strutturale prima di scrivere il file. Copertura risultante
+     (59 dataset totali tra regioni-con-mappa e paesi nazionali):
+     **44 arrivano a 10**; il resto si ferma onestamente più in basso
+     dove la regione non ha davvero altrettante denominazioni/GI/AVA
+     distinte e riconosciute (Basilicata 5, Molise 6, Corse e Occitanie
+     9, Andalucía 6, País Vasco 4, Galicia 5, La Rioja 5, Región de
+     Murcia 3, Navarra 4, Comunidad Valenciana 4, Baviera/Franken 8,
+     Sassonia 4, New York 8, Texas 6, Virginia 8) — stessa logica di
+     "dati in arrivo" invece di contenuto inventato già in uso per le
+     regioni senza dati.
+   - Dati scritti a mano da conoscenza enologica diretta (nessuna
+     ricerca web), poi verificati con uno script: nessun duplicato per
+     regione, nessun campo mancante, nessun `type` fuori dall'insieme
+     valido (`rosso`/`bianco`/`bollicine`/`rosato`). Non è stata rifatta
+     una verifica fattuale esterna caso per caso — se si nota un nome o
+     una classificazione palesemente sbagliata, segnalarlo per la
+     correzione puntuale invece di rifare l'intero elenco.
 
 ## Cose note, non (ancora) da rifare
 

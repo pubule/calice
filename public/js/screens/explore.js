@@ -91,12 +91,25 @@ function detailTemplate(name, wines, grapes, categories) {
     .join('');
   return `
     <h3 style="font-family:'Newsreader',serif; font-weight:500; font-size:18px; letter-spacing:-0.01em; margin:0 0 16px;">${name}</h3>
-    <div class="chip-label">Vini pi&ugrave; famosi</div>
-    <div style="margin-bottom:16px;">${winesHtml}</div>
-    <div class="chip-label">Uve principali</div>
-    <div class="chips" style="margin:0 0 16px; overflow-x:visible; flex-wrap:wrap;">${grapesHtml}</div>
-    <div class="chip-label">Categorie</div>
-    ${categoriesHtml}`;
+    <div class="segmented">
+      <button class="active" data-tab="wines">Vini</button>
+      <button data-tab="grapes">Uve</button>
+      <button data-tab="categories">Categorie</button>
+    </div>
+    <div class="explore-tab-panel" data-tab-panel="wines">${winesHtml}</div>
+    <div class="explore-tab-panel hidden" data-tab-panel="grapes">
+      <div class="chips" style="overflow-x:visible; flex-wrap:wrap;">${grapesHtml}</div>
+    </div>
+    <div class="explore-tab-panel hidden" data-tab-panel="categories">${categoriesHtml}</div>`;
+}
+
+// The detail card's innerHTML (tabs included) is replaced wholesale on every
+// region/country switch, so the tabs are wired once via delegation on the
+// never-replaced #explore-detail container, not per-render.
+function selectDetailTab(tab) {
+  const detail = document.getElementById('explore-detail');
+  detail.querySelectorAll('.segmented button[data-tab]').forEach((b) => b.classList.toggle('active', b.dataset.tab === tab));
+  detail.querySelectorAll('.explore-tab-panel').forEach((p) => p.classList.toggle('hidden', p.dataset.tabPanel !== tab));
 }
 
 function renderDetail(country) {
@@ -171,6 +184,11 @@ function wireStaticControls() {
   document.getElementById('explore-map')?.addEventListener('click', (e) => {
     const path = e.target.closest('path[data-id]');
     if (path) selectRegion(path.dataset.id);
+  });
+
+  document.getElementById('explore-detail')?.addEventListener('click', (e) => {
+    const btn = e.target.closest('.segmented button[data-tab]');
+    if (btn) selectDetailTab(btn.dataset.tab);
   });
 
   document.getElementById('explore-country-switch')?.addEventListener('click', openCountrySheet);
