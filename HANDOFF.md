@@ -129,6 +129,13 @@ questo file è il riassunto "dove eravamo rimasti".
      adeguato a quella convenzione. Vedi `CLAUDE.md` per il dettaglio —
      è un'insidia facile da ripetere se in futuro si nasconde qualcos'altro
      con l'attributo nativo.
+   - **Fix successivo**: `.explore-entry .sub` aveva solo `margin-top:2px`
+     — le mancavano `font-size`/`color` che ogni altra variante di `.sub`
+     nel file definisce (10.5px, `#8f8474`). Ereditava quindi il testo
+     normale (grande, scuro) invece della didascalia piccola e grigia del
+     mockup. Bug preesistente da quando `.explore-entry` era ancora una
+     card bianca, rimasto nascosto finché non gli si è tolta intorno la
+     card in questo stesso redesign.
 
 ## Cose note, non (ancora) da rifare
 
