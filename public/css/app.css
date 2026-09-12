@@ -463,7 +463,7 @@
   .explore-entry .badge svg{width:20px; height:20px;}
   .explore-entry .body{flex:1; min-width:0;}
   .explore-entry .title{font-family:'Newsreader',serif; font-weight:500; font-size:15px; letter-spacing:-0.01em;}
-  .explore-entry .sub{margin-top:2px;}
+  .explore-entry .sub{font-size:10.5px; color:#8f8474; margin-top:2px;}
 
   /* ---- esplora vini per paese: dropdown regione ---- */
   .explore-dd-head{display:flex; align-items:center; justify-content:space-between; background:#ffffff; border:1px solid #e2e0d8; border-radius:10px; padding:12px 14px; cursor:pointer;}
