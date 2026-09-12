@@ -152,14 +152,22 @@
   .skeleton::after{content:''; position:absolute; inset:0; transform:translateX(-100%); background:linear-gradient(90deg, transparent, rgba(255,255,255,.6), transparent); animation:skeleton-sweep 1.4s ease-in-out infinite;}
   @keyframes skeleton-sweep{to{transform:translateX(100%);}}
   @media (prefers-reduced-motion: reduce){ .skeleton::after{animation:none; display:none;} .skeleton{opacity:.7;} }
-  /* Reveal cascade: once a screen's data all arrives together (Promise.all,
-     not sequential awaits), sections still shouldn't all snap in at the same
-     instant — .revealed is added a fixed ~55ms after .reveal-target per
-     section (see home.js), turning the swap from skeleton to real content
-     into a deliberate top-to-bottom fade+rise instead of an abrupt jump. */
+  /* Reveal: once a screen's data all arrives together (Promise.all, not
+     sequential awaits), every section fades in in the same animation frame
+     (see home.js/stats.js) — the page becomes visible as one thing when it's
+     ready, not as pieces arriving one after another. A per-section stagger
+     was tried first and felt fussy/mechanical; this replaced it. */
   .reveal-target{opacity:0; transform:translateY(5px); transition:opacity .3s ease, transform .3s cubic-bezier(.2,.7,.3,1);}
   .reveal-target.revealed{opacity:1; transform:translateY(0);}
   @media (prefers-reduced-motion: reduce){ .reveal-target{opacity:1; transform:none; transition:none;} }
+  /* View-switch crossfade: .view.active starts at opacity 0 the instant it
+     becomes the active view (display:none -> flex has no transition of its
+     own), then main.js's showView() adds .shown one frame later so opacity
+     animates to 1 — a deliberate, solid-feeling transition between screens
+     instead of an abrupt swap. */
+  .view.active{opacity:0; transition:opacity .18s ease;}
+  .view.active.shown{opacity:1;}
+  @media (prefers-reduced-motion: reduce){ .view.active{opacity:1; transition:none;} }
   .result-row{display:flex; gap:12px; align-items:center; background:#ffffff; border:1px solid #e2e0d8; border-radius:12px; padding:10px;}
   .result-photo{width:34px; height:48px; border-radius:4px; flex-shrink:0; object-fit:cover;}
   .result-body{flex:1; min-width:0;}

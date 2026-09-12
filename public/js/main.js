@@ -9,8 +9,14 @@ import { mountInviteAccept } from './screens/invite.js';
 import { mountExplore } from './screens/explore.js';
 
 function showView(id) {
-  document.querySelectorAll('.view').forEach((v) => v.classList.remove('active'));
-  document.getElementById(id)?.classList.add('active');
+  document.querySelectorAll('.view').forEach((v) => v.classList.remove('active', 'shown'));
+  const next = document.getElementById(id);
+  if (!next) return;
+  next.classList.add('active');
+  // .shown added a frame later (not in the same tick) so the browser paints
+  // opacity:0 first — otherwise the two class changes can be coalesced into
+  // one style recalc and the crossfade never runs. See app.css .view.active.
+  requestAnimationFrame(() => next.classList.add('shown'));
 }
 
 // iOS Safari (standalone PWA) doesn't reliably shrink 100dvh when the

@@ -54,21 +54,17 @@ function skeletonBarRow() {
   return `<div class="region-row">${skeletonBar('74px', 10)}${skeletonBar('100%', 8)}${skeletonBar('22px', 10)}</div>`;
 }
 
-// Same cascade as home.js: all four sections are already set together right
-// after the single await chain resolves, so any stagger here is deliberate
-// presentation (see app.css .reveal-target), not sections arriving at
-// different times.
+// Same pattern as home.js: all four sections are already set together right
+// after the single await chain resolves, and now fade in together too (same
+// animation frame), so the page reads as one thing becoming ready.
 const REVEAL_IDS = ['stats-summary', 'stats-type', 'stats-country', 'stats-region'];
-const REVEAL_STEP_MS = 55;
 
 function revealSections() {
   const els = REVEAL_IDS.map((id) => document.getElementById(id)).filter(Boolean);
   els.forEach((el) => el.classList.remove('reveal-target', 'revealed'));
   void document.body.offsetHeight;
-  els.forEach((el, i) => {
-    el.classList.add('reveal-target');
-    setTimeout(() => el.classList.add('revealed'), i * REVEAL_STEP_MS);
-  });
+  els.forEach((el) => el.classList.add('reveal-target'));
+  requestAnimationFrame(() => els.forEach((el) => el.classList.add('revealed')));
 }
 
 export async function mountStats() {

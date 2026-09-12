@@ -111,14 +111,12 @@ function renderAll() {
   renderFeed();
 }
 
-// Order top-to-bottom matches the visual layout, so the cascade reads as one
-// thing loading together rather than pieces arriving in an arbitrary order.
 const REVEAL_IDS = ['home-greet-name', 'home-stats', 'home-alerts', 'home-explore-entry', 'home-tabs-block'];
-const REVEAL_STEP_MS = 55;
 
 // Called once, after every section's real content is already in the DOM
-// (mountHome awaits everything via Promise.all first) — the stagger here is
-// deliberate presentation, not a symptom of data arriving at different times.
+// (mountHome awaits everything via Promise.all first) — all sections fade in
+// together, in the same animation frame, so the page reads as one thing
+// becoming ready rather than pieces arriving one after another.
 function revealSections() {
   const els = REVEAL_IDS.map((id) => document.getElementById(id)).filter(Boolean);
   els.forEach((el) => el.classList.remove('reveal-target', 'revealed'));
@@ -126,10 +124,8 @@ function revealSections() {
   // of being coalesced with the class added right below — otherwise the
   // browser can skip straight to the end state and the transition never runs.
   void document.body.offsetHeight;
-  els.forEach((el, i) => {
-    el.classList.add('reveal-target');
-    setTimeout(() => el.classList.add('revealed'), i * REVEAL_STEP_MS);
-  });
+  els.forEach((el) => el.classList.add('reveal-target'));
+  requestAnimationFrame(() => els.forEach((el) => el.classList.add('revealed')));
 }
 
 export async function mountHome() {

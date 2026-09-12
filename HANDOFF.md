@@ -224,40 +224,52 @@ questo file è il riassunto "dove eravamo rimasti".
      come "bianco" (è un vino fortificato, lo schema dell'app non ha una
      categoria dedicata); Sierras de Málaga (DO con produzione mista,
      confidenza bassa sulla correzione).
-8. **Transizione di caricamento Home/Statistiche** — segnalato dall'utente:
-   "la pagina si carica a pezzi e si vede". Prima di implementare, tre
-   mockup HTML (dissolvenza semplice, fade+assestamento, tutto insieme a
-   cascata) mostrati su una canvas; l'utente ha scelto la terza (C).
-   Causa reale in `home.js`: `mountHome()` faceva quattro `await` in
-   sequenza (utente → cantina → bottiglie → attività), quindi il nome
-   compariva ~subito e il resto arrivava in momenti diversi tra loro —
-   non un problema di CSS ma di come i dati venivano richiesti. Fix:
+8. **Transizione di caricamento Home/Statistiche + crossfade di
+   navigazione** — segnalato dall'utente: "la pagina si carica a pezzi e
+   si vede". Prima di implementare, tre mockup HTML (dissolvenza
+   semplice, fade+assestamento, tutto insieme a cascata scaglionata)
+   mostrati su una canvas; scelta iniziale la terza (cascata ~55ms per
+   sezione). Causa reale in `home.js`: `mountHome()` faceva quattro
+   `await` in sequenza (utente → cantina → bottiglie → attività), quindi
+   il nome compariva ~subito e il resto arrivava in momenti diversi tra
+   loro — non un problema di CSS ma di come i dati venivano richiesti.
    - Le quattro chiamate ora partono in parallelo con un unico
      `Promise.all` (la dipendenza cantina→bottiglie resta annidata dentro
-     un solo branch del `Promise.all`, le altre tre sono indipendenti):
-     tutti i dati sono pronti nello stesso istante, non più sfalsati.
-   - Da lì, la sequenza visiva che si vede non è più un sintomo ma una
-     scelta: `revealSections()` in `home.js` rimuove/riaggiunge
-     `reveal-target` su cinque elementi (nome, stat, alert, voce Esplora,
-     blocco tab) e aggiunge `revealed` con 55ms di scarto ciascuno,
-     top-to-bottom — CSS in `app.css` (`.reveal-target`/`.revealed`,
-     opacity+translateY, rispetta `prefers-reduced-motion`). Stessa
-     tecnica applicata a `stats.js` (4 sezioni, `mountStats()` aveva già
-     un solo blocco di rendering dopo l'unica catena di await necessaria
-     — cantina→bottiglie è una dipendenza vera, non parallelizzabile —
-     mancava solo la cascata visiva, ora aggiunta).
+     un solo branch, le altre tre sono indipendenti): tutti i dati sono
+     pronti nello stesso istante, non più sfalsati. Stessa cosa già vera
+     in `stats.js` (un solo blocco di rendering dopo l'unica catena di
+     await necessaria — cantina→bottiglie è una dipendenza vera, non
+     parallelizzabile).
+   - **Rivisto dopo il primo giro**: la cascata scaglionata (55ms per
+     sezione) è stata provata su device e giudicata dall'utente
+     "macchinosa" — voleva la pagina **tutta visibile insieme** a dati
+     pronti, non a pezzi anche solo di 55ms. `revealSections()`
+     (`home.js`/`stats.js`) ora aggiunge `revealed` a **tutte** le
+     sezioni nello stesso `requestAnimationFrame`: un solo fade+translateY
+     per l'intera pagina (CSS `.reveal-target`/`.revealed` in `app.css`,
+     rispetta `prefers-reduced-motion`), non più una sequenza. **Non
+     reintrodurre lo scaglionamento** senza che l'utente lo richieda di
+     nuovo esplicitamente.
    - **Cantina (`cellar.js`) lasciata invariata deliberatamente**: la
-     schermata principale è un'unica lista (non tre widget separati come
-     Home), quindi non ha lo stesso sintomo di "pezzi che compaiono in
-     momenti diversi" — l'unica sequenza di await lì (bottiglie →
-     elementi → wishlist) alimenta rispettivamente la lista principale,
-     un overlay chiuso di default, e un tab non attivo di default, quindi
-     l'utente non vede comunque nulla arrivare a pezzi.
+     schermata principale è un'unica lista (non widget separati come
+     Home), quindi non ha lo stesso sintomo — l'unica sequenza di await
+     lì (bottiglie → elementi → wishlist) alimenta rispettivamente la
+     lista principale, un overlay chiuso di default, e un tab non attivo
+     di default.
+   - **Nuovo, stessa richiesta**: l'utente ha chiesto anche che la
+     *navigazione* tra schermate sia "molto smooth" e dia "un'idea di
+     solidità" — non solo il caricamento dati di una singola schermata.
+     Aggiunto un crossfade in `showView()` (`main.js`): `.view.active`
+     parte a `opacity:0`, poi un `requestAnimationFrame` dopo aggiunge
+     `.shown` che porta l'opacità a 1 (~180ms, CSS in `app.css`) — ogni
+     cambio vista è ora un fade-in invece di uno scatto
+     `display:none`→`flex` istantaneo.
    - Verificato in locale (`wrangler dev` + Playwright, endpoint
      `/api/cellars/*/bottles` e `/api/me/activity` rallentati
-     artificialmente) che gli eventi `revealed` arrivano a ~55ms esatti
-     l'uno dall'altro e che tutti i dati risultano pronti nello stesso
-     istante (niente più comparsa progressiva del nome prima del resto).
+     artificialmente): tutti gli eventi `revealed` arrivano nello stesso
+     istante (non più scaglionati), e il crossfade di navigazione mostra
+     un'opacità intermedia (~0.26) a metà transizione prima di
+     assestarsi su 1.
 
 ## Cose note, non (ancora) da rifare
 
