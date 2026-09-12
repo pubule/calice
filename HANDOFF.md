@@ -148,8 +148,20 @@ questo file è il riassunto "dove eravamo rimasti".
    Il tab "Uve" è stato poi allineato allo stile del tab "Vini" su
    richiesta esplicita: da chip a pillola (`.chip`, layout orizzontale)
    a `.list-row`/`.lbody`/`.lname` (elenco verticale con separatori),
-   stessa classe già usata dai vini — senza `.type-dot` perché le uve
-   non hanno un colore/tipo associato nei dati.
+   stessa classe già usata dai vini. L'utente ha poi chiesto anche il
+   pallino colorato (`.type-dot`) come per i vini — ma le uve in
+   `wine-atlas.js` sono stringhe semplici, senza colore/tipo associato.
+   Aggiunta in `explore.js` una tabella `GRAPE_COLOR` (101 voci, tutte
+   le uve uniche usate nel dataset → `rosso`/`bianco` a bacca, non
+   `bollicine`/`rosato` che sono categorie di vino non di vitigno)
+   classificata da conoscenza ampelologica diretta (fatto botanico
+   stabile, non soggetto a promozioni/declassamenti come i DOC/DOCG,
+   quindi non serve verifica web) — verificato con uno script che ogni
+   uva presente nel dataset abbia una voce nella tabella (nessuna cade
+   sul fallback). Le uve a bacca rosa vinificate in bianco
+   (Gewürztraminer, Pinot Gris, Malvasia) sono classificate `bianco`,
+   coerentemente con come i vini fatti da quelle uve sono già tipizzati
+   altrove nel dataset.
    - **Liste vini espanse da 1-3 a fino a 10 per regione/paese**, in
      `wine-atlas.js`. Solo aggiunte in coda — le entry già curate (le
      prime 1-3 per regione) sono rimaste **byte-identiche**, verificato

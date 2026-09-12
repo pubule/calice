@@ -3,6 +3,40 @@ import { COUNTRIES } from '../data/wine-atlas.js';
 const TYPE_COLOR = { rosso: '#5b2333', bianco: '#b9a750', bollicine: '#6b7a4f', rosato: '#a24a5a' };
 const TYPE_LABEL = { rosso: 'Rosso', bianco: 'Bianco', bollicine: 'Bollicine', rosato: 'Rosato' };
 
+// Berry/vinification color for every grape used across wine-atlas.js — not
+// legally contentious like DOC/DOCG status (which changes over time), just
+// ampelography, so classified directly rather than web-verified. Pink-skinned
+// grapes conventionally vinified white (Gewürztraminer, Pinot Gris/Grigio,
+// Malvasia) are "bianco" here, matching how wines made from them are already
+// typed elsewhere in this dataset.
+const GRAPE_COLOR = {
+  Aglianico: 'rosso', Airén: 'bianco', Albana: 'bianco', Albariño: 'bianco', Albillo: 'bianco',
+  Aligoté: 'bianco', Bacchus: 'bianco', Barbera: 'rosso', 'Blanc du Bois': 'bianco', Bobal: 'rosso',
+  Bosco: 'bianco', 'Cabernet Franc': 'rosso', 'Cabernet Sauvignon': 'rosso', Cannonau: 'rosso',
+  Carignan: 'rosso', Carignano: 'rosso', Cariñena: 'rosso', Carménère: 'rosso', Cesanese: 'rosso',
+  Chardonnay: 'bianco', 'Chenin Blanc': 'bianco', Cinsault: 'rosso', Corvina: 'rosso', Fiano: 'bianco',
+  Friulano: 'bianco', Fumin: 'rosso', Gaglioppo: 'rosso', Gamay: 'rosso', Garganega: 'bianco',
+  Garnacha: 'rosso', Gewürztraminer: 'bianco', Glera: 'bianco', Godello: 'bianco', Grechetto: 'bianco',
+  Greco: 'bianco', 'Greco Bianco': 'bianco', Grenache: 'rosso', Grillo: 'bianco',
+  'Hondarrabi Beltza': 'rosso', 'Hondarrabi Zuri': 'bianco', Lambrusco: 'rosso', Loureiro: 'bianco',
+  Macabeo: 'bianco', Magliocco: 'rosso', Malbec: 'rosso', Malvasia: 'bianco',
+  'Melon de Bourgogne': 'bianco', Merlot: 'rosso', Merseguera: 'bianco', Monastrell: 'rosso',
+  Montepulciano: 'rosso', Moscatel: 'bianco', Moscato: 'bianco', Mourvèdre: 'rosso',
+  'Müller-Thurgau': 'bianco', Nebbiolo: 'rosso', Negroamaro: 'rosso', 'Nerello Mascalese': 'rosso',
+  "Nero d'Avola": 'rosso', 'Nero di Troia': 'rosso', Nielluccio: 'rosso', Palomino: 'bianco',
+  Pecorino: 'bianco', 'Pedro Ximénez': 'bianco', 'Petit Rouge': 'rosso', 'Pinot Gris': 'bianco',
+  'Pinot Nero': 'rosso', 'Pinot Noir': 'rosso', Pinotage: 'rosso', Primitivo: 'rosso',
+  'Prié Blanc': 'bianco', Refosco: 'rosso', 'Ribolla Gialla': 'bianco', Riesling: 'bianco',
+  Rossese: 'rosso', Sagrantino: 'rosso', Sangiovese: 'rosso', 'Sauvignon Blanc': 'bianco',
+  Sciaccarellu: 'rosso', Semillon: 'bianco', Sémillon: 'bianco', Shiraz: 'rosso', Silvaner: 'bianco',
+  Spätburgunder: 'rosso', Syrah: 'rosso', Tempranillo: 'rosso', Teroldego: 'rosso',
+  'Tinta Roriz': 'rosso', Tintilia: 'rosso', Torrontés: 'bianco', 'Touriga Franca': 'rosso',
+  'Touriga Nacional': 'rosso', Trebbiano: 'bianco', Trollinger: 'rosso', Verdejo: 'bianco',
+  Verdicchio: 'bianco', Vermentino: 'bianco', Viognier: 'bianco', Viura: 'bianco',
+  Weißburgunder: 'bianco', Zinfandel: 'rosso',
+};
+const DEFAULT_GRAPE_COLOR = 'rosso';
+
 let countryId = 'it';
 let regionId = null; // per-country selected region, reset on country switch
 
@@ -81,6 +115,7 @@ function detailTemplate(name, wines, grapes, categories) {
     .map(
       (g) => `
       <div class="list-row">
+        <span class="type-dot" style="background:${TYPE_COLOR[GRAPE_COLOR[g] || DEFAULT_GRAPE_COLOR]}"></span>
         <div class="lbody">
           <div class="lname">${g}</div>
         </div>
