@@ -496,6 +496,26 @@ questo file è il riassunto "dove eravamo rimasti".
     - `CACHE` a `v78` e `build 78` (toccato un file dello shell).
     - Nuovo test in `worker/test/wines.test.ts` per il `q` vuoto; suite
       completa 130 verdi.
+14. **Riga "Aiuto" troncata in Profilo** — segnalazione utente con
+    screenshot: l'ultima riga di `.settings-list` mostrava solo un
+    frammento di bordo invece di icona/etichetta/chevron. Non un bug di
+    codice/CSS (markup e stili delle 4 righe sono identici in struttura)
+    ma un difetto di repaint specifico di WebKit: `.settings-list` ha
+    `border-radius`+`overflow:hidden` dentro `.view`, che ha
+    `-webkit-overflow-scrolling:touch`, e sopra di lei "Persone che
+    segui" cambia altezza in modo asincrono (skeleton → contenuto reale,
+    misurato con Playwright: **62px** di scarto) *dopo* il primo paint —
+    precondizioni tutte verificate per il bug noto in cui Safari non
+    ridipinge correttamente l'ultimo elemento di un box del genere dopo
+    che un fratello sopra si è ridimensionato. **Non riproducibile in
+    Chromium/Playwright** (confermato: layout identico prima/dopo il
+    fix in locale), quindi la diagnosi si è fermata a "precondizioni
+    presenti, rimedio noto" — va confermato su device reale.
+    - Fix: `transform:translateZ(0)` su `.settings-list` (forza un
+      layer di compositing persistente, nessun effetto visivo). Vedi
+      `CLAUDE.md` per il dettaglio e il rimedio da riusare se ricompare
+      altrove (`.compare-col` ha la stessa forma a rischio).
+    - `CACHE` a `v79` e `build 79`.
 
 ## Cose note, non (ancora) da rifare
 

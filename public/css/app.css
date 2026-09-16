@@ -199,7 +199,15 @@
   .shared-row .a{width:28px; height:28px; border-radius:50%; background:#f0efe9; border:2px solid #fff; margin-left:-8px; display:flex; align-items:center; justify-content:center; font-family:'JetBrains Mono',monospace; font-size:9.5px; font-weight:600;}
   .shared-row .a:first-child{margin-left:0;}
   .invite-btn{margin-left:auto; font-size:11px; font-weight:600; color:#5b2333; border:1px solid #e0c7cd; border-radius:9999px; padding:6px 12px;}
-  .settings-list{background:#ffffff; border:1px solid #e2e0d8; border-radius:12px; overflow:hidden;}
+  /* transform:translateZ(0) forces its own compositing layer — a known
+     WebKit fix for a real bug, not decoration. A border-radius+overflow:
+     hidden box (this one) sitting inside a -webkit-overflow-scrolling:
+     touch container (.view) can fail to repaint its last row correctly
+     after a sibling ABOVE it reflows post-paint — exactly what happens
+     here when "Persone che segui" swaps its skeleton for real content and
+     shrinks, shifting this box upward. Chromium repaints fine either way
+     (confirmed: this is WebKit-only), so this never reproduces locally. */
+  .settings-list{background:#ffffff; border:1px solid #e2e0d8; border-radius:12px; overflow:hidden; transform:translateZ(0);}
   .settings-row{display:flex; align-items:center; gap:12px; padding:13px 14px; border-bottom:1px solid #e2e0d8; font-size:12.5px;}
   .settings-row:last-child{border-bottom:none;}
   .settings-row svg{stroke:#8f8474;}

@@ -501,6 +501,44 @@ esplicito per i campi opzionali — pattern già usato in
 `coalesce` solo per endpoint dove il client invia davvero un
 sottoinsieme dei campi.
 
+## `.settings-list` in Profilo: `transform:translateZ(0)` non è decorativo, è un fix WebKit vero
+
+Segnalazione utente con screenshot: l'ultima riga di `.settings-list`
+("Aiuto") appariva troncata — solo un frammento di bordo, non l'icona/
+etichetta/chevron. Il codice era corretto (nessuna riga tocca quel DOM
+via JS, il markup delle 4 righe è identico strutturalmente) — è un bug
+di **repaint** di WebKit, non di CSS/logica.
+
+**Precondizioni, tutte verificate**: `.settings-list` ha
+`border-radius` + `overflow:hidden` (crea un layer di compositing), è
+annidata dentro `.view` che ha `-webkit-overflow-scrolling:touch`
+(scroll momentum), e sopra di lei nel DOM c'è `#profile-follows`, il
+cui contenuto passa in modo asincrono da skeleton (due righe, alto) a
+reale (una riga di testo o niente, basso) **dopo** che la pagina ha già
+fatto il primo paint. Misurato con Playwright navigando per hash (così
+`mountProfile()` gira davvero, non basta un semplice toggle di classe):
+lo scarto è di **62px**, e sposta `.settings-list` verso l'alto dopo
+che WebKit l'ha già dipinta. È esattamente la combinazione nota per far
+sì che Safari non ridipinga correttamente l'ultimo elemento di un box
+del genere dopo che un fratello sopra si è ridimensionato.
+
+**Non riproducibile in Chromium/Playwright** (confermato): il layout
+finale è identico prima e dopo il fix, in locale non si vede alcuna
+differenza — è lo stesso limite già annotato per lo status bar iOS,
+Playwright headless non riproduce i bug di compositing/repaint reali di
+WebKit. Per questo la diagnosi qui si è fermata a "precondizioni tutte
+presenti, rimedio noto", non a una riproduzione locale del sintomo.
+
+**Fix**: `transform:translateZ(0)` su `.settings-list`, che forza un
+layer di compositing persistente — il rimedio storico e a costo zero
+per questa classe di bug WebKit (nessun effetto visivo in nessun
+browser, è una trasformazione 3D nulla). Se in futuro ricompare lo
+stesso sintomo (una riga che sembra "sparita" o troncata) su un altro
+box con `border-radius`+`overflow:hidden` dentro una vista con
+`-webkit-overflow-scrolling:touch` (es. `.compare-col`, che ha la
+stessa forma), stesso rimedio, stessa causa: non serve reinvestigare da
+zero.
+
 ## Ricerche "live" da input: servono SEMPRE una guardia di staleness e un `q` vuoto che non matcha
 
 Due bug distinti che producevano lo stesso sintomo — cancellare la parola
