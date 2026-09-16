@@ -99,10 +99,12 @@ document.getElementById('notif-toggle')?.addEventListener('change', async (e) =>
   if (!e.target.checked) return;
   try {
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) throw new Error('push not supported in this browser');
-    // No page in this app registers a service worker yet, so
-    // `serviceWorker.ready` would otherwise hang forever with no feedback —
-    // race it against a timeout so an unregistered SW degrades the same way
-    // as an unsupported browser instead of leaving the toggle stuck.
+    // index.html registers the service worker unconditionally on load, but
+    // `serviceWorker.ready` still waits for it to actually activate — which
+    // can be slow (or, in principle, never happen: a blocked script, a
+    // registration that throws silently). Race it against a timeout so a
+    // stuck activation degrades the same way as an unsupported browser
+    // instead of leaving the toggle spinning forever.
     const reg = await Promise.race([
       navigator.serviceWorker.ready,
       new Promise((_, reject) => setTimeout(() => reject(new Error('no service worker registered')), 3000)),
