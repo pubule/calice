@@ -393,6 +393,30 @@ questo file è il riassunto "dove eravamo rimasti".
       di degustazione dalla scheda dettaglio) e con la suite di test
       del worker (120 test, inclusi 7 nuovi/aggiornati per `notes.ts` e
       4 nuovi per `PATCH /api/wines/:id`).
+11. **Icona della schermata Home (iOS)** — `index.html` non aveva
+    **nessun** tag `apple-touch-icon`: salvando la PWA sulla Home, iOS
+    generava uno screenshot della pagina invece di un'icona. Aggiunto il
+    tag mancante e sostituito il marchio.
+    - **Il disegno non è più il bicchiere disegnato a mano**: dopo
+      quattro giri di mockup tutti bocciati dall'utente (bicchiere,
+      bottiglia/grappolo geometrici, versioni "che riempiono la
+      cornice", calice a tratto in sei varianti — il canvas sta su
+      `https://claude.ai/artifact/FDRzP9vgmAjMs2i7qdXzQh`), l'utente ha
+      scelto un'icona di Flaticon: grappolo + calice a tratto.
+    - **Licenza**: Flaticon free, *"Wine icons created by iconixar -
+      Flaticon"*, che **obbliga all'attribuzione**. Il credito è in
+      Profilo sotto la riga `build` (`.app-credit` in `index.html`,
+      stile in `app.css`) e **non va tolto** finché l'icona resta questa.
+    - **Asset generati con Pillow** dal PNG originale 512×512 (tratto
+      nero su trasparente): ricolorato crema `#f7f5f0` su fondo pieno
+      bordeaux `#5b2333`, arte al 74% della cornice. Rigenerati
+      `apple-touch-icon.png` (180), `icon-192.png` e `icon-512.png` così
+      manifest e Home restano coerenti — i vecchi tre erano il bicchiere
+      silhouette.
+    - **Limite noto e accettato**: a 29×29 px (Impostazioni) il disegno
+      impasta, perché ha due soggetti e otto acini. Provato a ingrassare
+      il tratto per compensare: peggiora, chiude gli acini del grappolo.
+      Sulla Home a 60 px — la misura che conta — regge.
 
 ## Cose note, non (ancora) da rifare
 

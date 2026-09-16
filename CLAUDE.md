@@ -501,6 +501,35 @@ esplicito per i campi opzionali — pattern già usato in
 `coalesce` solo per endpoint dove il client invia davvero un
 sottoinsieme dei campi.
 
+## Icone della schermata Home iOS: opache, quadrate, arte al ~74%
+
+L'icona attuale (grappolo + calice a tratto) è **di Flaticon**, licenza
+free che **obbliga all'attribuzione**: il credito *"Wine icons created
+by iconixar - Flaticon"* è in Profilo (`.app-credit`) e non va rimosso
+finché l'icona resta quella. Se un domani si cambia disegno, togliere
+anche il credito.
+
+Regole imparate generando gli asset (`apple-touch-icon.png` 180,
+`icon-192.png`, `icon-512.png`, tutti rigenerati con Pillow dal PNG
+originale):
+
+- **Mai lasciare l'alpha**: iOS dipinge di **nero** ogni zona
+  trasparente di un'icona di Home. I file vanno salvati in `RGB` su
+  fondo pieno, mai `RGBA`.
+- **Mai arrotondare gli angoli** nel file: iOS applica da sé la maschera
+  squircle. Un PNG già arrotondato finisce arrotondato due volte.
+- **Arte al ~74% della cornice**: il PNG originale la teneva al 91%, che
+  per un'icona è troppo — la maschera squircle taglia gli angoli e il
+  disegno tocca i bordi.
+- **Il tratto sottile non si salva ingrassandolo**: provato a dilatare
+  l'alpha per reggere a 29×29 px (Impostazioni), risultato peggiore
+  perché gli acini del grappolo si chiudono. Un disegno con molti
+  dettagli a quella misura impasta e basta: o si accetta, o serve un
+  disegno più semplice, non un tratto più grosso.
+- Quando si toccano questi file, valgono le regole dello shell: alzare
+  `CACHE` in `sw.js`, il marcatore `build NN` in `index.html`, e
+  aggiungere i file nuovi a `SHELL_FILES`.
+
 ## Selettori DOM globali (`document.querySelectorAll`) su componenti che possono comparire più volte nella pagina
 
 Trovato mentre si aggiungeva un secondo gruppo di stelle

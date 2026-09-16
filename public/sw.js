@@ -1,4 +1,4 @@
-const CACHE = 'calice-shell-v76';
+const CACHE = 'calice-shell-v77';
 const SHELL_FILES = [
   '/', '/index.html', '/css/app.css',
   '/js/main.js', '/js/api-client.js', '/js/router.js', '/js/auth.js', '/js/util.js', '/js/modal.js',
@@ -6,7 +6,7 @@ const SHELL_FILES = [
   '/js/screens/home.js', '/js/screens/cellar.js', '/js/screens/add.js',
   '/js/screens/stats.js', '/js/screens/profile.js', '/js/screens/detail.js', '/js/screens/invite.js',
   '/js/screens/explore.js', '/js/data/wine-atlas.js',
-  '/manifest.webmanifest', '/icon-192.png', '/icon-512.png',
+  '/manifest.webmanifest', '/icon-192.png', '/icon-512.png', '/apple-touch-icon.png',
 ];
 
 self.addEventListener('install', (event) => {
