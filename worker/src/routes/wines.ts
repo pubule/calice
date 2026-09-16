@@ -18,7 +18,12 @@ wineRoutes.get('/search', async (c) => {
     const rows = await c.env.DB.prepare('select * from wines where barcode = ? limit 20').bind(barcode).all();
     return c.json(rows.results);
   }
-  const q = `%${c.req.query('q') ?? ''}%`;
+  // An empty q must not fall through to `like '%%'`, which matches every
+  // row and hands back the whole catalogue as if it were a result set. The
+  // caller asked for nothing, so nothing comes back.
+  const term = (c.req.query('q') ?? '').trim();
+  if (!term) return c.json([]);
+  const q = `%${term}%`;
   const rows = await c.env.DB
     .prepare('select * from wines where name like ? or producer like ? or region like ? limit 20')
     .bind(q, q, q)

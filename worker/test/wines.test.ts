@@ -29,6 +29,16 @@ describe('GET /api/wines/search', () => {
     const results = await res.json<any[]>();
     expect(results).toHaveLength(1);
   });
+
+  it('returns nothing for an empty or whitespace q instead of the whole catalogue', async () => {
+    // `%${''}%` is `'%%'`, which matches every row — so clearing the search
+    // box used to answer with the entire wines table.
+    const auth = signup('s3@b.com');
+    for (const url of ['/api/wines/search?q=', '/api/wines/search?q=%20%20', '/api/wines/search']) {
+      const res = await app.request(url, { headers: auth }, env);
+      expect(await res.json<any[]>()).toEqual([]);
+    }
+  });
 });
 
 describe('POST /api/wines', () => {

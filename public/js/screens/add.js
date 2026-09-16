@@ -146,6 +146,12 @@ async function runSearch(query) {
     return;
   }
   const wines = await api.get(`/api/wines/search?q=${encodeURIComponent(query)}`);
+  // Same guard searchWeb() already had, and for the same reason: one request
+  // goes out per keystroke, so while deleting a word the reply for a short
+  // intermediate query ("ba") can land after the empty-box branch above has
+  // already cleared the list — and repaint it. Typing forward has the mirror
+  // version of it, an earlier query's reply overwriting a later one's.
+  if (currentQuery() !== query) return;
   if (countEl) countEl.textContent = `Risultati (${wines.length})`;
   if (wines.length) {
     // A local hit skips the (paid) web search by default — but the local

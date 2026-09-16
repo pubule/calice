@@ -501,6 +501,43 @@ esplicito per i campi opzionali — pattern già usato in
 `coalesce` solo per endpoint dove il client invia davvero un
 sottoinsieme dei campi.
 
+## Ricerche "live" da input: servono SEMPRE una guardia di staleness e un `q` vuoto che non matcha
+
+Due bug distinti che producevano lo stesso sintomo — cancellare la parola
+cercata in "Aggiungi vino" e ritrovarsi una lista di vini a caso con la
+casella vuota.
+
+1. **`like '%%'` matcha tutto.** `GET /api/wines/search` costruiva
+   `` `%${c.req.query('q') ?? ''}%` ``: con `q` vuoto diventa `'%%'`, che
+   in SQL matcha **ogni riga**, quindi l'endpoint restituiva l'intero
+   catalogo come se fosse un risultato di ricerca. Ora un `q` vuoto o di
+   soli spazi torna `[]`. Vale per qualunque futura ricerca `like`: il
+   caso "termine vuoto" va gestito **prima** di costruire il pattern, mai
+   lasciato cadere dentro la query.
+2. **Risposte in ritardo che ridisegnano la lista.** `runSearch()` in
+   `add.js` parte a ogni tasto e fa `await`, ma non controllava che la
+   query fosse ancora quella corrente quando la risposta arrivava.
+   Cancellando una parola parte una richiesta per ogni tasto: il ramo
+   "casella vuota" pulisce la lista subito, poi la risposta di una query
+   intermedia ancora in volo atterra e **la ridisegna**. Lo stesso vale
+   digitando in avanti, con la risposta di una query più corta che
+   sovrascrive quella di una più lunga.
+
+   `searchWeb()`, venti righe più sopra nello stesso file, quella
+   guardia ce l'aveva già (`if (currentQuery() !== query) return;`) — a
+   `runSearch()` era stata dimenticata. **Regola: ogni funzione che fa
+   `await` fra un input dell'utente e una scrittura nel DOM deve
+   ricontrollare, dopo l'await, che l'input non sia cambiato.**
+
+**Come riprodurlo** (serve, perché a mano è questione di millisecondi):
+Playwright con `page.route('**/api/**')` che stubba la ricerca con un
+ritardo artificiale (~900 ms), servendo `public/` con
+`python3 -m http.server` — niente wrangler né D1. Poi digitare, e
+cancellare **mentre la richiesta è ancora in volo** (aspettare la
+risposta prima di cancellare non riproduce nulla: è l'errore in cui sono
+cascato al primo tentativo). Senza guardia la lista torna popolata,
+con guardia resta vuota.
+
 ## Ricerca web dei vini (Tavily): tre filtri diversi, non confonderli
 
 `worker/src/lib/tavily-search.ts` restringe la ricerca a `vivino.com`, ma

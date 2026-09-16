@@ -481,6 +481,21 @@ questo file è il riassunto "dove eravamo rimasti".
       verdi. Diversi fixture storici usavano URL Vivino senza `/w/`
       (`/p/1`, `/a`, `/barolo`): allineati a URL reali, altrimenti
       sarebbero stati scartati da `isWinePage()`.
+13. **Cancellare la ricerca mostrava vini a caso** — segnalazione utente
+    con screenshot: casella vuota, "Risultati (6)", tutto il catalogo.
+    Due bug sommati, entrambi corretti (dettaglio in `CLAUDE.md`):
+    `GET /api/wines/search` con `q` vuoto costruiva `like '%%'`, che
+    matcha ogni riga e restituiva l'intero catalogo — ora torna `[]`; e
+    `runSearch()` in `add.js` non ricontrollava dopo l'`await` che la
+    query fosse ancora quella corrente, così la risposta di una query
+    intermedia ancora in volo ridisegnava la lista appena svuotata.
+    - Race riprodotta in modo deterministico con Playwright + stub
+      `page.route` con ritardo artificiale, servendo `public/` con
+      `python3 -m http.server` (niente wrangler): senza guardia la lista
+      torna a 3 righe dopo la cancellazione, con guardia resta vuota.
+    - `CACHE` a `v78` e `build 78` (toccato un file dello shell).
+    - Nuovo test in `worker/test/wines.test.ts` per il `q` vuoto; suite
+      completa 130 verdi.
 
 ## Cose note, non (ancora) da rifare
 
