@@ -66,6 +66,11 @@ function isRelevant(word: string, candidate: WineCandidate): boolean {
 // observed around 0.02-0.08, an Italian-vs-other-language duplicate of the
 // SAME wine around 0.01-0.04 — 0.05 reliably wins the latter without
 // routinely reordering genuinely different (but both relevant) wines.
+//
+// The boost alone only ever REORDERED those duplicates, so the Spanish and
+// English copies of the same bottle still took up rows in the list; what
+// actually removes them is dedupeKey below. The boost still decides which
+// copy survives that collapse.
 const ITALIAN_PATH_BOOST = 0.05;
 function isItalianVivinoUrl(sourceUrl?: string): boolean {
   if (!sourceUrl) return false;
@@ -73,6 +78,25 @@ function isItalianVivinoUrl(sourceUrl?: string): boolean {
     return new URL(sourceUrl).pathname.startsWith('/it/');
   } catch {
     return false;
+  }
+}
+
+// Groups the per-language copies of one bottle. Every Vivino wine page
+// carries the same numeric id in /w/<id> whatever the language prefix, so
+// that id — not the URL — is the wine's identity. The vintage is part of
+// the key because Vivino hangs vintages off the same wine id via ?year=,
+// and two vintages are genuinely two different bottles to add.
+// Returns null for anything that isn't a wine page (a grape or category
+// listing, say): those have no id to group on and are left alone rather
+// than collapsed together.
+function dedupeKey(sourceUrl?: string): string | null {
+  if (!sourceUrl) return null;
+  try {
+    const url = new URL(sourceUrl);
+    const id = url.pathname.match(/\/w\/(\d+)/)?.[1];
+    return id ? `${id}:${url.searchParams.get('year') ?? ''}` : null;
+  } catch {
+    return null;
   }
 }
 
@@ -110,11 +134,16 @@ function cleanSnippet(text: string): string {
 // since the user visually confirms whichever candidate they tap. The zip
 // happens before the score re-sort below so each candidate keeps its own
 // paired image when candidates get reordered.
+// The query goes out verbatim. It used to carry a " vino" suffix, which
+// bought nothing once the search was already restricted to vivino.com —
+// every page there is a wine page — while "vino" reads as Spanish just as
+// well as Italian, so if anything it helped the Spanish copies rank. The
+// no-suffix recall was the measured case anyway (see SEARCH_DOMAINS).
 export async function searchWine(query: string, apiKey: string, fetchImpl: typeof fetch = fetch): Promise<TavilySearchResult | null> {
   const res = await fetchWithTimeout('https://api.tavily.com/search', 8000, fetchImpl, {
     method: 'POST',
     headers: { 'content-type': 'application/json', authorization: `Bearer ${apiKey}` },
-    body: JSON.stringify({ query: `${query} vino`, max_results: FETCH_POOL, include_images: true, include_domains: SEARCH_DOMAINS }),
+    body: JSON.stringify({ query, max_results: FETCH_POOL, include_images: true, include_domains: SEARCH_DOMAINS }),
   });
   if (!res || !res.ok) return null;
 
@@ -159,11 +188,23 @@ export async function searchWine(query: string, apiKey: string, fetchImpl: typeo
     .map((b) => ({ candidate: b.candidate, rankScore: b.tavilyScore + (isItalianVivinoUrl(b.candidate.sourceUrl) ? ITALIAN_PATH_BOOST : 0) }))
     .sort((a, b) => b.rankScore - a.rankScore);
 
+  // Collapse the language duplicates AFTER ranking, so the copy that
+  // survives is the best-ranked one — which, thanks to ITALIAN_PATH_BOOST,
+  // is the /it/ page whenever Vivino has one.
+  const seen = new Set<string>();
+  const deduped = ranked.filter((r) => {
+    const key = dedupeKey(r.candidate.sourceUrl);
+    if (!key) return true;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+
   // A basic search (what this sends — no search_depth override) is a flat
   // 1 credit per Tavily's docs, regardless of max_results; the response
   // itself carries no usage field to read it back from (confirmed against
   // a live call). Counted even when the search comes up empty — the
   // credit is spent either way, and the usage tracker (worker/src/cron.ts)
   // needs every call counted to warn before the monthly quota runs out.
-  return { candidates: ranked.slice(0, MAX_CANDIDATES).map((r) => r.candidate), creditsUsed: 1 };
+  return { candidates: deduped.slice(0, MAX_CANDIDATES).map((r) => r.candidate), creditsUsed: 1 };
 }

@@ -501,6 +501,39 @@ esplicito per i campi opzionali — pattern già usato in
 `coalesce` solo per endpoint dove il client invia davvero un
 sottoinsieme dei campi.
 
+## Ricerca web dei vini (Tavily): due filtri diversi, non confonderli
+
+`worker/src/lib/tavily-search.ts` restringe la ricerca a `vivino.com`, ma
+essere su Vivino non basta: ci sono **due** problemi distinti, con due
+rimedi distinti, e confonderli porta a "sistemare" quello sbagliato.
+
+1. **Stesso vino, più lingue.** Vivino serve la stessa scheda sotto
+   `/it/`, `/en/`, `/es/` sullo stesso host, e `include_domains` di
+   Tavily filtra per host, non per path. `ITALIAN_PATH_BOOST` (0.05)
+   **riordina soltanto**: per mesi ha lasciato le copie spagnole e
+   inglesi in lista, che è ciò che l'utente vedeva come "record di
+   Vivino Spagna". A rimuoverle è `dedupeKey()`, che raggruppa per l'id
+   in `/w/<id>` — stabile fra le lingue — e tiene una sola copia. La
+   deduplica gira **dopo** l'ordinamento, così la copia che sopravvive
+   è quella meglio piazzata, cioè la `/it/` grazie al boost: i due
+   meccanismi lavorano insieme, non in alternativa.
+   L'`?year=` fa parte della chiave perché Vivino appende le annate allo
+   stesso id e due annate sono due bottiglie diverse.
+2. **Vino diverso che sembra pertinente.** `isRelevant()` chiede che
+   **una sola** parola della query — la più lunga — compaia nel titolo o
+   nell'URL. Un vino spagnolo con lo stesso vitigno passa (caso reale
+   documentato nel file: "Don de Dar … Sauvignon Blanc" su "Zamuner
+   blanc"). Se un domani serve stringere, la strada è chiedere che
+   matchino **almeno due** parole distintive — ma è l'unica modifica di
+   questa zona che può ridurre il recall, quindi va misurata, non
+   applicata a occhio.
+
+**Mai rimettere un suffisso alla query** (c'era un `` `${query} vino` ``):
+con la ricerca già ristretta a Vivino ogni pagina è di vini, quindi non
+aggiunge nulla, e "vino" è spagnolo quanto italiano — semmai aiutava le
+copie spagnole a posizionarsi. Il recall misurato (15/15 bottiglie
+Zamuner reali) era comunque quello **senza** suffisso.
+
 ## Icone della schermata Home iOS: opache, quadrate, arte al ~74%
 
 L'icona attuale (grappolo + calice a tratto) è **di Flaticon**, licenza

@@ -6,14 +6,14 @@ function fakeFetch(status: number, body: unknown): typeof fetch {
 }
 
 describe('searchWine', () => {
-  it('sends the query with a " vino" suffix, basic search depth (default), restricted to vivino.com', async () => {
+  it('sends the query verbatim (no " vino" suffix), basic search depth (default), restricted to vivino.com', async () => {
     let capturedBody: any;
     const fetchImpl = (async (_url: string, init: RequestInit) => {
       capturedBody = JSON.parse(init.body as string);
       return new Response(JSON.stringify({ results: [], images: [] }), { status: 200 });
     }) as typeof fetch;
     await searchWine('Zamuner blanc', 'key', fetchImpl);
-    expect(capturedBody.query).toBe('Zamuner blanc vino');
+    expect(capturedBody.query).toBe('Zamuner blanc');
     expect(capturedBody.search_depth).toBeUndefined();
     expect(capturedBody.include_domains).toEqual(['vivino.com']);
   });
@@ -120,9 +120,13 @@ describe('searchWine', () => {
     expect(snippet.length).toBeLessThanOrEqual(181); // 180 + the ellipsis char
   });
 
-  it('prefers the /it/ Vivino page over a same-wine duplicate in another language, close in Tavily score', async () => {
+  it('collapses same-wine duplicates published under several languages, keeping the /it/ one', async () => {
+    // All three are the same bottle (/w/1) that Vivino serves per language.
+    // Before the dedup these took three of the ten rows in the picker, which
+    // is what surfaced as "Spanish Vivino records" in the add-wine search.
     const fetchImpl = fakeFetch(200, {
       results: [
+        { title: 'Zamuner Cuvée Alessandra | Vivino Español', content: 'n/a', url: 'https://www.vivino.com/es/zamuner-cuvee-alessandra/w/1', score: 0.77 },
         { title: 'Zamuner Cuvée Alessandra | Vivino English', content: 'n/a', url: 'https://www.vivino.com/en/zamuner-cuvee-alessandra/w/1', score: 0.75 },
         { title: 'Zamuner Cuvée Alessandra | Vivino Italiano', content: 'n/a', url: 'https://www.vivino.com/it/zamuner-cuvee-alessandra/w/1', score: 0.73 },
       ],
@@ -131,8 +135,33 @@ describe('searchWine', () => {
     const result = await searchWine('Zamuner', 'key', fetchImpl);
     expect(result?.candidates.map((c) => c.sourceUrl)).toEqual([
       'https://www.vivino.com/it/zamuner-cuvee-alessandra/w/1',
-      'https://www.vivino.com/en/zamuner-cuvee-alessandra/w/1',
     ]);
+  });
+
+  it('keeps two vintages of the same wine apart — same wine id, different ?year=', async () => {
+    const fetchImpl = fakeFetch(200, {
+      results: [
+        { title: 'Zamuner Riserva 2019 | Vivino Italiano', content: 'n/a', url: 'https://www.vivino.com/it/zamuner-riserva/w/1?year=2019', score: 0.8 },
+        { title: 'Zamuner Riserva 2020 | Vivino Italiano', content: 'n/a', url: 'https://www.vivino.com/it/zamuner-riserva/w/1?year=2020', score: 0.7 },
+      ],
+      images: [],
+    });
+    const result = await searchWine('Zamuner', 'key', fetchImpl);
+    expect(result?.candidates).toHaveLength(2);
+  });
+
+  it('leaves pages that are not wine pages alone — no /w/ id to group them by', async () => {
+    // Two different Vivino pages with no wine id must not collapse into one
+    // just because neither has a key.
+    const fetchImpl = fakeFetch(200, {
+      results: [
+        { title: 'Zamuner winery | Vivino', content: 'n/a', url: 'https://www.vivino.com/it/wineries/zamuner', score: 0.8 },
+        { title: 'Zamuner wines list | Vivino', content: 'n/a', url: 'https://www.vivino.com/it/search/wines?q=zamuner', score: 0.7 },
+      ],
+      images: [],
+    });
+    const result = await searchWine('Zamuner', 'key', fetchImpl);
+    expect(result?.candidates).toHaveLength(2);
   });
 
   it('does not let the Italian-path boost override a much more relevant non-Italian result', async () => {

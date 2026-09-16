@@ -417,6 +417,26 @@ questo file è il riassunto "dove eravamo rimasti".
       impasta, perché ha due soggetti e otto acini. Provato a ingrassare
       il tratto per compensare: peggiora, chiude gli acini del grappolo.
       Sulla Home a 60 px — la misura che conta — regge.
+12. **Ricerca web in "Aggiungi vino": via i duplicati di lingua** —
+    segnalazione utente ("perché vedo record di Vivino Spagna?"). Erano
+    due cose sovrapposte: soprattutto la **stessa** scheda Vivino
+    ripetuta in più lingue (`/it/`, `/en/`, `/es/`), che occupava fino a
+    tre delle dieci righe del selettore, e in misura minore vini
+    davvero spagnoli passati dal filtro di pertinenza.
+    - Aggiunta `dedupeKey()` in `tavily-search.ts`: raggruppa per l'id
+      `/w/<id>` (stabile fra le lingue) e tiene una sola scheda. Gira
+      **dopo** l'ordinamento, così sopravvive la copia meglio piazzata —
+      la `/it/`, grazie a `ITALIAN_PATH_BOOST` che prima si limitava a
+      riordinare senza togliere niente. L'`?year=` è nella chiave: due
+      annate sono due bottiglie diverse.
+    - Tolto il suffisso `vino` dalla query: inutile con la ricerca già
+      ristretta a Vivino, ed è parola spagnola quanto italiana.
+    - **Non** toccato `isRelevant()`, che continua a chiedere una sola
+      parola (la più lunga): stringerlo a due parole è l'unica modifica
+      di quest'area che può ridurre il recall, quindi va misurata prima.
+      Vedi `CLAUDE.md` per il dettaglio dei due filtri.
+    - `worker/test/tavily-search.test.ts`: 17 test (3 nuovi/riscritti),
+      suite completa 122 verdi.
 
 ## Cose note, non (ancora) da rifare
 
