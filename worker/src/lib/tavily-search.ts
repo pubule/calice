@@ -69,8 +69,11 @@ function isRelevant(word: string, candidate: WineCandidate): boolean {
 //
 // The boost alone only ever REORDERED those duplicates, so the Spanish and
 // English copies of the same bottle still took up rows in the list; what
-// actually removes them is dedupeKey below. The boost still decides which
-// copy survives that collapse.
+// removes them is dedupeKey below, which also picks the Italian copy
+// outright. So the boost no longer decides the language of a wine — it is
+// left in only as a tie-break between DIFFERENT pages that share no wine
+// id (a winery or listing page against another), where the collapse has
+// nothing to group on.
 const ITALIAN_PATH_BOOST = 0.05;
 function isItalianVivinoUrl(sourceUrl?: string): boolean {
   if (!sourceUrl) return false;
@@ -188,17 +191,31 @@ export async function searchWine(query: string, apiKey: string, fetchImpl: typeo
     .map((b) => ({ candidate: b.candidate, rankScore: b.tavilyScore + (isItalianVivinoUrl(b.candidate.sourceUrl) ? ITALIAN_PATH_BOOST : 0) }))
     .sort((a, b) => b.rankScore - a.rankScore);
 
-  // Collapse the language duplicates AFTER ranking, so the copy that
-  // survives is the best-ranked one — which, thanks to ITALIAN_PATH_BOOST,
-  // is the /it/ page whenever Vivino has one.
-  const seen = new Set<string>();
-  const deduped = ranked.filter((r) => {
-    const key = dedupeKey(r.candidate.sourceUrl);
-    if (!key) return true;
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
+  // Collapse the language duplicates AFTER ranking, so a wine takes the
+  // position its best-scoring copy earned. WHICH copy is kept, though, is
+  // decided by language alone and not by score: inside one wine's group the
+  // /it/ page always wins when Vivino has one. Leaving that to
+  // ITALIAN_PATH_BOOST was not enough — the boost moves a score by 0.05, so
+  // a non-Italian copy that Tavily happens to rank higher by more than that
+  // survived the collapse and became the only row shown. That was tolerable
+  // while the boost merely reordered and the Italian row stayed on screen
+  // anyway; once the collapse removes the losers it is not.
+  const positionByKey = new Map<string, number>();
+  const deduped: typeof ranked = [];
+  for (const entry of ranked) {
+    const key = dedupeKey(entry.candidate.sourceUrl);
+    if (!key) {
+      deduped.push(entry);
+      continue;
+    }
+    const at = positionByKey.get(key);
+    if (at === undefined) {
+      positionByKey.set(key, deduped.length);
+      deduped.push(entry);
+    } else if (isItalianVivinoUrl(entry.candidate.sourceUrl) && !isItalianVivinoUrl(deduped[at].candidate.sourceUrl)) {
+      deduped[at] = entry;
+    }
+  }
 
   // A basic search (what this sends — no search_depth override) is a flat
   // 1 credit per Tavily's docs, regardless of max_results; the response

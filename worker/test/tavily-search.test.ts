@@ -194,6 +194,55 @@ describe('searchWine', () => {
     expect(result?.candidates).toEqual([]);
   });
 
+  it('"Zamuner Blanc de Blancs": collapses the language copies and drops the unrelated Spanish white', async () => {
+    // Distinctive word here is "zamuner" (the producer), which every real
+    // Zamuner page carries in title and slug — so the filter is on its
+    // strong footing and only the duplicates need removing.
+    const fetchImpl = fakeFetch(200, {
+      results: [
+        { title: 'Zamuner Blanc de Blancs Brut | Vivino Español', content: 'n/a', url: 'https://www.vivino.com/es/zamuner-blanc-de-blancs-brut/w/2118', score: 0.78 },
+        { title: 'Don de Dar Vino De La Tierra De Castilla Sauvignon Blanc | Vivino', content: 'n/a', url: 'https://www.vivino.com/es/don-de-dar-sauvignon-blanc/w/9001', score: 0.76 },
+        { title: 'Zamuner Blanc de Blancs Brut | Vivino English', content: 'n/a', url: 'https://www.vivino.com/en/zamuner-blanc-de-blancs-brut/w/2118', score: 0.74 },
+        { title: 'Zamuner Blanc de Blancs Brut | Vivino', content: 'n/a', url: 'https://www.vivino.com/it/zamuner-blanc-de-blancs-brut/w/2118', score: 0.72 },
+      ],
+      images: [],
+    });
+    const result = await searchWine('Zamuner blanc de blanc', 'key', fetchImpl);
+    expect(result?.candidates.map((c) => c.sourceUrl)).toEqual([
+      'https://www.vivino.com/it/zamuner-blanc-de-blancs-brut/w/2118',
+    ]);
+  });
+
+  it('"Batude Tenuta Ambrosini": collapses the duplicate but keeps the producer\'s other wine', async () => {
+    const fetchImpl = fakeFetch(200, {
+      results: [
+        { title: 'Tenuta Ambrosini Batude | Vivino Español', content: 'n/a', url: 'https://www.vivino.com/es/tenuta-ambrosini-batude/w/5501', score: 0.81 },
+        { title: 'Tenuta Ambrosini Batude | Vivino', content: 'n/a', url: 'https://www.vivino.com/it/tenuta-ambrosini-batude/w/5501', score: 0.79 },
+        { title: 'Tenuta Ambrosini Franciacorta Brut | Vivino', content: 'n/a', url: 'https://www.vivino.com/it/tenuta-ambrosini-franciacorta/w/5502', score: 0.60 },
+      ],
+      images: [],
+    });
+    const result = await searchWine('batude di tenuta Ambrosini', 'key', fetchImpl);
+    expect(result?.candidates.map((c) => c.sourceUrl)).toEqual([
+      'https://www.vivino.com/it/tenuta-ambrosini-batude/w/5501',
+      'https://www.vivino.com/it/tenuta-ambrosini-franciacorta/w/5502',
+    ]);
+  });
+
+  it('characterises a real weak spot: the right wine is dropped when its page never names the producer', async () => {
+    // "batude di tenuta Ambrosini" keys the relevance filter on "ambrosini"
+    // (the longest word), not on "batude". If Vivino titles and slugs the
+    // page by the wine name alone, the correct bottle matches nothing and is
+    // filtered out — the user sees "nessun risultato" for a wine that WAS
+    // returned. Searching the bare wine name instead is the workaround.
+    const onlyWineName = {
+      results: [{ title: 'Batude 2019 | Vivino', content: 'n/a', url: 'https://www.vivino.com/it/batude/w/5501', score: 0.9 }],
+      images: [],
+    };
+    expect((await searchWine('batude di tenuta Ambrosini', 'key', fakeFetch(200, onlyWineName)))?.candidates).toEqual([]);
+    expect((await searchWine('batude', 'key', fakeFetch(200, onlyWineName)))?.candidates).toHaveLength(1);
+  });
+
   it('returns an empty candidate list (not null) when there are no results — the call still cost credits', async () => {
     const fetchImpl = fakeFetch(200, { results: [], images: [] });
     const result = await searchWine('nothing found', 'key', fetchImpl);

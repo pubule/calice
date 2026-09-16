@@ -513,12 +513,23 @@ rimedi distinti, e confonderli porta a "sistemare" quello sbagliato.
    **riordina soltanto**: per mesi ha lasciato le copie spagnole e
    inglesi in lista, che è ciò che l'utente vedeva come "record di
    Vivino Spagna". A rimuoverle è `dedupeKey()`, che raggruppa per l'id
-   in `/w/<id>` — stabile fra le lingue — e tiene una sola copia. La
-   deduplica gira **dopo** l'ordinamento, così la copia che sopravvive
-   è quella meglio piazzata, cioè la `/it/` grazie al boost: i due
-   meccanismi lavorano insieme, non in alternativa.
+   in `/w/<id>` — stabile fra le lingue — e tiene una sola copia.
    L'`?year=` fa parte della chiave perché Vivino appende le annate allo
    stesso id e due annate sono due bottiglie diverse.
+
+   **Posizione e lingua sono due decisioni separate, non confonderle.**
+   La deduplica gira dopo l'ordinamento, quindi un vino occupa la
+   posizione guadagnata dalla sua copia con la score migliore — ma
+   *quale* copia resta è deciso **solo dalla lingua**, mai dalla score.
+   Il primo tentativo lasciava scegliere al boost e si è rotto subito in
+   test: con 0.78 (ES) contro 0.72 (IT) un boost da 0.05 non basta,
+   sopravviveva la spagnola e diventava l'**unica** riga mostrata.
+   Finché il boost si limitava a riordinare il difetto era invisibile —
+   la riga italiana restava comunque a schermo; nel momento in cui la
+   deduplica elimina i perdenti, far dipendere la lingua da un margine
+   numerico diventa un bug. Il boost resta solo come spareggio fra
+   pagine **diverse** che non condividono un id (una pagina cantina
+   contro un'altra), dove non c'è niente da raggruppare.
 2. **Vino diverso che sembra pertinente.** `isRelevant()` chiede che
    **una sola** parola della query — la più lunga — compaia nel titolo o
    nell'URL. Un vino spagnolo con lo stesso vitigno passa (caso reale
@@ -527,6 +538,15 @@ rimedi distinti, e confonderli porta a "sistemare" quello sbagliato.
    matchino **almeno due** parole distintive — ma è l'unica modifica di
    questa zona che può ridurre il recall, quindi va misurata, non
    applicata a occhio.
+
+   **Il rovescio della stessa euristica**: la parola più lunga non è
+   sempre quella giusta. Su `"batude di tenuta Ambrosini"` la distintiva
+   è `ambrosini` (9 lettere), non `batude` — quindi se Vivino intitola e
+   slugga la scheda col solo nome del vino (`Batude 2019`,
+   `/it/batude/w/...`) il vino **giusto** viene scartato e l'utente
+   legge "nessun risultato" per una bottiglia che Tavily aveva
+   restituito. C'è un test che fissa questo comportamento. Rimedio
+   pratico intanto: cercare il solo nome del vino, senza il produttore.
 
 **Mai rimettere un suffisso alla query** (c'era un `` `${query} vino` ``):
 con la ricerca già ristretta a Vivino ogni pagina è di vini, quindi non

@@ -435,8 +435,20 @@ questo file è il riassunto "dove eravamo rimasti".
       parola (la più lunga): stringerlo a due parole è l'unica modifica
       di quest'area che può ridurre il recall, quindi va misurata prima.
       Vedi `CLAUDE.md` per il dettaglio dei due filtri.
-    - `worker/test/tavily-search.test.ts`: 17 test (3 nuovi/riscritti),
-      suite completa 122 verdi.
+    - **Bug trovato provando le query reali dell'utente prima del
+      deploy** ("batude di tenuta Ambrosini", "Zamuner blanc de blanc"):
+      il primo giro di deduplica lasciava scegliere al boost *quale*
+      copia tenere, e con score 0.78 (ES) contro 0.72 (IT) sopravviveva
+      la spagnola — diventando l'unica riga visibile, cioè peggio di
+      prima. Ora la lingua si sceglie in modo deterministico dentro il
+      gruppo; la score decide solo la posizione fra vini diversi.
+    - **Limite noto, non risolto**: su "batude di tenuta Ambrosini" la
+      parola distintiva è `ambrosini` e non `batude`, quindi se la
+      scheda Vivino non nomina il produttore il vino giusto viene
+      scartato. C'è un test che lo fissa; il rimedio per l'utente è
+      cercare il solo nome del vino. Vedi `CLAUDE.md`.
+    - `worker/test/tavily-search.test.ts`: 20 test (6 nuovi/riscritti),
+      suite completa 125 verdi.
 
 ## Cose note, non (ancora) da rifare
 
