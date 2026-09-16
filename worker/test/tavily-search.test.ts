@@ -197,6 +197,45 @@ describe('searchWine', () => {
     expect(result?.candidates[0]?.title).toBe('Ambrosini Franciacorta Lorenzo Ambrosini Riserva');
   });
 
+  it('recognises the Italian page in every Vivino URL shape, including /IT/it/', async () => {
+    // Live URL shapes: /en/… (language only), /IT/it/… and /BR/pt-BR/…
+    // (country + language). The Italian copy must win the collapse in all
+    // of them — a bare startsWith('/it/') used to miss /IT/it/ entirely.
+    const fetchImpl = fakeFetch(200, {
+      results: [
+        { title: 'Ambrosini Franciacorta Batude Brut | Vivino Brasil', content: 'n/a', url: 'https://www.vivino.com/BR/pt-BR/ambrosini-franciacorta-batude/w/2667819', score: 0.9 },
+        { title: 'Ambrosini Franciacorta Batude Brut | Vivino US', content: 'n/a', url: 'https://www.vivino.com/US/en/ambrosini-franciacorta-batude/w/2667819?year=2019', score: 0.85 },
+        { title: 'Ambrosini Franciacorta Batude Brut | Vivino Italiano', content: 'n/a', url: 'https://www.vivino.com/IT/it/ambrosini-franciacorta-batude/w/2667819', score: 0.5 },
+      ],
+      images: [],
+    });
+    const result = await searchWine('Ambrosini batude', 'key', fetchImpl);
+    // The ?year= copy is a different vintage, so it legitimately stays.
+    expect(result?.candidates.map((c) => c.sourceUrl)).toEqual([
+      'https://www.vivino.com/IT/it/ambrosini-franciacorta-batude/w/2667819',
+      'https://www.vivino.com/US/en/ambrosini-franciacorta-batude/w/2667819?year=2019',
+    ]);
+  });
+
+  it('matches across accents both ways — the title carries them, the Vivino slug does not', async () => {
+    // The real wine is titled "Batudè" but slugged "…-batude".
+    const accented = {
+      results: [{ title: 'Ambrosini Franciacorta Batudè Brut | Vivino Italiano', content: 'n/a', url: 'https://www.vivino.com/IT/it/ambrosini-franciacorta-batude/w/2667819', score: 0.9 }],
+      images: [],
+    };
+    // Typed without the accent, and with it: both must find the wine.
+    expect((await searchWine('Batude', 'key', fakeFetch(200, accented)))?.candidates).toHaveLength(1);
+    expect((await searchWine('Batudè', 'key', fakeFetch(200, accented)))?.candidates).toHaveLength(1);
+
+    // And when only the title carries the name at all, folding is the only
+    // thing keeping the result alive.
+    const titleOnly = {
+      results: [{ title: 'Ambrosini Franciacorta Satèn | Vivino Italiano', content: 'n/a', url: 'https://www.vivino.com/IT/it/ambrosini/w/999', score: 0.9 }],
+      images: [],
+    };
+    expect((await searchWine('Saten', 'key', fakeFetch(200, titleOnly)))?.candidates).toHaveLength(1);
+  });
+
   it('orders different wines by score alone — language never lifts one above a more relevant other', async () => {
     // Two different wines (/w/1 and /w/2), so there is nothing to collapse.
     // The Italian one is far less relevant and must stay second — this is

@@ -52,9 +52,20 @@ function keyWord(words: string[]): string | undefined {
 // mention the distinctive query term in either — including, deliberately,
 // every candidate at once on an unlucky draw (see the caller for why
 // there's no fallback).
+// Compared with the accents folded away on BOTH sides. Italian wine names
+// are full of them — Batudè, Satèn, Rosé — while the URL slug Vivino
+// builds from the same name strips them ("…/ambrosini-franciacorta-batude"
+// for a wine titled "Batudè"). Without folding, someone typing "Batude"
+// matches the slug but not the title, and someone typing "Batudè" matches
+// the title but not the slug: either way half the signal is lost, and a
+// result whose title is the only place the name appears gets dropped.
+function fold(text: string): string {
+  return text.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+}
+
 function isRelevant(word: string, candidate: WineCandidate): boolean {
-  const haystack = `${candidate.title ?? ''} ${candidate.sourceUrl ?? ''}`.toLowerCase();
-  return haystack.includes(word);
+  const haystack = fold(`${candidate.title ?? ''} ${candidate.sourceUrl ?? ''}`);
+  return haystack.includes(fold(word));
 }
 
 // Vivino publishes the same wine page in several languages under
@@ -76,10 +87,23 @@ function isRelevant(word: string, candidate: WineCandidate): boolean {
 // wines"), and it was observed doing it — an Italian page scoring 0.84
 // jumped above a more relevant 0.88 one. So there is no boost any more;
 // the score ranks wines, the collapse picks their language.
+// Vivino serves BOTH shapes, verified against live URLs:
+//   /en/zamuner-brut/w/8800805              language only
+//   /IT/it/ambrosini-franciacorta-batude/…  country + language
+//   /BR/pt-BR/zamuner-blanc-de-blancs-brut/… country + language-region
+// so the language tag sits in the first or the second segment and can
+// carry a region suffix. This used to be a bare
+// pathname.startsWith('/it/'), which matched only the first shape —
+// meaning that on a /IT/it/ page, the one that matters most here, the
+// Italian preference silently never fired at all.
 function isItalianVivinoUrl(sourceUrl?: string): boolean {
   if (!sourceUrl) return false;
   try {
-    return new URL(sourceUrl).pathname.startsWith('/it/');
+    const segments = new URL(sourceUrl).pathname.split('/').filter(Boolean);
+    // A leading uppercase 2-letter segment is the country, so the language
+    // is the one after it; otherwise the first segment is the language.
+    const language = /^[A-Z]{2}$/.test(segments[0] ?? '') ? segments[1] : segments[0];
+    return /^it(-[A-Za-z]{2})?$/i.test(language ?? '');
   } catch {
     return false;
   }

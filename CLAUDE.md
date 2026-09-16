@@ -516,9 +516,20 @@ rimedi distinti, e confonderli porta a "sistemare" quello sbagliato.
    vino legittimo, è il primo posto dove guardare, ma le pagine senza id
    non erano comunque aggiungibili.
 
-1. **Stesso vino, più lingue.** Vivino serve la stessa scheda sotto
-   `/it/`, `/en/`, `/es/` sullo stesso host, e `include_domains` di
-   Tavily filtra per host, non per path. `ITALIAN_PATH_BOOST` (0.05)
+1. **Stesso vino, più lingue.** Vivino serve la stessa scheda in più
+   lingue sullo stesso host, e `include_domains` di Tavily filtra per
+   host, non per path.
+
+   **Gli URL hanno due forme, verificate su link reali** — e questo ha
+   già prodotto un bug: `/en/zamuner-brut/w/8800805` (solo lingua) ma
+   anche `/IT/it/ambrosini-franciacorta-batude/w/2667819` e
+   `/BR/pt-BR/…` (paese + lingua, con eventuale suffisso di regione).
+   `isItalianVivinoUrl()` faceva `pathname.startsWith('/it/')` e quindi
+   **non riconosceva `/IT/it/`**, cioè proprio il caso che conta di più:
+   la preferenza per l'italiano in produzione non è mai scattata. Ora la
+   lingua si estrae per segmenti (se il primo è un codice paese di due
+   lettere maiuscole, la lingua è il secondo). Mai assumere una sola
+   forma di URL Vivino. `ITALIAN_PATH_BOOST` (0.05)
    **riordina soltanto**: per mesi ha lasciato le copie spagnole e
    inglesi in lista, che è ciò che l'utente vedeva come "record di
    Vivino Spagna". A rimuoverle è `dedupeKey()`, che raggruppa per l'id
@@ -560,6 +571,14 @@ rimedi distinti, e confonderli porta a "sistemare" quello sbagliato.
    legge "nessun risultato" per una bottiglia che Tavily aveva
    restituito. C'è un test che fissa questo comportamento. Rimedio
    pratico intanto: cercare il solo nome del vino, senza il produttore.
+   **Gli accenti vanno ripiegati su entrambi i lati** (`fold()`): i nomi
+   italiani ne sono pieni — Batudè, Satèn, Rosé — ma lo slug che Vivino
+   costruisce dallo stesso nome li toglie
+   (`…/ambrosini-franciacorta-batude` per un vino intitolato "Batudè").
+   Senza folding chi scrive "Batude" aggancia lo slug ma non il titolo e
+   chi scrive "Batudè" il contrario: in entrambi i casi si perde metà
+   del segnale, e un risultato in cui il nome compare **solo** nel
+   titolo viene scartato.
 3. **Rumore nel titolo.** Vivino chiude i titoli con un suffisso che
    cambia per lingua — "| Vivino English", "| Vivino Italiano",
    "- Vivino", tutti e tre visti in una stessa lista. `cleanTitle()` lo

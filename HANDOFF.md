@@ -461,7 +461,23 @@ questo file è il riassunto "dove eravamo rimasti".
       riordinare vini diversi — visto mettere una pagina italiana da
       0.84 sopra una da 0.88. Ora la score ordina i vini e la deduplica
       sceglie la lingua, senza sommare niente alla score.
-    - `worker/test/tavily-search.test.ts`: 22 test, suite completa 127
+    - **Terzo giro, verificando su Vivino il vino che non usciva.** Il
+      Batudè di Tenuta Ambrosini **c'è**
+      (`vivino.com/IT/it/ambrosini-franciacorta-batude/w/2667819`), e
+      cercarlo ha fatto emergere due bug nostri:
+      `isItalianVivinoUrl()` faceva `startsWith('/it/')` e non
+      riconosceva la forma `/IT/it/` (né `/BR/pt-BR/`), quindi la
+      preferenza per l'italiano non scattava mai in produzione; e il
+      confronto di pertinenza era sensibile agli accenti, mentre il vino
+      si chiama "Batudè" ma ha slug `…-batude`. Aggiunto `fold()` su
+      entrambi i lati.
+    - **Perché "Batude" dava zero resta però un limite di Tavily**, non
+      un nostro filtro: la scheda esiste su Vivino ma Tavily non la
+      restituisce per quella query. Se ricapita su altri vini, l'ipotesi
+      da valutare è allargare `SEARCH_DOMAINS` — ma attenzione, era già
+      stato provato e aveva azzerato il recall su Zamuner (vedi il
+      commento nel file prima di rifarlo).
+    - `worker/test/tavily-search.test.ts`: 24 test, suite completa 129
       verdi. Diversi fixture storici usavano URL Vivino senza `/w/`
       (`/p/1`, `/a`, `/barolo`): allineati a URL reali, altrimenti
       sarebbero stati scartati da `isWinePage()`.
