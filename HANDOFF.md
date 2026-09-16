@@ -447,8 +447,24 @@ questo file è il riassunto "dove eravamo rimasti".
       scheda Vivino non nomina il produttore il vino giusto viene
       scartato. C'è un test che lo fissa; il rimedio per l'utente è
       cercare il solo nome del vino. Vedi `CLAUDE.md`.
-    - `worker/test/tavily-search.test.ts`: 20 test (6 nuovi/riscritti),
-      suite completa 125 verdi.
+    - **Secondo giro, dagli screenshot dell'utente in produzione**: la
+      deduplica funzionava (nessun doppione di lingua nelle due liste),
+      ma sono emersi due difetti nuovi e uno vecchio.
+      `isWinePage()` scarta ora le pagine senza id `/w/` — erano schede
+      cantina ("Ambrosini Winery", "Zamuner Winery") che, toccate,
+      avrebbero salvato un vino con quel nome. `cleanTitle()` toglie il
+      suffisso di sito dal titolo ("| Vivino English", "| Vivino
+      Italiano", "- Vivino"), che essendo la fonte del nome precompilato
+      sarebbe finito in cantina.
+    - **`ITALIAN_PATH_BOOST` rimosso del tutto.** Risolta la lingua
+      dentro la deduplica e scartate le pagine senza id, restava solo a
+      riordinare vini diversi — visto mettere una pagina italiana da
+      0.84 sopra una da 0.88. Ora la score ordina i vini e la deduplica
+      sceglie la lingua, senza sommare niente alla score.
+    - `worker/test/tavily-search.test.ts`: 22 test, suite completa 127
+      verdi. Diversi fixture storici usavano URL Vivino senza `/w/`
+      (`/p/1`, `/a`, `/barolo`): allineati a URL reali, altrimenti
+      sarebbero stati scartati da `isWinePage()`.
 
 ## Cose note, non (ancora) da rifare
 

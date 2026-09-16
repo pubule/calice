@@ -501,11 +501,20 @@ esplicito per i campi opzionali — pattern già usato in
 `coalesce` solo per endpoint dove il client invia davvero un
 sottoinsieme dei campi.
 
-## Ricerca web dei vini (Tavily): due filtri diversi, non confonderli
+## Ricerca web dei vini (Tavily): tre filtri diversi, non confonderli
 
 `worker/src/lib/tavily-search.ts` restringe la ricerca a `vivino.com`, ma
-essere su Vivino non basta: ci sono **due** problemi distinti, con due
+essere su Vivino non basta: ci sono **tre** problemi distinti, con tre
 rimedi distinti, e confonderli porta a "sistemare" quello sbagliato.
+
+0. **Non è nemmeno una bottiglia.** Vivino posiziona bene anche le schede
+   cantina e le pagine di ricerca ("Ambrosini Winery | Vivino", "Zamuner
+   Winery - Vivino" sono arrivate entrambe nel selettore in produzione).
+   Toccarle avrebbe salvato un vino chiamato "Ambrosini Winery", perché
+   il foglio di aggiunta precompila il nome dal **titolo**. `isWinePage()`
+   tiene solo le pagine con un id `/w/<id>`: se un domani sparisce un
+   vino legittimo, è il primo posto dove guardare, ma le pagine senza id
+   non erano comunque aggiungibili.
 
 1. **Stesso vino, più lingue.** Vivino serve la stessa scheda sotto
    `/it/`, `/en/`, `/es/` sullo stesso host, e `include_domains` di
@@ -521,15 +530,19 @@ rimedi distinti, e confonderli porta a "sistemare" quello sbagliato.
    La deduplica gira dopo l'ordinamento, quindi un vino occupa la
    posizione guadagnata dalla sua copia con la score migliore — ma
    *quale* copia resta è deciso **solo dalla lingua**, mai dalla score.
-   Il primo tentativo lasciava scegliere al boost e si è rotto subito in
-   test: con 0.78 (ES) contro 0.72 (IT) un boost da 0.05 non basta,
-   sopravviveva la spagnola e diventava l'**unica** riga mostrata.
-   Finché il boost si limitava a riordinare il difetto era invisibile —
-   la riga italiana restava comunque a schermo; nel momento in cui la
-   deduplica elimina i perdenti, far dipendere la lingua da un margine
-   numerico diventa un bug. Il boost resta solo come spareggio fra
-   pagine **diverse** che non condividono un id (una pagina cantina
-   contro un'altra), dove non c'è niente da raggruppare.
+
+   **`ITALIAN_PATH_BOOST` non esiste più, non reintrodurlo.** Era un
+   +0.05 sulle pagine `/it/`, ed è stato sbagliato due volte: si
+   limitava a riordinare i duplicati (che quindi restavano in lista), e
+   quando la deduplica ha cominciato a eliminarli un margine di 0.05 non
+   bastava — con 0.78 (ES) contro 0.72 (IT) sopravviveva la spagnola e
+   diventava l'**unica** riga mostrata, cioè peggio di prima. Risolta la
+   lingua dentro la deduplica e scartate le pagine senza id, al boost non
+   restava che fare l'unica cosa che il suo stesso commento diceva di
+   voler evitare: riordinare vini **diversi**. Osservato in una lista
+   reale, una pagina italiana da 0.84 sopra una da 0.88. Quindi: la
+   score ordina i vini, la deduplica sceglie la lingua, e non si somma
+   niente alla score.
 2. **Vino diverso che sembra pertinente.** `isRelevant()` chiede che
    **una sola** parola della query — la più lunga — compaia nel titolo o
    nell'URL. Un vino spagnolo con lo stesso vitigno passa (caso reale
@@ -547,6 +560,12 @@ rimedi distinti, e confonderli porta a "sistemare" quello sbagliato.
    legge "nessun risultato" per una bottiglia che Tavily aveva
    restituito. C'è un test che fissa questo comportamento. Rimedio
    pratico intanto: cercare il solo nome del vino, senza il produttore.
+3. **Rumore nel titolo.** Vivino chiude i titoli con un suffisso che
+   cambia per lingua — "| Vivino English", "| Vivino Italiano",
+   "- Vivino", tutti e tre visti in una stessa lista. `cleanTitle()` lo
+   toglie: non è solo cosmesi, il titolo è ciò da cui il foglio di
+   aggiunta precompila il nome del vino, quindi finirebbe salvato in
+   cantina.
 
 **Mai rimettere un suffisso alla query** (c'era un `` `${query} vino` ``):
 con la ricerca già ristretta a Vivino ogni pagina è di vini, quindi non

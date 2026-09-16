@@ -60,21 +60,22 @@ function isRelevant(word: string, candidate: WineCandidate): boolean {
 // Vivino publishes the same wine page in several languages under
 // /it/, /en/, /es/ etc. on the same hostname (confirmed live — e.g.
 // "Zamuner Cuvée Alessandra ... /w/12211516" appears under both /it/ and
-// /es/) — include_domains can't restrict by path, only by host, so an
-// Italian preference has to be a ranking nudge instead. Small relative to
-// Tavily's own 0-1 score range: real gaps between different wines were
-// observed around 0.02-0.08, an Italian-vs-other-language duplicate of the
-// SAME wine around 0.01-0.04 — 0.05 reliably wins the latter without
-// routinely reordering genuinely different (but both relevant) wines.
+// /es/) — include_domains can't restrict by path, only by host, so the
+// Italian preference has to be applied here.
 //
-// The boost alone only ever REORDERED those duplicates, so the Spanish and
-// English copies of the same bottle still took up rows in the list; what
-// removes them is dedupeKey below, which also picks the Italian copy
-// outright. So the boost no longer decides the language of a wine — it is
-// left in only as a tie-break between DIFFERENT pages that share no wine
-// id (a winery or listing page against another), where the collapse has
-// nothing to group on.
-const ITALIAN_PATH_BOOST = 0.05;
+// It used to be a +0.05 score boost, which was the wrong shape twice over.
+// It only REORDERED the duplicates, so the Spanish and English copies kept
+// taking up rows; and once the collapse below started removing losers, a
+// copy that Tavily scored more than 0.05 higher survived it and became the
+// only row shown. Both are now handled where they belong — the collapse
+// picks the Italian copy of a wine outright, by language and not by score.
+//
+// Nothing is left for a boost to do: between DIFFERENT wines a thumb on
+// the scale is exactly what the original note said it must avoid
+// ("without routinely reordering genuinely different but both relevant
+// wines"), and it was observed doing it — an Italian page scoring 0.84
+// jumped above a more relevant 0.88 one. So there is no boost any more;
+// the score ranks wines, the collapse picks their language.
 function isItalianVivinoUrl(sourceUrl?: string): boolean {
   if (!sourceUrl) return false;
   try {
@@ -101,6 +102,27 @@ function dedupeKey(sourceUrl?: string): string | null {
   } catch {
     return null;
   }
+}
+
+// Only a wine page can become a bottle in the cellar. Vivino also ranks
+// winery profiles and search listings ("Ambrosini Winery | Vivino",
+// "Zamuner Winery - Vivino" both reached the picker in production), and
+// tapping one of those would have created a wine literally named
+// "Ambrosini Winery" — the title is what the add sheet pre-fills from. A
+// wine page is exactly one that carries a /w/<id>, the same marker the
+// dedupe groups on, so dropping the rest costs nothing that was ever
+// addable.
+function isWinePage(sourceUrl?: string): boolean {
+  return dedupeKey(sourceUrl) !== null;
+}
+
+// Vivino titles its pages with a site suffix that changes per language —
+// "… | Vivino English", "… | Vivino Italiano", "… - Vivino" all showed up
+// in one production list. It is noise in every single row, and it is also
+// what the add sheet pre-fills the wine name from, so it would end up
+// saved in the cellar.
+function cleanTitle(title: string): string {
+  return title.replace(/\s*[|\-–—]\s*Vivino(?:\s+\S+)?\s*$/iu, '').trim() || title;
 }
 
 // Tavily's scraped `content` is raw page text — often littered with
@@ -163,7 +185,7 @@ export async function searchWine(query: string, apiKey: string, fetchImpl: typeo
   for (let i = 0; i < Math.min(FETCH_POOL, results.length); i++) {
     const r = results[i];
     const candidate: WineCandidate = {};
-    if (typeof r?.title === 'string' && r.title.trim()) candidate.title = r.title.trim();
+    if (typeof r?.title === 'string' && r.title.trim()) candidate.title = cleanTitle(r.title.trim());
     if (typeof r?.content === 'string' && r.content.trim()) candidate.snippet = cleanSnippet(r.content.trim());
     if (typeof r?.url === 'string' && r.url.trim()) candidate.sourceUrl = r.url.trim();
     const rawImage = images[i];
@@ -185,29 +207,23 @@ export async function searchWine(query: string, apiKey: string, fetchImpl: typeo
   const distinctiveWord = keyWord(queryWords(query));
   const filtered = distinctiveWord ? built.filter((b) => isRelevant(distinctiveWord, b.candidate)) : built;
 
-  // Stable sort: candidates that tie on score keep Tavily's own relevance
-  // order relative to each other.
+  // Stable sort on Tavily's score alone: candidates that tie keep Tavily's
+  // own relevance order relative to each other. Language plays no part
+  // here — see isItalianVivinoUrl.
   const ranked = filtered
-    .map((b) => ({ candidate: b.candidate, rankScore: b.tavilyScore + (isItalianVivinoUrl(b.candidate.sourceUrl) ? ITALIAN_PATH_BOOST : 0) }))
+    .map((b) => ({ candidate: b.candidate, rankScore: b.tavilyScore }))
     .sort((a, b) => b.rankScore - a.rankScore);
 
   // Collapse the language duplicates AFTER ranking, so a wine takes the
-  // position its best-scoring copy earned. WHICH copy is kept, though, is
-  // decided by language alone and not by score: inside one wine's group the
-  // /it/ page always wins when Vivino has one. Leaving that to
-  // ITALIAN_PATH_BOOST was not enough — the boost moves a score by 0.05, so
-  // a non-Italian copy that Tavily happens to rank higher by more than that
-  // survived the collapse and became the only row shown. That was tolerable
-  // while the boost merely reordered and the Italian row stayed on screen
-  // anyway; once the collapse removes the losers it is not.
+  // position its best-scoring copy earned. WHICH copy is kept is decided by
+  // language alone: inside one wine's group the /it/ page always wins when
+  // Vivino has one. Keeping the two decisions apart is the point — score
+  // orders the wines, language picks the page.
   const positionByKey = new Map<string, number>();
   const deduped: typeof ranked = [];
   for (const entry of ranked) {
     const key = dedupeKey(entry.candidate.sourceUrl);
-    if (!key) {
-      deduped.push(entry);
-      continue;
-    }
+    if (!key) continue; // not a wine page — see isWinePage
     const at = positionByKey.get(key);
     if (at === undefined) {
       positionByKey.set(key, deduped.length);
