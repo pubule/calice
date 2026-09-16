@@ -501,13 +501,17 @@ esplicito per i campi opzionali — pattern già usato in
 `coalesce` solo per endpoint dove il client invia davvero un
 sottoinsieme dei campi.
 
-## `.settings-list` in Profilo: `transform:translateZ(0)` non è decorativo, è un fix WebKit vero
+## `.settings-list` in Profilo: riga "Aiuto" troncata — APERTO, il fix `translateZ(0)` non ha funzionato
 
-Segnalazione utente con screenshot: l'ultima riga di `.settings-list`
-("Aiuto") appariva troncata — solo un frammento di bordo, non l'icona/
-etichetta/chevron. Il codice era corretto (nessuna riga tocca quel DOM
-via JS, il markup delle 4 righe è identico strutturalmente) — è un bug
-di **repaint** di WebKit, non di CSS/logica.
+**Stato: il problema resta**, segnalato dall'utente dopo il deploy della
+build che applicava il fix sotto. Non riprovare un altro rimedio alla
+cieca — leggere fino in fondo prima di toccare di nuovo questo CSS.
+
+Segnalazione utente originale, con screenshot: l'ultima riga di
+`.settings-list` ("Aiuto") appariva troncata — solo un frammento di
+bordo, non l'icona/etichetta/chevron. Il codice era corretto (nessuna
+riga tocca quel DOM via JS, il markup delle 4 righe è identico
+strutturalmente).
 
 **Precondizioni, tutte verificate**: `.settings-list` ha
 `border-radius` + `overflow:hidden` (crea un layer di compositing), è
@@ -529,15 +533,42 @@ Playwright headless non riproduce i bug di compositing/repaint reali di
 WebKit. Per questo la diagnosi qui si è fermata a "precondizioni tutte
 presenti, rimedio noto", non a una riproduzione locale del sintomo.
 
-**Fix**: `transform:translateZ(0)` su `.settings-list`, che forza un
-layer di compositing persistente — il rimedio storico e a costo zero
-per questa classe di bug WebKit (nessun effetto visivo in nessun
-browser, è una trasformazione 3D nulla). Se in futuro ricompare lo
-stesso sintomo (una riga che sembra "sparita" o troncata) su un altro
-box con `border-radius`+`overflow:hidden` dentro una vista con
-`-webkit-overflow-scrolling:touch` (es. `.compare-col`, che ha la
-stessa forma), stesso rimedio, stessa causa: non serve reinvestigare da
-zero.
+**Fix tentato, NON confermato**: `transform:translateZ(0)` su
+`.settings-list`, che forza un layer di compositing persistente — il
+rimedio storico per questa classe di bug WebKit (nessun effetto visivo
+in nessun browser, è una trasformazione 3D nulla). Deployato in build
+79. **L'utente ha segnalato che il problema resta**, senza un nuovo
+screenshot — quindi non è dato sapere se: (a) la diagnosi era giusta ma
+il rimedio non basta da solo, (b) la diagnosi era sbagliata e la vera
+causa è un'altra, o (c) il device non aveva ancora caricato la build
+nuova (va sempre verificato per primo: chiudere l'app dall'app switcher
+e riaprirla, non basta tornarci — vedi la sezione sul service worker).
+
+**Prossimo passo, non saltarlo**: chiedere un nuovo screenshot prima di
+toccare ancora questo CSS. Se il sintomo è identico (stesso frammento di
+bordo, stessa riga), vale la pena isolare con la stessa tecnica già
+usata altrove in questo file — una riga diagnostica che stampi i propri
+numeri invece di dedurli dai pixel (vedi "Come misurare invece di
+indovinare" più sotto) — piuttosto che tentare un quarto rimedio a
+occhio. Se in futuro lo stesso sintomo compare su un altro box con
+`border-radius`+`overflow:hidden` dentro una vista con
+`-webkit-overflow-scrolling:touch` (es. `.compare-col`, stessa forma),
+questa diagnosi/rimedio resta il primo sospetto — ma qui, su
+`.settings-list`, non ha chiuso il caso.
+
+## Gruppi di righe correlate: non lasciarle prendere il gap del flex-column del genitore
+
+`build NN` e la riga di attribuzione Flaticon in Profilo erano due
+`<div>` fratelli diretti di `.view` (che è `flex-direction:column;
+gap:20px`) — ognuna prendeva 20px di distanza dal vicino, risultando in
+troppa aria tra due righe che sono concettualmente un blocco unico
+(un tag di build e la sua attribuzione). **Regola**: quando due o più
+righe adiacenti sono correlate e vanno lette come un solo blocco,
+raggrupparle in un wrapper dedicato con un proprio gap più stretto
+(qui `.app-footer{display:flex; flex-direction:column; gap:2px;}`)
+invece di lasciarle come fratelli diretti di un contenitore con un gap
+pensato per sezioni indipendenti. Il gap tra il blocco e l'elemento
+sopra (qui `.logout`→`.app-footer`) resta quello del genitore, invariato.
 
 ## Ricerche "live" da input: servono SEMPRE una guardia di staleness e un `q` vuoto che non matcha
 

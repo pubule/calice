@@ -511,11 +511,30 @@ questo file è il riassunto "dove eravamo rimasti".
     Chromium/Playwright** (confermato: layout identico prima/dopo il
     fix in locale), quindi la diagnosi si è fermata a "precondizioni
     presenti, rimedio noto" — va confermato su device reale.
-    - Fix: `transform:translateZ(0)` su `.settings-list` (forza un
-      layer di compositing persistente, nessun effetto visivo). Vedi
+    - Fix tentato: `transform:translateZ(0)` su `.settings-list` (forza
+      un layer di compositing persistente, nessun effetto visivo). Vedi
       `CLAUDE.md` per il dettaglio e il rimedio da riusare se ricompare
       altrove (`.compare-col` ha la stessa forma a rischio).
     - `CACHE` a `v79` e `build 79`.
+    - **Aggiornamento, sessione successiva: il problema resta** dopo il
+      deploy della v79 (segnalato dall'utente, senza un nuovo
+      screenshot). `translateZ(0)` era il rimedio storico giusto per la
+      classe di bug ipotizzata, ma **non ha risolto** — quindi o la
+      diagnosi (repaint WebKit su `.settings-list` dopo il reflow di
+      "Persone che segui") era sbagliata, o è giusta ma serve un rimedio
+      diverso. **Non riprovare alla cieca un terzo fix**: la prossima
+      sessione deve chiedere un nuovo screenshot (idealmente con la riga
+      diagnostica se serve isolare meglio) prima di toccare di nuovo
+      quel CSS — vedi "Come misurare invece di indovinare" in
+      `CLAUDE.md`, che questa stessa vicenda ripete.
+
+15. **Spaziatura build/credito in Profilo, ravvicinata** — richiesta
+    esplicita dell'utente: `build NN` e la riga di attribuzione Flaticon
+    erano entrambe figlie dirette di `.view`, quindi prendevano ciascuna
+    il gap di 20px del flex della vista — troppa aria tra due righe che
+    sono concettualmente un blocco unico. Raggruppate in un wrapper
+    `.app-footer` con gap interno di 2px; il gap Esci→footer resta
+    invariato. `CACHE` a `v80`, `build 80`.
 
 ## Cose note, non (ancora) da rifare
 
