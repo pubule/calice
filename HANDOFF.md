@@ -547,6 +547,34 @@ questo file è il riassunto "dove eravamo rimasti".
     degli elementi cantina stessi), che usa `.elem-icon`, non `.cphoto`.
     Verificato con Playwright: 34×48px prima/dopo, screenshot identico
     alla riga della Cantina. `CACHE` a `v81`, `build 81`.
+17. **Sostituire/liberare uno slot occupato** — domanda esplicita
+    dell'utente su come farlo; risposta onesta: **non si poteva**. Uno
+    slot pieno apriva solo il popup "Apri ›" verso la scheda del vino
+    lì dentro, nessuna opzione per liberarlo o metterci un altro vino.
+    Il backend supportava già `PATCH /api/bottles/:id/location` con
+    `elementId: null` (commento nel file: "unassigning an element or
+    clearing a slot is a real, valid state") — mancava solo che il
+    frontend lo chiamasse mai così.
+    - `showBottlePopup()` in `cellar.js`: aggiunta una riga di azioni
+      sotto quella esistente. **"Libera questo slot"** compare sempre
+      (chiama `assignBottleToSlot(b, null, null, null, null)`, che è
+      l'endpoint esistente con tutti i campi a `null` — nessun nuovo
+      endpoint). **"Sostituisci con «X»"** compare solo quando si è nel
+      flusso picker (aperto da "modifica posizione" sulla scheda di
+      un'altra bottiglia) e lo slot toccato è occupato da un vino
+      diverso da quello che si sta piazzando: libera prima l'occupante,
+      poi assegna lì il vino del picker — due `PATCH` in sequenza, mai
+      contemporaneamente sullo stesso slot lato server.
+    - `.bottle-popup` in `app.css` passa da riga singola a due righe
+      (`.bpop-main` + `.bpop-actions`, separate da un bordo sottile) per
+      fare posto alle azioni senza affollare la riga esistente.
+    - Verificato con Playwright end-to-end (rotta `/api/bottles/:id/location`
+      stubbata per registrare le chiamate reali): "Libera" produce un
+      solo `PATCH` con tutti i campi `null` e lo slot torna vuoto nella
+      griglia; "Sostituisci" produce la sequenza `PATCH` libera-poi-assegna
+      corretta e `loc-value` nella scheda della nuova bottiglia si
+      aggiorna. Suite backend invariata (130 verdi, nessun endpoint
+      nuovo). `CACHE` a `v82`, `build 82`.
 
 ## Cose note, non (ancora) da rifare
 

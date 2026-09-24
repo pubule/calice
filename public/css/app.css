@@ -483,13 +483,15 @@
   .slot-circle.filled.type-bollicine{border-color:#b8ac74; background:#e0d9b8;}
   .slot-circle.filled.type-bollicine .slabel{color:rgba(36,30,26,.6);}
   .slot-circle.sel{outline:2.5px solid #5b2333; outline-offset:2px;}
-  .bottle-popup{display:none; background:#241e1a; color:#f7f5f0; border-radius:12px; padding:11px 13px; align-items:center; gap:10px;}
+  .bottle-popup{display:none; flex-direction:column; gap:8px; background:#241e1a; color:#f7f5f0; border-radius:12px; padding:11px 13px;}
   .bottle-popup.show{display:flex;}
+  .bottle-popup .bpop-main{display:flex; align-items:center; gap:10px;}
   .bottle-popup .bphoto{width:20px; height:30px; border-radius:3px; flex-shrink:0;}
   .bottle-popup .binfo{flex:1; min-width:0;}
   .bottle-popup .bname{font-size:12.5px; font-weight:600;}
   .bottle-popup .bsub{font-size:10.5px; color:rgba(247,245,240,.65); margin-top:1px;}
   .bottle-popup .bgo{font-size:11px; font-weight:600; color:#f0c8d3; flex-shrink:0; cursor:pointer;}
+  .bottle-popup .bpop-actions{display:flex; flex-wrap:wrap; justify-content:flex-end; gap:6px 14px; padding-top:6px; border-top:1px solid rgba(247,245,240,.14);}
 
   /* ---- scatolone: nessuno slot, solo elenco contenuto ---- */
   .box-note{font-size:11.5px; color:#8f8474; line-height:1.5;}

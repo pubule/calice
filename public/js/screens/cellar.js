@@ -453,14 +453,41 @@ function renderElementDetail(id) {
 
 function showBottlePopup(b) {
   const popup = document.getElementById('bottle-popup');
+  // "Sostituisci" only makes sense while picking a slot for a DIFFERENT
+  // bottle (picker set from a bottle's own "modifica posizione" link) —
+  // not when just browsing, and not when the tapped slot is picker.bottle
+  // itself (already there).
+  const canSwap = picker && picker.bottle.id !== b.id;
   popup.innerHTML = `
-    ${photoHtml(b, 'bphoto')}
-    <div class="binfo"><div class="bname">${escapeHtml(b.name)}</div><div class="bsub">${escapeHtml(b.producer)}${b.vintage ? ' · ' + b.vintage : ''}</div></div>
-    <div class="bgo" id="popup-open-btn">Apri ›</div>`;
+    <div class="bpop-main">
+      ${photoHtml(b, 'bphoto')}
+      <div class="binfo"><div class="bname">${escapeHtml(b.name)}</div><div class="bsub">${escapeHtml(b.producer)}${b.vintage ? ' · ' + b.vintage : ''}</div></div>
+      <div class="bgo" id="popup-open-btn">Apri ›</div>
+    </div>
+    <div class="bpop-actions">
+      ${canSwap ? `<div class="bgo" id="popup-swap-btn">Sostituisci con "${escapeHtml(picker.bottle.name)}"</div>` : ''}
+      <div class="bgo" id="popup-free-btn">Libera questo slot</div>
+    </div>`;
   popup.classList.add('show');
   document.getElementById('popup-open-btn').addEventListener('click', async () => {
     closeElementsOverlay();
     await openDetail(b, await me());
+  });
+  document.getElementById('popup-swap-btn')?.addEventListener('click', async () => {
+    const { bottle, onPicked } = picker;
+    const elId = b.element_id, tier = b.slot_tier, col = b.slot_col, depth = b.slot_depth;
+    // Free the current occupant first — otherwise two bottles would
+    // briefly (and, if the second call failed, permanently) claim the
+    // same slot server-side.
+    await assignBottleToSlot(b, null, null, null, null);
+    await assignBottleToSlot(bottle, elId, tier, col, depth);
+    closeElementsOverlay();
+    onPicked?.(bottle);
+  });
+  document.getElementById('popup-free-btn').addEventListener('click', async () => {
+    await assignBottleToSlot(b, null, null, null, null);
+    popup.classList.remove('show');
+    if (currentElementId != null) renderElementDetail(currentElementId);
   });
 }
 
