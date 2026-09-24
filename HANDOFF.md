@@ -535,6 +535,18 @@ questo file è il riassunto "dove eravamo rimasti".
     sono concettualmente un blocco unico. Raggruppate in un wrapper
     `.app-footer` con gap interno di 2px; il gap Esci→footer resta
     invariato. `CACHE` a `v80`, `build 80`.
+16. **Foto enorme nel picker "scegli la bottiglia"** (Elementi cantina,
+    slot vuoto → assegna una bottiglia) — segnalazione utente: voleva la
+    stessa lista compatta della Cantina. Causa reale, non estetica:
+    `renderBottlePickerForSlot()` in `cellar.js` riusa già la classe
+    `cphoto` dentro `.elem-row`, ma la regola di dimensione compatta era
+    scoped **solo** a `.cellar-row .cphoto` — per `.elem-row .cphoto`
+    non esisteva nessuna regola, quindi l'`<img>` renderizzava a
+    dimensione naturale. Aggiunta `.elem-row .cphoto` con le stesse
+    misure (34×48px). Non tocca l'altro uso di `.elem-row` (la lista
+    degli elementi cantina stessi), che usa `.elem-icon`, non `.cphoto`.
+    Verificato con Playwright: 34×48px prima/dopo, screenshot identico
+    alla riga della Cantina. `CACHE` a `v81`, `build 81`.
 
 ## Cose note, non (ancora) da rifare
 

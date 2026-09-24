@@ -556,6 +556,29 @@ occhio. Se in futuro lo stesso sintomo compare su un altro box con
 questa diagnosi/rimedio resta il primo sospetto — ma qui, su
 `.settings-list`, non ha chiuso il caso.
 
+## Classi di foto condivise (`cphoto` e simili): la dimensione è scoped al genitore, non alla classe
+
+Trovato nel picker "scegli la bottiglia" di Elementi cantina
+(`renderBottlePickerForSlot()` in `cellar.js`): la foto usciva a
+dimensione naturale (enorme) invece che compatta come nella lista
+Cantina. La funzione condivisa `photoHtml(b, className)` genera sempre
+un `<img class="cphoto photo" ...>` o un placeholder `<div class="cphoto
+photo ${tipo}">`, ma le sue regole di taglia in `app.css` non sono su
+`.cphoto` — sono su `.cellar-row .cphoto`. Qualunque nuovo contenitore
+che chiama `photoHtml(b, 'cphoto')` fuori da `.cellar-row` (qui
+`.elem-row`) eredita zero regole di dimensione, perché la specificità
+sta nel selettore composto, non nella classe da sola.
+
+**Regola**: prima di riusare `photoHtml()` (o qualunque helper che
+produce una classe "generica" come `cphoto`) dentro un nuovo
+contenitore, cercare in `app.css` se quella classe ha regole scoped a un
+contenitore specifico — se sì, replicare esplicitamente la regola per il
+nuovo contenitore (`.nuovo-contenitore .cphoto{...}`), non assumere che
+la classe porti già le sue dimensioni. Non vale solo per `cphoto`: lo
+stesso pattern si ripete per altre classi "di componente" in questo
+progetto (`.type-dot`, `.cprice`, ecc.), tutte scoped al proprio genitore
+diretto invece che definite standalone.
+
 ## Gruppi di righe correlate: non lasciarle prendere il gap del flex-column del genitore
 
 `build NN` e la riga di attribuzione Flaticon in Profilo erano due
