@@ -631,7 +631,14 @@ function wireStaticControls() {
 
   document.getElementById('compare-close')?.addEventListener('click', () => document.getElementById('compare-overlay').classList.remove('open'));
 
-  document.querySelectorAll('.segmented button').forEach((btn) => {
+  // Scoped to #view-cellar: `.segmented` is also used by Home's Da
+  // bere/Regioni/Attività tabs (and by Esplora's Vini/Categorie tabs,
+  // wired separately). A document-wide selector here would also catch
+  // clicks on those, and since none of them carries `data-wall`, every
+  // such click would fall into the `else` branch below and silently
+  // flip #cellar-list/#wishlist-list to the wishlist view in the
+  // background — invisible until the next visit to Cantina.
+  document.querySelectorAll('#view-cellar .segmented button').forEach((btn) => {
     btn.addEventListener('click', () => {
       btn.parentElement.querySelectorAll('button').forEach((b) => b.classList.remove('active'));
       btn.classList.add('active');

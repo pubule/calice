@@ -194,7 +194,7 @@
     </div>
     <div class="logout">Esci</div>
     <div class="app-footer">
-      <div class="app-build">build 82</div>
+      <div class="app-build">build 83</div>
       <div class="app-credit"><a href="https://www.flaticon.com/free-icons/wine" target="_blank" rel="noopener">Wine icons created by iconixar - Flaticon</a></div>
     </div>
   </div>
@@ -390,7 +390,16 @@
   try {
     window.BarcodeDetector.getSupportedFormats();
   } catch {
-    window.BarcodeDetector = barcodeDetectorPolyfill.BarcodeDetectorPolyfill;
+    // The two <script src> tags above can fail to load (CDN down, blocked
+    // by an ad/script blocker, offline first load) without the browser
+    // reporting an error here — `barcodeDetectorPolyfill` then stays
+    // undefined and referencing it below would throw an uncaught
+    // ReferenceError. Leave window.BarcodeDetector unset in that case:
+    // add.js already checks `'BarcodeDetector' in window` and disables
+    // scanning gracefully instead of crashing.
+    if (typeof barcodeDetectorPolyfill !== 'undefined') {
+      window.BarcodeDetector = barcodeDetectorPolyfill.BarcodeDetectorPolyfill;
+    }
   }
 </script>
 <script type="module" src="js/main.js"></script>

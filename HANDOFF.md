@@ -575,6 +575,54 @@ questo file è il riassunto "dove eravamo rimasti".
       corretta e `loc-value` nella scheda della nuova bottiglia si
       aggiorna. Suite backend invariata (130 verdi, nessun endpoint
       nuovo). `CACHE` a `v82`, `build 82`.
+18. **Audit UX automatizzato (Playwright, 21 schermate + scenario
+    offline) — solo 2 bug reali confermati, il resto era rumore.**
+    L'audit segnala moltissimi "target piccoli"/contrasto: quasi tutti
+    sono lo stile compatto scelto deliberatamente in questo progetto
+    (chip, pulsanti `.segmented`, icon-btn 25×25...), non toccati.
+    Anche due letture inizialmente sospette si sono rivelate false piste
+    una volta verificate: screenshot "prima/dopo scroll" identici
+    byte-per-byte nella scheda dettaglio e nel foglio manuale erano un
+    artefatto dello script di audit stesso (selettore CSS a lista,
+    `'#detail-overlay .detail-sheet, #detail-overlay'` — `querySelector`
+    su una lista di selettori restituisce il primo match in ordine di
+    **documento**, non il primo della lista: prendeva l'overlay
+    genitore, non scrollabile, invece del foglio interno), non un bug
+    dell'app — verificato scrollando il foglio vero via Playwright
+    (scrollTop passa da 0 a 525). Anche la schermata "Errore di
+    connessione" offline è comportamento voluto (gate di autenticazione
+    fallito), non un bug.
+    - **Bug reale 1 — `.segmented button` selezionato senza scope**:
+      `wireStaticControls()` in `cellar.js` wirava
+      `document.querySelectorAll('.segmented button')` su **tutto il
+      documento**, ma `.segmented` è la stessa classe usata dai tab
+      Home (Da bere/Regioni/Attività). Cliccare un tab Home eseguiva
+      comunque il branch `else` del listener della Cantina (nessun tab
+      Home ha `data-wall`), che forzava `#wishlist-list` visibile e
+      `#cellar-list` nascosto **in background** — invisibile finché non
+      si tornava in Cantina, dove compariva "Desideri" al posto de "La
+      mia cantina" pur con quel tab segnato attivo. Stesso bug già
+      documentato in `CLAUDE.md` per `.stars-input`, ricomparso in un
+      punto diverso. Riprodotto con uno script Playwright dedicato
+      (click su un tab Home poi hash diretto a `#/cellar`) prima e dopo
+      il fix. **Fix**: selettore scoped a `#view-cellar .segmented
+      button`.
+    - **Bug reale 2 — crash del fallback BarcodeDetector se il CDN non
+      carica**: in `index.html`, il blocco che installa il polyfill
+      zbar-wasm quando l'API nativa manca faceva
+      `barcodeDetectorPolyfill.BarcodeDetectorPolyfill` senza controllare
+      che gli script `<script src="https://cdn.jsdelivr.net/...">`
+      sopra fossero effettivamente caricati. Con CDN bloccato/offline al
+      primo load (osservato nel sandbox dell'audit, ma vale per
+      qualunque ad/script blocker o down del CDN in produzione), quel
+      riferimento lancia un `ReferenceError` non gestito. **Fix**:
+      guardia `typeof barcodeDetectorPolyfill !== 'undefined'` prima
+      dell'assegnazione — se manca, `window.BarcodeDetector` resta
+      `undefined` e `add.js` (che già controlla `'BarcodeDetector' in
+      window`) disattiva lo scan senza crash. Verificato con Playwright
+      bloccando le richieste verso `cdn.jsdelivr.net`: zero `pageerror`,
+      scansione disattivata correttamente.
+    - Nessuna modifica backend. `CACHE` a `v83`, `build 83`.
 
 ## Cose note, non (ancora) da rifare
 
