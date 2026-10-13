@@ -7,6 +7,7 @@ import { mountStats } from './screens/stats.js';
 import { mountProfile } from './screens/profile.js';
 import { mountInviteAccept } from './screens/invite.js';
 import { mountExplore } from './screens/explore.js';
+import './sheet-gestures.js';
 
 // Views without a tab of their own light the tab they are reached from.
 const TAB_FOR_VIEW = { 'view-explore': 'view-home', 'view-invite': 'view-home' };

@@ -637,3 +637,14 @@
 
   /* Accessibilità: focus */
   [role="button"]:focus-visible, button:focus-visible, [role="slider"]:focus-visible, [role="radio"]:focus-visible, [role="tab"]:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible { outline:2px solid #5b2333; outline-offset:2px; }
+
+  /* ---- Fogli: maniglia e trascinamento ---- */
+  /* La maniglia è iniettata da js/sheet-gestures.js. È assoluta così non
+     sposta il layout dei fogli (che hanno gap/padding propri); la zona di
+     tocco è alta 44pt, stretta e centrata per non coprire il pulsante ×. */
+  .detail-sheet, .compare-sheet{position:relative; overscroll-behavior:contain;}
+  .sheet-grabber{position:absolute; top:0; left:50%; width:120px; margin-left:-60px; height:44px; z-index:3; display:flex; justify-content:center; align-items:flex-start; padding-top:7px; touch-action:none; cursor:grab;}
+  .sheet-grabber span{display:block; width:36px; height:5px; border-radius:3px; background:#d8ceb8; box-shadow:0 0 0 .5px rgba(36,30,26,.12);}
+  /* Header dei fogli: il trascinamento parte subito, senza che il browser
+     rubi il gesto per lo scroll. */
+  .compare-sheet .compare-head, .compare-sheet .topbar, .detail-sheet .detail-hero{touch-action:none;}
