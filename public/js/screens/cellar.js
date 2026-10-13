@@ -60,6 +60,9 @@ export function locationLabel(b) {
   return `${b.element_name} · Livello ${b.slot_tier} · ${colLetter(b.slot_col)}.${b.slot_depth}`;
 }
 
+const ICON_SWIPE_EDIT = '<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>';
+const ICON_SWIPE_DELETE = '<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"/><path d="M6 7l1 13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-13"/><path d="M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3"/></svg>';
+
 function rowHtml(b) {
   const photo = photoClass(b.type);
   const name = escapeHtml(b.name);
@@ -68,15 +71,20 @@ function rowHtml(b) {
   const score = b.score != null ? b.score.toFixed(1) : '—';
   const loc = locationLabel(b);
   const quantity = escapeHtml(b.quantity);
+  // .cellar-item wraps the sliding row and the actions revealed behind it.
+  // The actions come AFTER the row in the DOM so Tab order is: row -> Modifica
+  // -> Elimina; they are layered under the row with CSS.
   return `
-    <div class="cellar-row" role="group" data-id="${b.id}" data-photo="${photo}" data-name="${name}" data-sub="${sub}" data-price="${price}" data-score="${score}">
-      <div class="rowcheck"><svg class="check-ic" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 12 9 17 20 6"/></svg></div>
-      ${photoHtml(b, 'cphoto')}
-      <div class="cinfo" role="button" tabindex="0"><div class="name">${name}</div><div class="sub">${sub} · ×${quantity}${loc ? ' · ' + escapeHtml(loc) : ''}</div></div>
-      <div class="cprice">${price}<small>a bottiglia</small></div>
-      <div class="row-actions">
-        <div class="icon-btn edit-btn" data-id="${b.id}" title="Modifica" role="button" tabindex="0" aria-label="Modifica ${name}"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></div>
-        <div class="icon-btn danger delete-btn" data-id="${b.id}" title="Elimina" role="button" tabindex="0" aria-label="Elimina ${name}"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"/><path d="M6 7l1 13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-13"/><path d="M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3"/></svg></div>
+    <div class="cellar-item" data-id="${b.id}">
+      <div class="cellar-row" role="group" data-id="${b.id}" data-photo="${photo}" data-name="${name}" data-sub="${sub}" data-price="${price}" data-score="${score}">
+        <div class="rowcheck"><svg class="check-ic" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 12 9 17 20 6"/></svg></div>
+        ${photoHtml(b, 'cphoto')}
+        <div class="cinfo" role="button" tabindex="0"><div class="name">${name}</div><div class="sub">${sub} · ×${quantity}${loc ? ' · ' + escapeHtml(loc) : ''}</div></div>
+        <div class="cprice">${price}<small>a bottiglia</small></div>
+      </div>
+      <div class="swipe-actions">
+        <div class="swipe-action swipe-edit" data-id="${b.id}" role="button" tabindex="0" aria-label="Modifica ${name}">${ICON_SWIPE_EDIT}<span>Modifica</span></div>
+        <div class="swipe-action swipe-delete" data-id="${b.id}" role="button" tabindex="0" aria-label="Elimina ${name}">${ICON_SWIPE_DELETE}<span>Elimina</span></div>
       </div>
     </div>`;
 }
@@ -159,38 +167,240 @@ export function refreshCellarList(removedId) {
   applyFilters();
 }
 
+// Edit / delete of a bottle are shared by the swipe actions on the Cantina
+// rows and the buttons in the bottle detail sheet (detail.js).
+// `onDone(updated)` receives the refreshed bottle object: the list is
+// re-fetched after a save, so the one the caller holds is stale.
+export function editBottle(bottle, onDone) {
+  openEditWineSheet(bottle, async () => {
+    await loadCellarData();
+    onDone?.(currentBottles.find((x) => x.id === bottle.id) ?? null);
+  });
+}
+
+// Resolves true when the bottle was actually deleted.
+export async function deleteBottle(bottle) {
+  const ok = await confirmModal(`Eliminare "${bottle?.name ?? 'questa bottiglia'}" dalla cantina?`, {
+    title: 'Elimina bottiglia',
+    confirmLabel: 'Elimina',
+    danger: true,
+  });
+  if (!ok) return false;
+  await api.del(`/api/bottles/${bottle.id}`);
+  currentBottles = await api.get(`/api/cellars/${currentCellarId}/bottles`);
+  renderChips();
+  applyFilters();
+  return true;
+}
+
 function renderList(bottles) {
   const list = document.getElementById('cellar-list');
+  // Rows are replaced below: the open one (if any) is about to be detached.
+  openItem = null;
   list.innerHTML = bottles.map(rowHtml).join('') || '<div class="empty-note">Nessun vino trovato con questi filtri.</div>';
-  list.querySelectorAll('.delete-btn').forEach((btn) =>
-    btn.addEventListener('click', async (e) => {
-      e.stopPropagation();
-      const bottle = currentBottles.find((b) => b.id === Number(btn.dataset.id));
-      const ok = await confirmModal(`Eliminare "${bottle?.name ?? 'questa bottiglia'}" dalla cantina?`, {
-        title: 'Elimina bottiglia',
-        confirmLabel: 'Elimina',
-        danger: true,
-      });
-      if (!ok) return;
-      await api.del(`/api/bottles/${btn.dataset.id}`);
-      currentBottles = await api.get(`/api/cellars/${currentCellarId}/bottles`);
-      renderChips();
-      applyFilters();
-    }),
+}
+
+// ---- righe a scorrimento (swipe-left: Modifica / Elimina) ----
+//
+// Wired once, delegated on #cellar-list (rows are re-created on every
+// render). Gesture model from Apple's "Designing Fluid Interfaces": the row
+// tracks the finger 1:1, rubber-bands past its limits, and on release a
+// velocity projection (not the raw position) decides open vs closed.
+
+const SWIPE_W = 152; // two 76px actions
+const SWIPE_SLOP = 10; // px before the direction is decided
+let openItem = null; // the .cellar-item currently showing its actions
+let openedAt = 0;
+let tapWasOnOpen = false; // pointerdown happened while a row was open: that tap only closes it
+let suppressClickUntil = 0;
+let swipe = null; // active gesture state
+
+const prefersReducedMotion = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+
+// Rubber band: 1:1 at first, asymptotically approaching `dim`.
+function rubber(d, dim) {
+  return (1 - 1 / ((d * 0.55) / dim + 1)) * dim;
+}
+
+// Settle `item` open or closed. `animate` adds the short snap transition
+// (under prefers-reduced-motion it just jumps, no motion).
+function settle(item, open, animate) {
+  const row = item.querySelector('.cellar-row');
+  const tok = (item._tok = (item._tok ?? 0) + 1);
+  item.classList.add('peek');
+  item.classList.remove('dragging');
+  item.classList.toggle('is-open', open);
+  const anim = animate && !prefersReducedMotion();
+  row.classList.toggle('snapping', anim);
+  row.style.transform = `translate3d(${open ? -SWIPE_W : 0}px,0,0)`;
+  if (open) {
+    openItem = item;
+    openedAt = Date.now();
+  } else if (openItem === item) {
+    openItem = null;
+  }
+  setTimeout(
+    () => {
+      if (item._tok !== tok) return;
+      row.classList.remove('snapping');
+      if (!open) {
+        row.style.transform = '';
+        item.classList.remove('peek');
+      }
+    },
+    anim ? 320 : 0,
   );
-  list.querySelectorAll('.edit-btn').forEach((btn) =>
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const bottle = currentBottles.find((b) => b.id === Number(btn.dataset.id));
-      if (bottle) openEditWineSheet(bottle, () => loadCellarData());
-    }),
+}
+
+function closeOpenItem(animate = true) {
+  if (openItem) settle(openItem, false, animate);
+}
+
+function wireSwipe(list) {
+  list.addEventListener('pointerdown', (e) => {
+    tapWasOnOpen = !!openItem;
+    swipe = null;
+    if (compareMode) return;
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    const row = e.target.closest('.cellar-row');
+    const item = row?.closest('.cellar-item');
+    if (!item) return;
+    // Opening a second row closes the first.
+    if (openItem && openItem !== item) closeOpenItem();
+    row.classList.remove('snapping');
+    item._tok = (item._tok ?? 0) + 1; // cancel a pending settle cleanup
+    const base = item === openItem ? -SWIPE_W : 0;
+    swipe = {
+      item,
+      row,
+      id: e.pointerId,
+      x0: e.clientX,
+      y0: e.clientY,
+      base,
+      x: base,
+      state: 'pending', // 'pending' | 'swiping' | 'scrolling'
+      samples: [{ t: e.timeStamp, x: e.clientX }],
+    };
+  });
+
+  list.addEventListener('pointermove', (e) => {
+    if (!swipe || e.pointerId !== swipe.id || swipe.state === 'scrolling') return;
+    const dx = e.clientX - swipe.x0;
+    const dy = e.clientY - swipe.y0;
+    if (swipe.state === 'pending') {
+      if (Math.hypot(dx, dy) < SWIPE_SLOP) return;
+      // Claim the gesture only when horizontal movement dominates;
+      // otherwise leave it to the native vertical scroll.
+      if (Math.abs(dx) <= Math.abs(dy)) {
+        swipe.state = 'scrolling';
+        return;
+      }
+      swipe.state = 'swiping';
+      swipe.item.classList.add('peek', 'dragging');
+      try {
+        swipe.row.setPointerCapture(e.pointerId);
+      } catch {}
+    }
+    swipe.samples.push({ t: e.timeStamp, x: e.clientX });
+    if (swipe.samples.length > 8) swipe.samples.shift();
+    let x = swipe.base + dx; // 1:1 with the finger, from where it was grabbed
+    if (x > 0) x = rubber(x, SWIPE_W);
+    else if (x < -SWIPE_W) x = -SWIPE_W - rubber(-SWIPE_W - x, SWIPE_W);
+    swipe.x = x;
+    swipe.row.style.transform = `translate3d(${x}px,0,0)`;
+    e.preventDefault();
+  });
+
+  const end = (e, cancelled) => {
+    if (!swipe || e.pointerId !== swipe.id) return;
+    const s = swipe;
+    swipe = null;
+    if (s.state !== 'swiping') return; // a tap or a vertical scroll
+    tapWasOnOpen = false;
+    // The click that follows a swipe must not open the detail sheet.
+    suppressClickUntil = Date.now() + 400;
+    const first = s.samples.find((p) => e.timeStamp - p.t <= 100) ?? s.samples[s.samples.length - 1];
+    const dt = e.timeStamp - first.t;
+    const v = !cancelled && dt > 0 ? ((e.clientX - first.x) / dt) * 1000 : 0; // px/s
+    const projected = s.x + (v / 1000) * (0.99 / (1 - 0.99));
+    settle(s.item, projected < -SWIPE_W / 2, true);
+  };
+  list.addEventListener('pointerup', (e) => end(e, false));
+  list.addEventListener('pointercancel', (e) => end(e, true));
+
+  // Capture phase: swallow the click that ends a swipe before anything
+  // (the detail sheet, compare selection) sees it.
+  list.addEventListener(
+    'click',
+    (e) => {
+      if (Date.now() < suppressClickUntil) {
+        e.stopPropagation();
+        e.preventDefault();
+        suppressClickUntil = 0;
+      }
+    },
+    true,
   );
-  list.querySelectorAll('.cellar-row').forEach((row) =>
-    row.addEventListener('click', async () => {
-      if (compareMode) return;
-      const bottle = currentBottles.find((b) => b.id === Number(row.dataset.id));
-      if (bottle) await openDetail(bottle, await me());
-    }),
+
+  list.addEventListener('click', async (e) => {
+    const wasOpenTap = tapWasOnOpen && e.detail > 0;
+    tapWasOnOpen = false;
+    if (compareMode) return;
+    const action = e.target.closest('.swipe-action');
+    if (action) {
+      const item = action.closest('.cellar-item');
+      const bottle = currentBottles.find((x) => x.id === Number(action.dataset.id));
+      if (!bottle) return;
+      if (action.classList.contains('swipe-edit')) {
+        settle(item, false, true);
+        editBottle(bottle);
+      } else {
+        await deleteBottle(bottle);
+        // Cancelled: the row is still there, close it. Deleted: it was re-rendered.
+        if (item.isConnected) settle(item, false, true);
+      }
+      return;
+    }
+    const row = e.target.closest('.cellar-row');
+    if (!row) return;
+    // A tap while a row is open only closes it, like iOS lists.
+    if (wasOpenTap) {
+      closeOpenItem();
+      return;
+    }
+    const bottle = currentBottles.find((x) => x.id === Number(row.dataset.id));
+    if (bottle) await openDetail(bottle, await me());
+  });
+
+  // Keyboard / VoiceOver: the actions are real (if hidden) controls in the
+  // DOM, so focusing one must bring its row into view. Enter/Space on them
+  // is handled by the delegated role="button" handler in main.js.
+  list.addEventListener('focusin', (e) => {
+    if (compareMode) return;
+    const item = e.target.closest?.('.swipe-action')?.closest('.cellar-item');
+    if (!item) return;
+    if (openItem && openItem !== item) closeOpenItem(false);
+    if (item !== openItem) settle(item, true, true);
+  });
+  list.addEventListener('focusout', (e) => {
+    const item = e.target.closest?.('.cellar-item');
+    if (item && item === openItem && !item.contains(e.relatedTarget)) settle(item, false, true);
+  });
+
+  // Tapping anywhere outside the open row, or scrolling the list, closes it.
+  document.addEventListener(
+    'pointerdown',
+    (e) => {
+      if (openItem && !openItem.contains(e.target)) closeOpenItem();
+    },
+    true,
+  );
+  document.querySelector('#view-cellar .cellar-body')?.addEventListener(
+    'scroll',
+    () => {
+      if (openItem && Date.now() - openedAt > 200) closeOpenItem();
+    },
+    { passive: true },
   );
 }
 
@@ -629,6 +839,7 @@ function wireStaticControls() {
 
   compareBtn?.addEventListener('click', () => {
     compareMode = !compareMode;
+    closeOpenItem(false);
     if (compareMode) {
       compareSelected = [];
       cellarList.classList.add('selecting');
@@ -639,6 +850,8 @@ function wireStaticControls() {
       exitCompareMode();
     }
   });
+
+  if (cellarList) wireSwipe(cellarList);
 
   cellarList?.addEventListener('click', (e) => {
     if (!compareMode) return;
