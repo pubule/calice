@@ -182,7 +182,7 @@ export async function mountHome() {
   const lowStock = bottles.find((b) => b.quantity <= 2);
   const banners = [];
   if (soon.length) banners.push(`<div class="alert-banner"><div class="txt"><b>Hai vini pronti da bere</b>${soon.length} bottiglie nella finestra di consumo</div><div class="alert-dismiss">&times;</div></div>`);
-  if (lowStock) banners.push(`<div class="alert-banner"><div class="txt"><b>Scorte in esaurimento</b>${escapeHtml(lowStock.name)}: restano ${lowStock.quantity} bottiglie</div><div class="alert-dismiss">&times;</div></div>`);
+  if (lowStock) banners.push(`<div class="alert-banner"><div class="txt"><b>Scorte in esaurimento</b>${escapeHtml(lowStock.name)}: ${lowStock.quantity === 1 ? 'resta 1 bottiglia' : `restano ${lowStock.quantity} bottiglie`}</div><div class="alert-dismiss">&times;</div></div>`);
   document.getElementById('home-alerts').innerHTML = banners.join('');
   document.querySelectorAll('#home-alerts .alert-dismiss').forEach((btn) => {
     btn.addEventListener('click', () => btn.closest('.alert-banner').remove());

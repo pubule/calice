@@ -8,7 +8,12 @@ import { mountProfile } from './screens/profile.js';
 import { mountInviteAccept } from './screens/invite.js';
 import { mountExplore } from './screens/explore.js';
 
+// Views without a tab of their own light the tab they are reached from.
+const TAB_FOR_VIEW = { 'view-explore': 'view-home', 'view-invite': 'view-home' };
+
 function showView(id) {
+  const tabView = TAB_FOR_VIEW[id] ?? id;
+  document.querySelectorAll('.navbtn[data-view]').forEach((b) => b.classList.toggle('active', b.dataset.view === tabView));
   document.querySelectorAll('.view').forEach((v) => v.classList.remove('active', 'shown'));
   const next = document.getElementById(id);
   if (!next) return;

@@ -140,8 +140,21 @@ function applyFilters() {
     const mRegion = !activeChips.region || b.region === activeChips.region;
     return mQ && mType && mCountry && mRegion;
   });
-  document.getElementById('cellar-results-count').textContent = filtered.length + (filtered.length === 1 ? ' bottiglia' : ' bottiglie');
+  const nBottles = filtered.reduce((sum, b) => sum + (Number(b.quantity) || 0), 0);
+  document.getElementById('cellar-results-count').textContent =
+    `${filtered.length} ${filtered.length === 1 ? 'vino' : 'vini'} · ${nBottles} ${nBottles === 1 ? 'bottiglia' : 'bottiglie'}`;
   renderList(filtered);
+}
+
+// Called by detail.js after it changes or removes a bottle (stappa): the
+// bottle objects are shared, so a re-render is enough; `removed` drops the
+// row from the list first.
+export function refreshCellarList(removedId) {
+  if (removedId != null) {
+    currentBottles = currentBottles.filter((b) => b.id !== removedId);
+    renderChips();
+  }
+  applyFilters();
 }
 
 function renderList(bottles) {
