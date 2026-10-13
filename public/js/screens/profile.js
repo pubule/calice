@@ -18,7 +18,7 @@ let firstCellarId = null;
 function followRowHtml(u) {
   const initials = escapeHtml(String(u.name).slice(0, 2).toUpperCase());
   return `
-    <div class="follow-row"><div class="rev-avatar">${initials}</div><span class="name">${escapeHtml(u.name)}</span><div class="follow-btn" data-id="${u.id}" data-name="${escapeHtml(u.name)}">Seguito</div></div>`;
+    <div class="follow-row"><div class="rev-avatar">${initials}</div><span class="name">${escapeHtml(u.name)}</span><div class="follow-btn" data-id="${u.id}" data-name="${escapeHtml(u.name)}" role="button" tabindex="0" aria-label="Seguito: smetti di seguire ${escapeHtml(u.name)}">Seguito</div></div>`;
 }
 
 async function renderFollows() {

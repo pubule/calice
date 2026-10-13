@@ -20,7 +20,7 @@
 
     <div id="home-alerts"></div>
 
-    <div class="explore-entry" id="home-explore-entry">
+    <div class="explore-entry" id="home-explore-entry" role="button" tabindex="0">
       <div class="badge"><svg viewBox="0 0 24 24" fill="none" stroke="#5b2333" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3c2.8 2.6 2.8 15.4 0 18"/><path d="M12 3c-2.8 2.6-2.8 15.4 0 18"/></svg></div>
       <div class="body"><div class="title">Esplora vini per paese</div><div class="sub">Denominazioni, uve e stili regione per regione</div></div>
       <svg viewBox="0 0 24 24" fill="none" stroke="#c8c0b0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;flex-shrink:0;"><path d="M9 6l6 6-6 6"/></svg>
@@ -28,21 +28,21 @@
 
     <div class="home-tabs-block" id="home-tabs-block">
       <div class="segmented" id="home-tabs">
-        <button class="active" data-tab="soon">Da bere</button>
-        <button data-tab="regions">Regioni</button>
-        <button data-tab="feed">Attività</button>
+        <button class="active" data-tab="soon" aria-pressed="true">Da bere</button>
+        <button data-tab="regions" aria-pressed="false">Regioni</button>
+        <button data-tab="feed" aria-pressed="false">Attività</button>
       </div>
       <div class="home-tab-panel" data-tab-panel="soon">
         <div id="home-soon"></div>
-        <a id="home-soon-toggle" class="home-tab-toggle"></a>
+        <a id="home-soon-toggle" class="home-tab-toggle" role="button" tabindex="0"></a>
       </div>
       <div class="home-tab-panel hidden" data-tab-panel="regions">
         <div id="home-regions"></div>
-        <a id="home-regions-toggle" class="home-tab-toggle"></a>
+        <a id="home-regions-toggle" class="home-tab-toggle" role="button" tabindex="0"></a>
       </div>
       <div class="home-tab-panel hidden" data-tab-panel="feed">
         <div id="home-feed"></div>
-        <a id="home-feed-toggle" class="home-tab-toggle"></a>
+        <a id="home-feed-toggle" class="home-tab-toggle" role="button" tabindex="0"></a>
       </div>
     </div>
   </div>
@@ -51,19 +51,19 @@
     <div class="cellar-header">
       <div class="topbar">
         <h2 class="screen-title">La tua cantina</h2>
-        <div class="cantina-switch" id="cantina-switch"><span id="active-cellar-name">…</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></div>
+        <div class="cantina-switch" id="cantina-switch" role="button" tabindex="0" aria-haspopup="dialog"><span id="active-cellar-name">…</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></div>
       </div>
       <div class="segmented">
-        <button class="active" data-wall="owned">La mia cantina</button>
-        <button data-wall="wish">Desideri</button>
+        <button class="active" data-wall="owned" aria-pressed="true">La mia cantina</button>
+        <button data-wall="wish" aria-pressed="false">Desideri</button>
       </div>
-      <div class="elements-link" id="elements-link">
+      <div class="elements-link" id="elements-link" role="button" tabindex="0">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="7" height="7" rx="1"/><rect x="13" y="4" width="7" height="7" rx="1"/><rect x="4" y="13" width="7" height="7" rx="1"/><rect x="13" y="13" width="7" height="7" rx="1"/></svg>
         Elementi cantina
       </div>
       <div class="search-row">
-        <input id="cellar-search-input" class="search" placeholder="Cerca per nome, produttore, annata…" type="text">
-        <div class="filter-btn" id="cellar-filter-btn">
+        <input id="cellar-search-input" class="search" aria-label="Cerca in cantina" placeholder="Cerca per nome, produttore, annata…" type="text">
+        <div class="filter-btn" id="cellar-filter-btn" role="button" tabindex="0" aria-label="Filtri" aria-haspopup="dialog">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="7" x2="20" y2="7"/><circle cx="9" cy="7" r="2.3"/><line x1="4" y1="17" x2="20" y2="17"/><circle cx="16" cy="17" r="2.3"/></svg>
           <span class="filter-badge" id="cellar-filter-badge">0</span>
         </div>
@@ -71,7 +71,7 @@
     </div>
 
     <div class="cellar-body">
-      <div class="compare-btn" id="compare-open">
+      <div class="compare-btn" id="compare-open" role="button" tabindex="0">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v18"/><path d="M16 3v18"/><path d="M3 8h4"/><path d="M17 8h4"/><path d="M3 16h4"/><path d="M17 16h4"/></svg>
         Confronta due vini
       </div>
@@ -92,9 +92,9 @@
     <!-- SHEET: selettore cantina (rinomina + crea) -->
     <div class="compare-overlay" id="cellar-sheet">
       <div class="compare-sheet">
-        <div class="compare-head"><h3>Le tue cantine</h3><div class="close" id="cellar-sheet-close"><svg viewBox="0 0 24 24" style="width:14px;height:14px;" fill="none" stroke="#241e1a" stroke-width="1.8" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="6" y1="18" x2="18" y2="6"/></svg></div></div>
+        <div class="compare-head"><h3>Le tue cantine</h3><div class="close" id="cellar-sheet-close" role="button" tabindex="0" aria-label="Chiudi"><svg aria-hidden="true" viewBox="0 0 24 24" style="width:14px;height:14px;" fill="none" stroke="#241e1a" stroke-width="1.8" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="6" y1="18" x2="18" y2="6"/></svg></div></div>
         <div id="cellar-rows"></div>
-        <div class="add-row-btn" id="new-cellar-btn">
+        <div class="add-row-btn" id="new-cellar-btn" role="button" tabindex="0">
           <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
           Nuova cantina
         </div>
@@ -104,7 +104,7 @@
     <!-- SHEET: filtri (tipo, paese, regione) -->
     <div class="compare-overlay" id="filter-sheet">
       <div class="compare-sheet">
-        <div class="compare-head"><h3>Filtri</h3><div class="close" id="filter-sheet-close"><svg viewBox="0 0 24 24" style="width:14px;height:14px;" fill="none" stroke="#241e1a" stroke-width="1.8" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="6" y1="18" x2="18" y2="6"/></svg></div></div>
+        <div class="compare-head"><h3>Filtri</h3><div class="close" id="filter-sheet-close" role="button" tabindex="0" aria-label="Chiudi"><svg aria-hidden="true" viewBox="0 0 24 24" style="width:14px;height:14px;" fill="none" stroke="#241e1a" stroke-width="1.8" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="6" y1="18" x2="18" y2="6"/></svg></div></div>
         <div><div class="chip-label">Tipo</div><div class="chips" id="cellar-chips-type"></div></div>
         <div><div class="chip-label">Paese</div><div class="chips" id="cellar-chips-country"></div></div>
         <div><div class="chip-label">Regione</div><div class="chips" id="cellar-chips-region"></div></div>
@@ -115,9 +115,9 @@
     <div class="compare-overlay" id="elements-overlay">
       <div class="compare-sheet" style="max-height:92%;">
         <div class="topbar" style="padding-top:0;">
-          <div class="back-btn" id="elements-back-btn"><svg viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg></div>
+          <div class="back-btn" id="elements-back-btn" role="button" tabindex="0" aria-label="Indietro"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg></div>
           <h2 class="screen-title" style="font-size:16px;" id="elements-title">Elementi</h2>
-          <div class="icon-btn" id="elements-close"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="6" y1="18" x2="18" y2="6"/></svg></div>
+          <div class="icon-btn" id="elements-close" role="button" tabindex="0" aria-label="Chiudi"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="6" y1="18" x2="18" y2="6"/></svg></div>
         </div>
         <div id="elements-body"></div>
       </div>
@@ -128,23 +128,23 @@
     <div class="add-header">
       <div class="topbar"><h2 class="screen-title">Aggiungi vino</h2></div>
       <div class="scan-tiles">
-        <div class="scan-tile" id="scan-label-tile">
+        <div class="scan-tile" id="scan-label-tile" role="button" tabindex="0">
           <div class="ic-wrap"><svg class="ic" viewBox="0 0 24 24" style="width:18px;height:18px;"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7l1.8-2.5h4.4L16 7"/><circle cx="12" cy="13.5" r="3.2"/></svg></div>
           <div class="t">Scansiona etichetta</div>
         </div>
-        <div class="scan-tile" id="scan-barcode-tile">
+        <div class="scan-tile" id="scan-barcode-tile" role="button" tabindex="0">
           <div class="ic-wrap"><svg class="ic" viewBox="0 0 24 24" style="width:18px;height:18px;"><rect x="3" y="5" width="2" height="14"/><rect x="7" y="5" width="1" height="14"/><rect x="10" y="5" width="3" height="14"/><rect x="15" y="5" width="1" height="14"/><rect x="18" y="5" width="2" height="14"/></svg></div>
           <div class="t">Codice a barre</div>
         </div>
       </div>
-      <input id="add-search-input" class="search" placeholder="Cerca per nome, produttore, regione…" type="text">
+      <input id="add-search-input" class="search" aria-label="Cerca un vino" placeholder="Cerca per nome, produttore, regione…" type="text">
     </div>
     <div class="add-body">
       <div>
         <div class="section-head"><h3 id="add-results-count">Risultati</h3></div>
         <div id="add-results" style="display:flex; flex-direction:column; gap:8px; margin-top:8px;"></div>
       </div>
-      <div class="manual-link" id="manual-add-link">Non lo trovi? Aggiungilo manualmente</div>
+      <div class="manual-link" id="manual-add-link" role="button" tabindex="0">Non lo trovi? Aggiungilo manualmente</div>
     </div>
   </div>
 
@@ -176,23 +176,23 @@
     <div class="card">
       <div class="section-head" style="margin-bottom:10px;"><h3>Cantina condivisa</h3></div>
       <div class="shared-row">
-        <div class="invite-btn" id="invite-btn">Invita</div>
+        <div class="invite-btn" id="invite-btn" role="button" tabindex="0">Invita</div>
       </div>
       <div id="invite-result" style="font-size:11px; color:#736a5d; word-break:break-all; margin-top:6px;"></div>
     </div>
 
     <div class="card">
-      <div class="section-head" style="margin-bottom:4px;"><h3>Persone che segui</h3><a id="find-friends-btn">trova amici</a></div>
+      <div class="section-head" style="margin-bottom:4px;"><h3>Persone che segui</h3><a id="find-friends-btn" role="button" tabindex="0">trova amici</a></div>
       <div id="profile-follows"></div>
     </div>
 
     <div class="settings-list">
-      <div class="settings-row" id="my-cellars-row"><svg class="ic" viewBox="0 0 24 24" style="width:17px;height:17px;"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg><span class="lbl">Le mie cantine</span><span id="profile-cellar-count" style="font-size:11px;color:#736a5d;margin-right:2px;">0</span><svg class="chev" viewBox="0 0 24 24" stroke-width="2" fill="none" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></div>
-      <div class="settings-row"><svg class="ic" viewBox="0 0 24 24" style="width:17px;height:17px;"><path d="M12 3v18"/><path d="M5 10c0 4 3 6 7 6s7-2 7-6"/></svg><span class="lbl">Notifiche</span><input type="checkbox" id="notif-toggle" style="margin-right:2px;"></div>
-      <div class="settings-row" id="export-csv-row"><svg class="ic" viewBox="0 0 24 24" style="width:17px;height:17px;"><path d="M12 3v12"/><path d="M7 9l5 5 5-5"/><path d="M5 19h14"/></svg><span class="lbl">Esporta CSV</span><svg class="chev" viewBox="0 0 24 24" stroke-width="2" fill="none" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></div>
-      <div class="settings-row" id="help-row"><svg class="ic" viewBox="0 0 24 24" style="width:17px;height:17px;"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 0 1 5 0c0 2-2.5 2-2.5 4"/><path d="M12 17h.01"/></svg><span class="lbl">Aiuto</span><svg class="chev" viewBox="0 0 24 24" stroke-width="2" fill="none" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></div>
+      <div class="settings-row" id="my-cellars-row" role="button" tabindex="0"><svg class="ic" viewBox="0 0 24 24" style="width:17px;height:17px;"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg><span class="lbl">Le mie cantine</span><span id="profile-cellar-count" style="font-size:11px;color:#736a5d;margin-right:2px;">0</span><svg class="chev" viewBox="0 0 24 24" stroke-width="2" fill="none" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></div>
+      <div class="settings-row"><svg class="ic" viewBox="0 0 24 24" style="width:17px;height:17px;"><path d="M12 3v18"/><path d="M5 10c0 4 3 6 7 6s7-2 7-6"/></svg><span class="lbl">Notifiche</span><input type="checkbox" id="notif-toggle" aria-label="Notifiche" style="margin-right:2px;"></div>
+      <div class="settings-row" id="export-csv-row" role="button" tabindex="0"><svg class="ic" viewBox="0 0 24 24" style="width:17px;height:17px;"><path d="M12 3v12"/><path d="M7 9l5 5 5-5"/><path d="M5 19h14"/></svg><span class="lbl">Esporta CSV</span><svg class="chev" viewBox="0 0 24 24" stroke-width="2" fill="none" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></div>
+      <div class="settings-row" id="help-row" role="button" tabindex="0"><svg class="ic" viewBox="0 0 24 24" style="width:17px;height:17px;"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 0 1 5 0c0 2-2.5 2-2.5 4"/><path d="M12 17h.01"/></svg><span class="lbl">Aiuto</span><svg class="chev" viewBox="0 0 24 24" stroke-width="2" fill="none" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></div>
     </div>
-    <div class="logout">Esci</div>
+    <div class="logout" role="button" tabindex="0">Esci</div>
     <div class="app-footer">
       <div class="app-build">build 83</div>
       <div class="app-credit"><a href="https://www.flaticon.com/free-icons/wine" target="_blank" rel="noopener">Wine icons created by iconixar - Flaticon</a></div>
@@ -200,13 +200,13 @@
   </div>
   <div class="view" id="view-explore">
     <div class="topbar">
-      <div class="back-btn" id="explore-back-btn"><svg viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg></div>
+      <div class="back-btn" id="explore-back-btn" role="button" tabindex="0" aria-label="Indietro"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg></div>
       <h2 class="screen-title" style="font-size:16px;">Esplora &middot; <span id="explore-country-name">Italia</span></h2>
-      <div class="cantina-switch" id="explore-country-switch">Cambia<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></div>
+      <div class="cantina-switch" id="explore-country-switch" role="button" tabindex="0" aria-haspopup="dialog">Cambia<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></div>
     </div>
 
     <div class="explore-dd" id="explore-dd">
-      <div class="explore-dd-head" id="explore-dd-head">
+      <div class="explore-dd-head" id="explore-dd-head" role="button" tabindex="0" aria-haspopup="listbox" aria-expanded="false">
         <div class="lbl"><svg viewBox="0 0 24 24" fill="none" stroke="#8f8474" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;flex-shrink:0;"><path d="M12 21s7-7.2 7-12a7 7 0 1 0-14 0c0 4.8 7 12 7 12Z"/><circle cx="12" cy="9" r="2.4"/></svg><span id="explore-dd-label">…</span></div>
         <svg class="explore-dd-chevron" viewBox="0 0 24 24" fill="none" stroke="#756b60" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
       </div>
@@ -224,7 +224,7 @@
   <!-- SHEET: cambio paese -->
   <div class="compare-overlay" id="explore-country-sheet">
     <div class="compare-sheet">
-      <div class="compare-head"><h3>Scegli un paese</h3><div class="close" id="explore-country-sheet-close"><svg viewBox="0 0 24 24" style="width:14px;height:14px;" fill="none" stroke="#241e1a" stroke-width="1.8" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="6" y1="18" x2="18" y2="6"/></svg></div></div>
+      <div class="compare-head"><h3>Scegli un paese</h3><div class="close" id="explore-country-sheet-close" role="button" tabindex="0" aria-label="Chiudi"><svg aria-hidden="true" viewBox="0 0 24 24" style="width:14px;height:14px;" fill="none" stroke="#241e1a" stroke-width="1.8" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="6" y1="18" x2="18" y2="6"/></svg></div></div>
       <div id="explore-country-rows"></div>
     </div>
   </div>
@@ -245,7 +245,7 @@
     <div class="detail-sheet">
       <div class="detail-hero photo photo-rosso">
         <div class="scrim2"></div>
-        <div class="close" id="detail-close"><svg viewBox="0 0 24 24" style="width:15px;height:15px;" fill="none" stroke="#241e1a" stroke-width="1.8" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="6" y1="18" x2="18" y2="6"/></svg></div>
+        <div class="close" id="detail-close" role="button" tabindex="0" aria-label="Chiudi"><svg aria-hidden="true" viewBox="0 0 24 24" style="width:15px;height:15px;" fill="none" stroke="#241e1a" stroke-width="1.8" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="6" y1="18" x2="18" y2="6"/></svg></div>
         <span class="badge-score">4.3</span>
         <div class="info"><div class="name">Barolo DOCG 2016</div><div class="sub">Elio Altare · Piemonte · Nebbiolo</div></div>
       </div>
@@ -257,7 +257,7 @@
         <div class="loc-row">
           <svg class="ic" viewBox="0 0 24 24" style="width:17px;height:17px;"><path d="M12 21s7-7.2 7-12a7 7 0 1 0-14 0c0 4.8 7 12 7 12Z"/><circle cx="12" cy="9" r="2.4"/></svg>
           <div class="loc-text"><b>Posizione fisica</b><span id="loc-value">Non assegnata</span></div>
-          <div class="loc-edit" id="loc-edit-btn">modifica</div>
+          <div class="loc-edit" id="loc-edit-btn" role="button" tabindex="0" aria-label="Modifica posizione">modifica</div>
         </div>
 
         <div class="uncork-block" id="uncork-block">
@@ -268,20 +268,20 @@
           <div class="uncork-undo hidden" id="uncork-undo"><span>Bottiglia stappata</span><button type="button" id="uncork-undo-btn">Annulla</button></div>
         </div>
 
-        <div class="rev-tabs">
-          <div class="rev-tab active" data-tab="mine">Le tue note</div>
-          <div class="rev-tab" data-tab="others">Dalla community</div>
+        <div class="rev-tabs" role="tablist">
+          <div class="rev-tab active" data-tab="mine" role="tab" tabindex="0" aria-selected="true">Le tue note</div>
+          <div class="rev-tab" data-tab="others" role="tab" tabindex="0" aria-selected="false">Dalla community</div>
         </div>
 
-        <div class="rev-tabpanel" data-panel="others" style="display:none; flex-direction:column; gap:10px;">
+        <div class="rev-tabpanel" role="tabpanel" data-panel="others" style="display:none; flex-direction:column; gap:10px;">
           <div id="notes-others"></div>
         </div>
 
-        <div class="rev-tabpanel" data-panel="mine" style="display:flex; flex-direction:column; gap:10px;">
+        <div class="rev-tabpanel" role="tabpanel" data-panel="mine" style="display:flex; flex-direction:column; gap:10px;">
           <div class="add-note">
-            <textarea id="note-text" placeholder="Scrivi una nota di degustazione…"></textarea>
+            <textarea id="note-text" aria-label="Nota di degustazione" placeholder="Scrivi una nota di degustazione…"></textarea>
             <div class="row">
-              <div class="stars-input"><span>★</span><span>★</span><span>★</span><span>★</span><span>★</span></div>
+              <div class="stars-input" role="radiogroup" aria-label="Valutazione"><span role="radio" tabindex="0" aria-checked="false" aria-label="1 stella">★</span><span role="radio" tabindex="0" aria-checked="false" aria-label="2 stelle">★</span><span role="radio" tabindex="0" aria-checked="false" aria-label="3 stelle">★</span><span role="radio" tabindex="0" aria-checked="false" aria-label="4 stelle">★</span><span role="radio" tabindex="0" aria-checked="false" aria-label="5 stelle">★</span></div>
               <button id="note-submit">Salva nota</button>
             </div>
             <div class="taste-profile" id="detail-taste"></div>
@@ -294,7 +294,7 @@
 
   <div class="compare-overlay" id="compare-overlay">
     <div class="compare-sheet">
-      <div class="compare-head"><h3>Confronto</h3><div class="close" id="compare-close"><svg viewBox="0 0 24 24" style="width:14px;height:14px;" fill="none" stroke="#241e1a" stroke-width="1.8" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="6" y1="18" x2="18" y2="6"/></svg></div></div>
+      <div class="compare-head"><h3>Confronto</h3><div class="close" id="compare-close" role="button" tabindex="0" aria-label="Chiudi"><svg aria-hidden="true" viewBox="0 0 24 24" style="width:14px;height:14px;" fill="none" stroke="#241e1a" stroke-width="1.8" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="6" y1="18" x2="18" y2="6"/></svg></div></div>
       <div class="compare-cols">
         <div class="compare-col">
           <div class="compare-photo photo photo-rosso"></div>
@@ -316,43 +316,43 @@
 
   <div class="compare-overlay" id="recognize-overlay">
     <div class="compare-sheet">
-      <div class="compare-head"><h3 id="recognize-title">Rivedi e conferma</h3><div class="close" id="recognize-close"><svg viewBox="0 0 24 24" style="width:14px;height:14px;" fill="none" stroke="#241e1a" stroke-width="1.8" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="6" y1="18" x2="18" y2="6"/></svg></div></div>
+      <div class="compare-head"><h3 id="recognize-title">Rivedi e conferma</h3><div class="close" id="recognize-close" role="button" tabindex="0" aria-label="Chiudi"><svg aria-hidden="true" viewBox="0 0 24 24" style="width:14px;height:14px;" fill="none" stroke="#241e1a" stroke-width="1.8" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="6" y1="18" x2="18" y2="6"/></svg></div></div>
       <div id="recognize-photo-wrap" style="display:none;"><img id="recognize-photo" alt="" style="width:100%;border-radius:10px;display:block;"></div>
       <div id="recognize-rawtext" class="lang-note" style="display:none;"></div>
       <input id="rec-photo-input" type="file" accept="image/*" capture="environment" style="display:none;">
-      <div class="manual-link" id="rec-photo-pick">Aggiungi foto bottiglia</div>
-      <input id="rec-name" class="search" placeholder="Nome del vino" type="text">
-      <input id="rec-producer" class="search" placeholder="Produttore" type="text">
-      <input id="rec-country" class="search" placeholder="Paese" type="text">
-      <input id="rec-region" class="search" placeholder="Regione (opzionale)" type="text">
-      <select id="rec-type" class="search">
+      <div class="manual-link" id="rec-photo-pick" role="button" tabindex="0">Aggiungi foto bottiglia</div>
+      <input id="rec-name" class="search" aria-label="Nome del vino" placeholder="Nome del vino" type="text">
+      <input id="rec-producer" class="search" aria-label="Produttore" placeholder="Produttore" type="text">
+      <input id="rec-country" class="search" aria-label="Paese" placeholder="Paese" type="text">
+      <input id="rec-region" class="search" aria-label="Regione" placeholder="Regione (opzionale)" type="text">
+      <select id="rec-type" class="search" aria-label="Tipo di vino">
         <option value="rosso">Rosso</option>
         <option value="bianco">Bianco</option>
         <option value="bollicine">Bollicine</option>
         <option value="rosato">Rosato</option>
       </select>
-      <input id="rec-vintage" class="search" placeholder="Annata (opzionale)" type="number">
-      <input id="rec-grape" class="search" placeholder="Vitigno (opzionale)" type="text">
-      <input id="rec-denomination" class="search" placeholder="Denominazione (opzionale)" type="text">
+      <input id="rec-vintage" class="search" aria-label="Annata" placeholder="Annata (opzionale)" type="number">
+      <input id="rec-grape" class="search" aria-label="Vitigno" placeholder="Vitigno (opzionale)" type="text">
+      <input id="rec-denomination" class="search" aria-label="Denominazione" placeholder="Denominazione (opzionale)" type="text">
 
       <div class="field-label">Nota di degustazione (opzionale)</div>
       <div class="add-note">
-        <textarea id="rec-note-text" placeholder="Scrivi una nota di degustazione…"></textarea>
+        <textarea id="rec-note-text" aria-label="Nota di degustazione" placeholder="Scrivi una nota di degustazione…"></textarea>
         <div class="row">
-          <div class="stars-input" id="rec-note-stars"><span>★</span><span>★</span><span>★</span><span>★</span><span>★</span></div>
+          <div class="stars-input" id="rec-note-stars" role="radiogroup" aria-label="Valutazione"><span role="radio" tabindex="0" aria-checked="false" aria-label="1 stella">★</span><span role="radio" tabindex="0" aria-checked="false" aria-label="2 stelle">★</span><span role="radio" tabindex="0" aria-checked="false" aria-label="3 stelle">★</span><span role="radio" tabindex="0" aria-checked="false" aria-label="4 stelle">★</span><span role="radio" tabindex="0" aria-checked="false" aria-label="5 stelle">★</span></div>
         </div>
         <div class="taste-profile" id="recognize-taste"></div>
       </div>
 
-      <div class="action" id="recognize-save" style="cursor:pointer;">Salva</div>
+      <div class="action" id="recognize-save" style="cursor:pointer;" role="button" tabindex="0">Salva</div>
     </div>
   </div>
   <div class="camera-overlay" id="camera-overlay">
     <video id="camera-video" autoplay playsinline muted></video>
     <div class="camera-spinner" id="camera-spinner"></div>
-    <div class="camera-close" id="camera-close"><svg viewBox="0 0 24 24" style="width:14px;height:14px;" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="6" y1="18" x2="18" y2="6"/></svg></div>
+    <div class="camera-close" id="camera-close" role="button" tabindex="0" aria-label="Chiudi fotocamera"><svg aria-hidden="true" viewBox="0 0 24 24" style="width:14px;height:14px;" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="6" y1="18" x2="18" y2="6"/></svg></div>
     <div class="camera-hint" id="camera-hint"></div>
-    <div class="camera-shutter-wrap" id="camera-shutter-wrap"><div class="camera-shutter" id="camera-shutter"></div></div>
+    <div class="camera-shutter-wrap" id="camera-shutter-wrap"><div class="camera-shutter" id="camera-shutter" role="button" tabindex="0" aria-label="Scatta foto"></div></div>
   </div>
 </div>
 <script>

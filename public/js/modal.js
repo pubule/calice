@@ -48,6 +48,7 @@ function showModal({ title, message, confirmLabel, cancelLabel, showInput, input
   input.type = inputType ?? 'text';
   input.value = inputValue ?? '';
   input.placeholder = inputPlaceholder ?? '';
+  input.setAttribute('aria-label', message || title || inputPlaceholder || '');
   confirmBtn.textContent = confirmLabel;
   confirmBtn.classList.toggle('danger', !!danger);
   cancelBtn.style.display = cancelLabel == null ? 'none' : '';

@@ -19,7 +19,7 @@ function noteHtml(n) {
   const foodPairings = Array.isArray(n.food_pairings) ? n.food_pairings : [];
   const tags = [...flavorTags, ...foodPairings];
   const tagsHtml = tags.length
-    ? `<div class="chip-row" style="margin-top:8px;">${tags.map((t) => `<span class="chip">${escapeHtml(t)}</span>`).join('')}</div>`
+    ? `<div class="chip-row" style="margin-top:8px;">${tags.map((t) => `<span class="chip" style="cursor:default">${escapeHtml(t)}</span>`).join('')}</div>`
     : '';
   // Only the leaning sides are shown (same dominant/neutral rule as the
   // sliders themselves) — a full bar per axis would be a lot of visual
@@ -29,7 +29,7 @@ function noteHtml(n) {
   return `
     <div class="rev-card">
       <div class="rev-head"><div class="rev-avatar">${escapeHtml(n.author_name.slice(0, 2).toUpperCase())}</div><div class="rev-name">${escapeHtml(n.author_name)}</div><span class="rev-src">${new Date(n.created_at).toLocaleDateString('it-IT')}</span></div>
-      <div class="rev-stars">${'★'.repeat(rating)}${'☆'.repeat(5 - rating)}</div>
+      <div class="rev-stars" role="img" aria-label="${rating} su 5 stelle">${'★'.repeat(rating)}${'☆'.repeat(5 - rating)}</div>
       ${n.text ? `<div class="rev-text">${escapeHtml(n.text)}</div>` : ''}
       ${summaryHtml}
       ${tagsHtml}
@@ -129,7 +129,7 @@ async function loadPhotos(bottleId) {
     photos
       .map((p) => `<div class="gallery-thumb" style="background-image:url('${escapeHtml(p.url)}');background-size:cover;"></div>`)
       .join('') +
-    '<div class="gallery-add" id="gallery-add-btn"><svg viewBox="0 0 24 24" style="width:18px;height:18px;" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg><input type="file" accept="image/*" capture="environment" style="display:none" id="gallery-file-input"></div>';
+    '<div class="gallery-add" id="gallery-add-btn" role="button" tabindex="0" aria-label="Aggiungi foto"><svg aria-hidden="true" viewBox="0 0 24 24" style="width:18px;height:18px;" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg><input type="file" accept="image/*" capture="environment" style="display:none" id="gallery-file-input"></div>';
   document.getElementById('gallery-add-btn').addEventListener('click', () => document.getElementById('gallery-file-input').click());
   document.getElementById('gallery-file-input').addEventListener('change', async (e) => {
     const file = e.target.files[0];
@@ -167,8 +167,12 @@ function wireStaticControls() {
 
   document.querySelectorAll('.rev-tab').forEach((tab) => {
     tab.addEventListener('click', () => {
-      document.querySelectorAll('.rev-tab').forEach((t) => t.classList.remove('active'));
+      document.querySelectorAll('.rev-tab').forEach((t) => {
+        t.classList.remove('active');
+        t.setAttribute('aria-selected', 'false');
+      });
       tab.classList.add('active');
+      tab.setAttribute('aria-selected', 'true');
       document.querySelectorAll('.rev-tabpanel').forEach((panel) => {
         panel.style.display = panel.dataset.panel === tab.dataset.tab ? 'flex' : 'none';
       });
@@ -182,7 +186,10 @@ function wireStaticControls() {
   document.querySelectorAll('.stars-input').forEach((group) => {
     const spans = Array.from(group.querySelectorAll('span'));
     spans.forEach((s, i) => {
-      s.addEventListener('click', () => spans.forEach((el, j) => el.classList.toggle('on', j <= i)));
+      s.addEventListener('click', () => spans.forEach((el, j) => {
+        el.classList.toggle('on', j <= i);
+        el.setAttribute('aria-checked', String(j === i));
+      }));
     });
   });
 
@@ -214,7 +221,10 @@ function wireStaticControls() {
       tasteBody: profile.tasteBody,
     });
     textEl.value = '';
-    starsGroup.querySelectorAll('span.on').forEach((s) => s.classList.remove('on'));
+    starsGroup.querySelectorAll('span').forEach((s) => {
+      s.classList.remove('on');
+      s.setAttribute('aria-checked', 'false');
+    });
     resetTastingProfile(detailTaste);
     await loadNotes(currentBottleId);
   });

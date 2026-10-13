@@ -114,3 +114,17 @@ me()
     box.append(reload);
     shell.append(box);
   });
+
+// Keyboard / VoiceOver activation for the app's many non-native controls
+// (divs with role="button"/"tab"/"radio" and a click listener): Enter or
+// Space on the focused element fires its click, like a native <button>.
+// One delegated listener, so markup rendered later is covered too. Real
+// buttons, links and form fields are left to the browser.
+document.addEventListener('keydown', (e) => {
+  if ((e.key !== 'Enter' && e.key !== ' ') || e.repeat || e.defaultPrevented) return;
+  const el = e.target;
+  if (!(el instanceof Element) || !el.matches('[role="button"], [role="tab"], [role="radio"]')) return;
+  if (el.matches('button, a[href], input, textarea, select') || el.getAttribute('aria-disabled') === 'true') return;
+  e.preventDefault(); // Space would otherwise scroll the page
+  el.click();
+});
