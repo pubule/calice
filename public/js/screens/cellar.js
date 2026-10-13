@@ -4,6 +4,7 @@ import { openDetail } from './detail.js';
 import { openEditWineSheet } from './add.js';
 import { me } from '../auth.js';
 import { confirmModal, promptModal } from '../modal.js';
+import { showToast } from '../toast.js';
 
 function skeletonRowHtml() {
   return `
@@ -199,8 +200,20 @@ async function renderWishlist() {
   wishEl.querySelectorAll('.wish-add').forEach((btn) =>
     btn.addEventListener('click', async (e) => {
       e.stopPropagation();
+      const item = wishlist.find((w) => String(w.id) === btn.dataset.id);
       await api.del(`/api/wishlist/${btn.dataset.id}`);
       btn.closest('.wish-row').remove();
+      // Undo re-creates the item from the data the list already holds (wine_id,
+      // target_price). The new row gets a new id, moves to the top and is
+      // attributed to the current user; the DELETE itself is not deferred, so
+      // the removal persists even if the app is closed within the toast window.
+      showToast('Rimosso dai desideri', {
+        actionLabel: 'Annulla',
+        onAction: async () => {
+          await api.post(`/api/cellars/${currentCellarId}/wishlist`, { wineId: item.wine_id, targetPrice: item.target_price });
+          await renderWishlist();
+        },
+      });
     }),
   );
 }

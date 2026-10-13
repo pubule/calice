@@ -1,6 +1,6 @@
 import { api } from '../api-client.js';
 import { escapeHtml, skeletonBar } from '../util.js';
-import { alertModal, promptModal } from '../modal.js';
+import { alertModal, confirmModal, promptModal } from '../modal.js';
 import { navigate } from '../router.js';
 
 function urlBase64ToUint8Array(base64String) {
@@ -18,7 +18,7 @@ let firstCellarId = null;
 function followRowHtml(u) {
   const initials = escapeHtml(String(u.name).slice(0, 2).toUpperCase());
   return `
-    <div class="follow-row"><div class="rev-avatar">${initials}</div><span class="name">${escapeHtml(u.name)}</span><div class="follow-btn" data-id="${u.id}">Seguito</div></div>`;
+    <div class="follow-row"><div class="rev-avatar">${initials}</div><span class="name">${escapeHtml(u.name)}</span><div class="follow-btn" data-id="${u.id}" data-name="${escapeHtml(u.name)}">Seguito</div></div>`;
 }
 
 async function renderFollows() {
@@ -28,6 +28,10 @@ async function renderFollows() {
   el.innerHTML = follows.length ? follows.map(followRowHtml).join('') : '<p style="font-size:11.5px;color:#736a5d;">Non segui ancora nessuno.</p>';
   el.querySelectorAll('.follow-btn').forEach((btn) =>
     btn.addEventListener('click', async () => {
+      // Unfollowing is easy to hit by accident, so confirm first. confirmModal
+      // writes the message via textContent, so the raw name is safe here.
+      const ok = await confirmModal(`Smettere di seguire ${btn.dataset.name}?`, { confirmLabel: 'Smetti di seguire', danger: true });
+      if (!ok) return;
       // Re-fetch from the server after the mutation rather than trusting an
       // optimistic local removal, so the list reflects what actually persisted.
       await api.del(`/api/follows/${btn.dataset.id}`);
