@@ -807,4 +807,25 @@ già corretto:
   da `js/toast.js`.
 - La scheda attiva del menu in basso la decide **solo** `showView()` in
   `main.js`: una nuova vista senza scheda propria va aggiunta a
-  `TAB_FOR_VIEW`.
+  `TAB_FOR_VIEW`; una nuova scheda va aggiunta a `HASH_FOR_VIEW` (le
+  rotte non sono tutte `#/<nome-vista>`: Esplora è `#/esplora`). Il menu
+  contiene solo sezioni: le azioni (come Aggiungi, pulsante "+") stanno
+  nelle intestazioni delle schermate.
+- **Testo in `calc(Nrem/17)`, mai in `px`** (Dynamic Type: la base segue
+  l'impostazione Dimensioni testo dell'iPhone, limitata fra 17 e 34px
+  dallo script inline in `<head>` di `index.html`). Non usare rem
+  arrotondati (`0.7059rem`): in Chromium cambiano il rendering dei
+  glifi, `calc` no. Eccezioni volute in `px`: menu in basso, iniziali
+  degli avatar, etichette degli slot, badge, stelle. Campi dei form
+  `max(16px, …)`. Contenitori con testo: `min-height`, mai `height`
+  fissa, e provare sempre a 200% (`document.documentElement.style.fontSize
+  = '34px'` in Playwright).
+- **Azioni sulle righe di una lista**: dietro lo scorrimento a sinistra
+  (pattern `.cellar-item` + `.swipe-actions` + `wireSwipe()` in
+  `cellar.js`), mai icone sempre visibili; e sempre un secondo accesso
+  non gestuale (le stesse azioni nella scheda di dettaglio, e azioni
+  raggiungibili da tastiera che aprono la riga al focus).
+- **Agenti in worktree**: il worktree può nascere da `master` invece che
+  dalla punta del branch di lavoro. Ogni prompt deve cominciare con
+  `git reset --hard <commit>` esplicito e chiedere di verificarlo con
+  `git log --oneline -1` prima di qualsiasi modifica.

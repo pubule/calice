@@ -675,13 +675,52 @@ questo file è il riassunto "dove eravamo rimasti".
     - **Da verificare su iPhone vero**: sensazione del trascinamento dei
       fogli (momentum, conflitto con lo scroll), stato `:active` su iOS,
       VoiceOver reale. `CACHE` a `v84`, `build 84`.
-    - **Fuori da questo giro, ancora aperti dall'audit**: Dynamic Type
-      (tutto è in `px`, il testo grande di iOS non ha effetto — serve
-      `font: -apple-system-body` + `rem`, lavoro ampio); due stili diversi
-      per lo stesso controllo a schede (pillola bordeaux nella scheda del
-      vino, bianca altrove); matita/cestino sempre visibili su ogni riga
-      della Cantina (iOS userebbe lo scorrimento laterale); "Aggiungi"
-      come scheda del menu (le schede dovrebbero navigare, non agire).
+20. **Chiusura dell'audit HIG: i quattro punti rimasti.** Fase 1 con tre
+    agenti in parallelo, fase 2 da sola sopra il risultato (riscrive tutte
+    le dimensioni del testo, sarebbe andata in conflitto con tutto).
+    - **Selettore unico**: "Le tue note / Dalla community" (`.rev-tabs`)
+      ha ora gli stessi valori di `.segmented` (pillola bianca su grigio).
+    - **Righe Cantina**: matita e cestino non sono più sempre visibili:
+      compaiono scorrendo la riga verso sinistra (`.cellar-item` avvolge
+      riga + `.swipe-actions`; gesto in `wireSwipe()` in `cellar.js`,
+      disattivato in modalità Confronta). Per VoiceOver/tastiera le azioni
+      restano nel DOM e aprono la riga quando ricevono il focus.
+      "Modifica vino" / "Elimina dalla cantina" anche nella scheda del
+      vino (`editBottle()`/`deleteBottle()` esportate da `cellar.js`).
+    - **Menu in basso**: Home · Cantina · **Esplora** · Statistiche ·
+      Profilo. "Aggiungi" non è più una scheda (le schede navigano, non
+      agiscono): pulsante "+" da 44pt in testa a Home e Cantina. La
+      schermata Aggiungi accende Cantina e ha un pulsante Indietro: ogni
+      voce di cronologia porta `history.state.calDepth`; se è >0 si fa
+      `history.back()`, altrimenti (apertura diretta) si va a `#/cellar`.
+      Le schede navigano tramite `HASH_FOR_VIEW` in `main.js` (Esplora
+      vive su `#/esplora`, non `#/explore`). Il pulsante Indietro di
+      Esplora è stato tolto: ora è una sezione di primo livello.
+    - **Dynamic Type**: il testo segue l'impostazione Dimensioni testo
+      dell'iPhone. `html` usa `font: -apple-system-body` (solo WebKit,
+      dentro `@supports`; altrove resta 17px), tutte le dimensioni del
+      testo sono `calc(Nrem/17)` — esatto: a dimensione predefinita il
+      rendering è identico al pixel (23 schermate su 24 byte-identiche,
+      l'unica differenza è un overflow di 2px dei chip eliminato). Uno
+      script inline in `<head>` di `index.html` limita la base fra 17px e
+      34px (200%): sotto non scende per rispettare il minimo di 11px,
+      sopra i layout non sono garantiti. Restano in px, apposta: menu in
+      basso (come nelle app native), iniziali negli avatar, etichette
+      degli slot, badge dei filtri, stelle. I campi dei form sono
+      `max(16px, …)` (sotto 16px iOS zooma al focus). Verificato a 135% e
+      200%: niente overflow orizzontale, niente testo tagliato.
+    - Audit a dimensione predefinita invariato rispetto al punto 19 (testo
+      <11px 0, controlli senza ruolo/nome 0; i 15 casi di contrasto sono
+      tutti stelle vuote, sopra la soglia 3:1 per le icone). Test di
+      integrazione: 11/11. `CACHE` a `v85`, `build 85`.
+    - **Nota sui worktree degli agenti**: due agenti della fase 1 sono
+      partiti da `2f1a523` (il `master` di allora) invece che dalla punta
+      del branch di lavoro. Da allora ogni prompt per un agente in
+      worktree comincia con `git reset --hard <commit>` esplicito.
+    - **Da provare su iPhone vero**: scorrimento delle righe Cantina
+      (convivenza con lo scroll verticale), Dimensioni testo fino al
+      massimo (la base deve fermarsi a 34px) anche cambiandola con l'app
+      in background, VoiceOver sulle azioni nascoste delle righe.
 
 ## Cose note, non (ancora) da rifare
 
@@ -737,10 +776,9 @@ questo file è il riassunto "dove eravamo rimasti".
 
 ## Prossimi passi possibili (non richiesti, solo spunti)
 
-- I quattro punti dell'audit HIG rimasti aperti (vedi punto 19), in
-  quest'ordine: Dynamic Type, stile unico per i controlli a schede,
-  scorrimento laterale sulle righe della Cantina, "Aggiungi" fuori dal
-  menu.
+- Verifiche su iPhone vero elencate ai punti 19 e 20 (gesti, Dimensioni
+  testo, VoiceOver): sono l'unica parte dell'audit HIG non coperta da
+  Playwright.
 
 - Ampliare la copertura regionale nei paesi con mappa (oggi solo un
   sottoinsieme di regioni/stati ha dati curati).
