@@ -68,14 +68,14 @@ function rowHtml(b) {
   const loc = locationLabel(b);
   const quantity = escapeHtml(b.quantity);
   return `
-    <div class="cellar-row" data-id="${b.id}" data-photo="${photo}" data-name="${name}" data-sub="${sub}" data-price="${price}" data-score="${score}">
+    <div class="cellar-row" role="group" data-id="${b.id}" data-photo="${photo}" data-name="${name}" data-sub="${sub}" data-price="${price}" data-score="${score}">
       <div class="rowcheck"><svg class="check-ic" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 12 9 17 20 6"/></svg></div>
       ${photoHtml(b, 'cphoto')}
-      <div class="cinfo"><div class="name">${name}</div><div class="sub">${sub} · ×${quantity}${loc ? ' · ' + escapeHtml(loc) : ''}</div></div>
+      <div class="cinfo" role="button" tabindex="0"><div class="name">${name}</div><div class="sub">${sub} · ×${quantity}${loc ? ' · ' + escapeHtml(loc) : ''}</div></div>
       <div class="cprice">${price}<small>a bottiglia</small></div>
       <div class="row-actions">
-        <div class="icon-btn edit-btn" data-id="${b.id}" title="Modifica"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></div>
-        <div class="icon-btn danger delete-btn" data-id="${b.id}" title="Elimina"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"/><path d="M6 7l1 13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-13"/><path d="M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3"/></svg></div>
+        <div class="icon-btn edit-btn" data-id="${b.id}" title="Modifica" role="button" tabindex="0" aria-label="Modifica ${name}"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></div>
+        <div class="icon-btn danger delete-btn" data-id="${b.id}" title="Elimina" role="button" tabindex="0" aria-label="Elimina ${name}"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"/><path d="M6 7l1 13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-13"/><path d="M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3"/></svg></div>
       </div>
     </div>`;
 }
@@ -89,7 +89,7 @@ function wishRowHtml(w) {
     <div class="wish-row" data-id="${w.id}">
       <div class="wish-photo photo ${photo}"></div>
       <div class="result-body"><div class="name">${name}</div><div class="sub">${sub}</div></div>
-      <div class="wish-add" data-id="${w.id}">Rimuovi dai desideri</div>
+      <div class="wish-add" data-id="${w.id}" role="button" tabindex="0" aria-label="Rimuovi ${name} dai desideri">Rimuovi dai desideri</div>
     </div>`;
 }
 
@@ -110,12 +110,13 @@ function renderChips() {
     const values = [...new Set(currentBottles.map((b) => b[g.field]).filter(Boolean))].sort();
     const el = document.getElementById(g.id);
     el.innerHTML =
-      `<div class="chip active" data-v="">${g.allLabel}</div>` +
-      values.map((v) => `<div class="chip" data-v="${escapeHtml(v)}">${escapeHtml(capitalize(v))}</div>`).join('');
+      `<div class="chip active" data-v="" role="button" tabindex="0" aria-pressed="true">${g.allLabel}</div>` +
+      values.map((v) => `<div class="chip" data-v="${escapeHtml(v)}" role="button" tabindex="0" aria-pressed="false">${escapeHtml(capitalize(v))}</div>`).join('');
     el.querySelectorAll('.chip').forEach((chip) =>
       chip.addEventListener('click', () => {
-        el.querySelectorAll('.chip').forEach((c) => c.classList.remove('active'));
+        el.querySelectorAll('.chip').forEach((c) => { c.classList.remove('active'); c.setAttribute('aria-pressed', 'false'); });
         chip.classList.add('active');
+        chip.setAttribute('aria-pressed', 'true');
         activeChips[g.key] = chip.dataset.v || null;
         updateFilterBadge();
         applyFilters();
@@ -195,6 +196,18 @@ async function renderWishlist() {
 function updateCompareBar() {
   document.getElementById('compare-count').textContent = `${compareSelected.length}/2 selezionati`;
   document.getElementById('compare-go').disabled = compareSelected.length !== 2;
+  syncCompareAria();
+}
+
+// While selecting two wines to compare, each row's button announces whether
+// it's picked; outside compare mode the state doesn't apply.
+function syncCompareAria() {
+  document.querySelectorAll('#cellar-list .cellar-row').forEach((row) => {
+    const btn = row.querySelector('.cinfo');
+    if (!btn) return;
+    if (compareMode) btn.setAttribute('aria-pressed', String(row.classList.contains('selected')));
+    else btn.removeAttribute('aria-pressed');
+  });
 }
 
 function exitCompareMode() {
@@ -204,6 +217,7 @@ function exitCompareMode() {
   cellarList.classList.remove('selecting');
   cellarList.querySelectorAll('.cellar-row.selected').forEach((r) => r.classList.remove('selected'));
   document.getElementById('compare-bar').classList.remove('show');
+  syncCompareAria();
   const compareBtn = document.getElementById('compare-open');
   if (compareBtn) compareBtn.innerHTML = ICON_COMPARE;
 }
@@ -215,9 +229,9 @@ function renderCellarRows() {
     .map(
       (c, i) => `
       <div class="list-row ${c.id === currentCellarId ? 'active' : ''}">
-        <div class="radio" data-i="${i}"></div>
-        <div class="lbody" data-i="${i}"><div class="lname">${escapeHtml(c.name)}</div></div>
-        <div class="icon-btn rename-cellar-btn" data-i="${i}" title="Rinomina"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></div>
+        <div class="radio" data-i="${i}" role="radio" tabindex="0" aria-checked="${c.id === currentCellarId}" aria-label="${escapeHtml(c.name)}"></div>
+        <div class="lbody" data-i="${i}" role="presentation"><div class="lname">${escapeHtml(c.name)}</div></div>
+        <div class="icon-btn rename-cellar-btn" data-i="${i}" title="Rinomina" role="button" tabindex="0" aria-label="Rinomina ${escapeHtml(c.name)}"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></div>
       </div>`,
     )
     .join('');
@@ -295,13 +309,13 @@ function renderElementsList() {
   document.getElementById('elements-title').textContent = picker ? 'Scegli dove riporla' : `Elementi — ${cellarName}`;
 
   const kindChipsHtml =
-    `<div class="chip active" data-v="">Tutti</div>` + KINDS.map((k) => `<div class="chip" data-v="${k}">${k}</div>`).join('');
+    `<div class="chip active" data-v="" role="button" tabindex="0" aria-pressed="true">Tutti</div>` + KINDS.map((k) => `<div class="chip" data-v="${k}" role="button" tabindex="0" aria-pressed="false">${k}</div>`).join('');
 
   const body = document.getElementById('elements-body');
   body.innerHTML = `
     <div class="chips" id="elements-kind-chips" style="margin-bottom:16px;">${kindChipsHtml}</div>
     <div id="elements-list" style="display:flex; flex-direction:column; gap:9px;"></div>
-    <div class="add-row-btn" id="new-element-btn" style="margin-top:14px;">
+    <div class="add-row-btn" id="new-element-btn" style="margin-top:14px;" role="button" tabindex="0">
       <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
       Nuovo elemento
     </div>`;
@@ -313,7 +327,7 @@ function renderElementsList() {
       ? list
           .map(
             (el) => `
-        <div class="elem-row" data-id="${el.id}">
+        <div class="elem-row" data-id="${el.id}" role="button" tabindex="0">
           <div class="elem-icon">${KIND_ICON[el.kind]}</div>
           <div class="elem-body"><div class="elem-name">${escapeHtml(el.name)}</div><div class="elem-sub">${escapeHtml(el.kind)} · ${escapeHtml(elemSub(el))}</div></div>
           <div class="elem-count">${elemCount(el)} bott.</div>
@@ -329,8 +343,9 @@ function renderElementsList() {
 
   document.querySelectorAll('#elements-kind-chips .chip').forEach((chip) =>
     chip.addEventListener('click', () => {
-      document.querySelectorAll('#elements-kind-chips .chip').forEach((c) => c.classList.remove('active'));
+      document.querySelectorAll('#elements-kind-chips .chip').forEach((c) => { c.classList.remove('active'); c.setAttribute('aria-pressed', 'false'); });
       chip.classList.add('active');
+      chip.setAttribute('aria-pressed', 'true');
       activeKind = chip.dataset.v;
       renderFiltered();
     }),
@@ -349,7 +364,7 @@ function renderElementCreateForm() {
     <div class="kind-grid" id="kind-grid">
       ${KINDS.map(
         (k, i) => `
-        <div class="kind-opt${i === 0 ? ' active' : ''}" data-kind="${k}">
+        <div class="kind-opt${i === 0 ? ' active' : ''}" data-kind="${k}" role="button" tabindex="0" aria-pressed="${i === 0}">
           <div class="elem-icon">${KIND_ICON[k]}</div>
           <div class="kname">${k}</div>
           <div class="kdesc">${k === 'Scatolone' ? 'Solo elenco contenuto, niente slot' : 'Griglia a slot, livelli × colonne'}</div>
@@ -357,21 +372,22 @@ function renderElementCreateForm() {
       ).join('')}
     </div>
     <div class="field-label" style="margin:14px 0 9px;">Nome</div>
-    <input class="text-input" id="new-elem-name" placeholder="es. Scaffale cucina, Frigo vini">
+    <input class="text-input" id="new-elem-name" aria-label="Nome dell'elemento" placeholder="es. Scaffale cucina, Frigo vini">
     <div id="new-elem-dims" style="margin-top:14px;">
       <div class="field-label" style="margin-bottom:9px;">Definisci gli slot</div>
       <div class="dims-row" style="flex-wrap:wrap; row-gap:8px;">
-        Livelli <input type="number" class="num-input" id="new-elem-tiers" value="3" min="1">
-        × Colonne <input type="number" class="num-input" id="new-elem-cols" value="5" min="1">
-        × Profondità <input type="number" class="num-input" id="new-elem-depth" value="1" min="1" max="2">
+        Livelli <input type="number" class="num-input" id="new-elem-tiers" aria-label="Livelli" value="3" min="1">
+        × Colonne <input type="number" class="num-input" id="new-elem-cols" aria-label="Colonne" value="5" min="1">
+        × Profondità <input type="number" class="num-input" id="new-elem-depth" aria-label="Profondità" value="1" min="1" max="2">
       </div>
     </div>
-    <div class="primary-btn" id="create-element-btn" style="margin-top:16px;">Crea elemento</div>`;
+    <div class="primary-btn" id="create-element-btn" style="margin-top:16px;" role="button" tabindex="0">Crea elemento</div>`;
 
   document.querySelectorAll('#kind-grid .kind-opt').forEach((opt) =>
     opt.addEventListener('click', () => {
-      document.querySelectorAll('#kind-grid .kind-opt').forEach((o) => o.classList.remove('active'));
+      document.querySelectorAll('#kind-grid .kind-opt').forEach((o) => { o.classList.remove('active'); o.setAttribute('aria-pressed', 'false'); });
       opt.classList.add('active');
+      opt.setAttribute('aria-pressed', 'true');
       document.getElementById('new-elem-dims').style.display = opt.dataset.kind === 'Scatolone' ? 'none' : 'block';
     }),
   );
@@ -403,14 +419,14 @@ function renderElementDetail(id) {
   if (el.kind === 'Scatolone') {
     const items = currentBottles.filter((b) => b.element_id === id);
     body.innerHTML = `
-      <div class="icon-btn danger" id="delete-element-btn" title="Elimina elemento" style="align-self:flex-end; margin-bottom:10px;"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"/><path d="M6 7l1 13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-13"/><path d="M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3"/></svg></div>
+      <div class="icon-btn danger" id="delete-element-btn" title="Elimina elemento" role="button" tabindex="0" aria-label="Elimina elemento" style="align-self:flex-end; margin-bottom:10px;"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"/><path d="M6 7l1 13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-13"/><path d="M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3"/></svg></div>
       <p class="box-note">Gli scatoloni non hanno slot: è solo un elenco di cosa c'è dentro.</p>
       <div class="box-contents">${
         items.length
           ? items.map((b) => `<div class="box-item">${photoHtml(b, 'bphoto')}<div class="bname">${escapeHtml(b.name)}</div><div class="elem-count">×${b.quantity}</div></div>`).join('')
           : '<div class="empty-note">Scatolone vuoto.</div>'
       }</div>
-      <div class="primary-btn" id="assign-box-btn" style="margin-top:14px;">${picker ? `Metti "${escapeHtml(picker.bottle.name)}" qui` : 'Aggiungi bottiglia'}</div>`;
+      <div class="primary-btn" id="assign-box-btn" style="margin-top:14px;" role="button" tabindex="0">${picker ? `Metti "${escapeHtml(picker.bottle.name)}" qui` : 'Aggiungi bottiglia'}</div>`;
     document.getElementById('delete-element-btn').addEventListener('click', () => deleteCurrentElement());
     document.getElementById('assign-box-btn').addEventListener('click', () => placeBottle(id, null, null, null));
     return;
@@ -419,7 +435,7 @@ function renderElementDetail(id) {
   const occupied = elemCount(el);
   const capacity = elemCapacity(el);
   let html = `
-    <div class="icon-btn danger" id="delete-element-btn" title="Elimina elemento" style="align-self:flex-end; margin-bottom:10px;"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"/><path d="M6 7l1 13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-13"/><path d="M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3"/></svg></div>
+    <div class="icon-btn danger" id="delete-element-btn" title="Elimina elemento" role="button" tabindex="0" aria-label="Elimina elemento" style="align-self:flex-end; margin-bottom:10px;"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"/><path d="M6 7l1 13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-13"/><path d="M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3"/></svg></div>
     <div class="elements-view">
     <div class="elem-stats">
       <div class="stat"><b>${capacity}</b><span>Capacità</span></div>
@@ -434,7 +450,7 @@ function renderElementDetail(id) {
       for (let c = 0; c < el.cols; c++) {
         const occ = currentBottles.find((b) => b.element_id === id && b.slot_tier === t && b.slot_col === c && b.slot_depth === d);
         const typeClass = occ ? (occ.type === 'bianco' ? 'type-bianco' : occ.type === 'bollicine' ? 'type-bollicine' : '') : '';
-        html += `<div class="slot-circle${occ ? ' filled ' + typeClass : ''}" data-t="${t}" data-c="${c}" data-d="${d}"><span class="slabel">${colLetter(c)}.${d}</span></div>`;
+        html += `<div class="slot-circle${occ ? ' filled ' + typeClass : ''}" data-t="${t}" data-c="${c}" data-d="${d}" role="button" tabindex="0" aria-label="Livello ${t}, ${colLetter(c)}.${d}, ${occ ? escapeHtml(occ.name) : 'libero'}"><span class="slabel">${colLetter(c)}.${d}</span></div>`;
       }
       html += '</div>';
     }
@@ -462,11 +478,11 @@ function showBottlePopup(b) {
     <div class="bpop-main">
       ${photoHtml(b, 'bphoto')}
       <div class="binfo"><div class="bname">${escapeHtml(b.name)}</div><div class="bsub">${escapeHtml(b.producer)}${b.vintage ? ' · ' + b.vintage : ''}</div></div>
-      <div class="bgo" id="popup-open-btn">Apri ›</div>
+      <div class="bgo" id="popup-open-btn" role="button" tabindex="0">Apri ›</div>
     </div>
     <div class="bpop-actions">
-      ${canSwap ? `<div class="bgo" id="popup-swap-btn">Sostituisci con "${escapeHtml(picker.bottle.name)}"</div>` : ''}
-      <div class="bgo" id="popup-free-btn">Libera questo slot</div>
+      ${canSwap ? `<div class="bgo" id="popup-swap-btn" role="button" tabindex="0">Sostituisci con "${escapeHtml(picker.bottle.name)}"</div>` : ''}
+      <div class="bgo" id="popup-free-btn" role="button" tabindex="0">Libera questo slot</div>
     </div>`;
   popup.classList.add('show');
   document.getElementById('popup-open-btn').addEventListener('click', async () => {
@@ -532,7 +548,7 @@ function renderBottlePickerForSlot(elId, tier, col, depth) {
         ? currentBottles
             .map(
               (b) => `
-        <div class="elem-row" data-id="${b.id}">
+        <div class="elem-row" data-id="${b.id}" role="button" tabindex="0">
           ${photoHtml(b, 'cphoto')}
           <div class="elem-body"><div class="elem-name">${escapeHtml(b.name)}</div>${locationLabel(b) ? `<div class="elem-sub">${escapeHtml(locationLabel(b))}</div>` : ''}</div>
         </div>`,
@@ -640,8 +656,9 @@ function wireStaticControls() {
   // background — invisible until the next visit to Cantina.
   document.querySelectorAll('#view-cellar .segmented button').forEach((btn) => {
     btn.addEventListener('click', () => {
-      btn.parentElement.querySelectorAll('button').forEach((b) => b.classList.remove('active'));
+      btn.parentElement.querySelectorAll('button').forEach((b) => { b.classList.remove('active'); b.setAttribute('aria-pressed', 'false'); });
       btn.classList.add('active');
+      btn.setAttribute('aria-pressed', 'true');
       const owned = document.getElementById('cellar-list');
       const wish = document.getElementById('wishlist-list');
       if (btn.dataset.wall === 'owned') {

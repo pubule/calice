@@ -77,9 +77,11 @@ function menuRegions(country) {
 
 function openDropdown() {
   document.getElementById('explore-dd').classList.add('open');
+  document.getElementById('explore-dd-head')?.setAttribute('aria-expanded', 'true');
 }
 function closeDropdown() {
   document.getElementById('explore-dd').classList.remove('open');
+  document.getElementById('explore-dd-head')?.setAttribute('aria-expanded', 'false');
 }
 function openCountrySheet() {
   renderCountryRows();
@@ -102,7 +104,7 @@ function renderMap(country) {
     .map((r) => {
       const active = r.id === regionId;
       const fill = active ? '#5b2333' : r.hasData ? '#d9a9b3' : '#e5e1d4';
-      return `<path data-id="${r.id}" d="${r.d}" fill="${fill}" stroke="#ffffff" stroke-width="1.3" stroke-linejoin="round"/>`;
+      return `<path data-id="${r.id}" role="button" tabindex="0" aria-label="${r.name}" d="${r.d}" fill="${fill}" stroke="#ffffff" stroke-width="1.3" stroke-linejoin="round"/>`;
     })
     .join('');
   el.innerHTML = `<svg viewBox="${country.viewBox}">${svg}</svg>`;
@@ -122,7 +124,7 @@ function renderDropdownAndHint(country) {
   const current = country.regions.find((r) => r.id === regionId);
   document.getElementById('explore-dd-label').textContent = current ? current.name : '…';
   document.getElementById('explore-dd-list').innerHTML = menu
-    .map((r) => `<div class="opt ${r.id === regionId ? 'active' : ''}" data-id="${r.id}">${r.name}</div>`)
+    .map((r) => `<div class="opt ${r.id === regionId ? 'active' : ''}" data-id="${r.id}" role="button" tabindex="0" aria-pressed="${r.id === regionId}">${r.name}</div>`)
     .join('');
 }
 
@@ -142,7 +144,7 @@ function detailTemplate(name, wines, categories) {
         .join('');
       return `
       <div class="wine-item">
-        <div class="list-row wine-row" data-idx="${i}">
+        <div class="list-row wine-row" data-idx="${i}" role="button" tabindex="0" aria-expanded="false">
           <span class="type-dot" style="background:${TYPE_COLOR[w.type]}"></span>
           <div class="lbody">
             <div class="lname">${w.name}</div>
@@ -168,8 +170,8 @@ function detailTemplate(name, wines, categories) {
   return `
     <h3 style="font-family:'Newsreader',serif; font-weight:500; font-size:18px; letter-spacing:-0.01em; margin:0 0 16px;">${name}</h3>
     <div class="segmented">
-      <button class="active" data-tab="wines">Vini</button>
-      <button data-tab="categories">Categorie</button>
+      <button class="active" data-tab="wines" aria-pressed="true">Vini</button>
+      <button data-tab="categories" aria-pressed="false">Categorie</button>
     </div>
     <div class="explore-tab-panel" data-tab-panel="wines">${winesHtml}</div>
     <div class="explore-tab-panel hidden" data-tab-panel="categories">${categoriesHtml}</div>`;
@@ -181,7 +183,10 @@ function detailTemplate(name, wines, categories) {
 // per-render.
 function selectDetailTab(tab) {
   const detail = document.getElementById('explore-detail');
-  detail.querySelectorAll('.segmented button[data-tab]').forEach((b) => b.classList.toggle('active', b.dataset.tab === tab));
+  detail.querySelectorAll('.segmented button[data-tab]').forEach((b) => {
+    b.classList.toggle('active', b.dataset.tab === tab);
+    b.setAttribute('aria-pressed', String(b.dataset.tab === tab));
+  });
   detail.querySelectorAll('.explore-tab-panel').forEach((p) => p.classList.toggle('hidden', p.dataset.tabPanel !== tab));
 }
 
@@ -192,6 +197,7 @@ function toggleWineGrapes(idx) {
   if (!row || !panel) return;
   const open = panel.classList.toggle('open');
   row.classList.toggle('open', open);
+  row.setAttribute('aria-expanded', String(open));
 }
 
 function renderDetail(country) {
@@ -218,8 +224,8 @@ function renderCountryRows() {
   document.getElementById('explore-country-rows').innerHTML = COUNTRIES.map(
     (c) => `
     <div class="list-row ${c.id === countryId ? 'active' : ''}" data-country="${c.id}">
-      <div class="radio"></div>
-      <div class="lbody"><div class="lname">${c.name}</div></div>
+      <div class="radio" role="radio" tabindex="0" aria-checked="${c.id === countryId}" aria-label="${c.name}"></div>
+      <div class="lbody" role="presentation"><div class="lname">${c.name}</div></div>
     </div>`,
   ).join('');
 }

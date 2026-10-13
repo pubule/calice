@@ -47,10 +47,10 @@ const FLAVOR_CATEGORIES = [
 ];
 
 const TASTE_AXES = [
-  { id: 'acidity', left: 'Piatto', right: 'Acidulo' },
-  { id: 'sweetness', left: 'Secco', right: 'Dolce' },
-  { id: 'tannin', left: 'Morbido', right: 'Tannico' },
-  { id: 'body', left: 'Leggero', right: 'Strutturato' },
+  { id: 'acidity', name: 'Acidità', left: 'Piatto', right: 'Acidulo' },
+  { id: 'sweetness', name: 'Dolcezza', left: 'Secco', right: 'Dolce' },
+  { id: 'tannin', name: 'Tannicità', left: 'Morbido', right: 'Tannico' },
+  { id: 'body', name: 'Corpo', left: 'Leggero', right: 'Strutturato' },
 ];
 
 const FOOD_PAIRINGS = ['Manzo', 'Agnello', 'Selvaggina', 'Salumi', 'Formaggi stagionati', 'Pasta', 'Pesce', 'Pizza', 'Dolci', 'Cioccolato'];
@@ -61,7 +61,7 @@ const DEFAULT_VALUE = 50;
 export function tastingProfileHtml() {
   const flavorCards = FLAVOR_CATEGORIES.map(
     (cat, i) => `
-    <div class="flavor-card${i === 0 ? ' active' : ''}" data-cat="${cat.id}" style="background:${cat.bg};color:${cat.fg};">
+    <div class="flavor-card${i === 0 ? ' active' : ''}" data-cat="${cat.id}" role="button" tabindex="0" aria-pressed="${i === 0}" style="background:${cat.bg};color:${cat.fg};">
       ${cat.icon}
       <span>${cat.label}</span>
     </div>`,
@@ -69,17 +69,17 @@ export function tastingProfileHtml() {
   const flavorPanels = FLAVOR_CATEGORIES.map(
     (cat, i) => `
     <div class="flavor-chip-panel${i === 0 ? '' : ' hidden'}" data-cat="${cat.id}">
-      ${cat.tags.map((t) => `<div class="chip" data-toggle>${t}</div>`).join('')}
+      ${cat.tags.map((t) => `<div class="chip" data-toggle role="button" tabindex="0" aria-pressed="false">${t}</div>`).join('')}
     </div>`,
   ).join('');
   const sliders = TASTE_AXES.map(
     (axis) => `
     <div class="taste-slider" data-axis="${axis.id}" data-value="${DEFAULT_VALUE}">
       <div class="taste-labels"><span class="tl-left">${axis.left}</span><span class="tl-right">${axis.right}</span></div>
-      <div class="taste-track"><div class="taste-thumb"></div></div>
+      <div class="taste-track" role="slider" tabindex="0" aria-label="${axis.name}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${DEFAULT_VALUE}"><div class="taste-thumb"></div></div>
     </div>`,
   ).join('');
-  const pairingChips = FOOD_PAIRINGS.map((p) => `<div class="chip" data-toggle>${p}</div>`).join('');
+  const pairingChips = FOOD_PAIRINGS.map((p) => `<div class="chip" data-toggle role="button" tabindex="0" aria-pressed="false">${p}</div>`).join('');
 
   return `
     <div>
@@ -97,12 +97,21 @@ export function tastingProfileHtml() {
     </div>`;
 }
 
+// 0 is a legitimate slider value, so `Number(x) || DEFAULT_VALUE` (which
+// turns 0 into 50) can't be used to read it.
+function sliderValue(slider) {
+  const n = Number(slider.dataset.value);
+  return Number.isNaN(n) ? DEFAULT_VALUE : n;
+}
+
 function positionThumb(slider) {
   const track = slider.querySelector('.taste-track');
   const thumb = slider.querySelector('.taste-thumb');
   const leftLabel = slider.querySelector('.tl-left');
   const rightLabel = slider.querySelector('.tl-right');
-  const value = Number(slider.dataset.value) || DEFAULT_VALUE;
+  const value = sliderValue(slider);
+  track.setAttribute('aria-valuenow', String(value));
+  track.setAttribute('aria-valuetext', value < 40 ? leftLabel.textContent : value > 60 ? rightLabel.textContent : 'Equilibrato');
   const maxLeft = track.getBoundingClientRect().width - THUMB_W;
   thumb.style.left = (value / 100) * maxLeft + 'px';
   leftLabel.classList.toggle('dominant', value < 40);
@@ -114,15 +123,16 @@ function positionThumb(slider) {
 // on every subsequent open, instead of re-wiring listeners each time.
 export function wireTastingProfile(root) {
   root.querySelectorAll('.chip[data-toggle]').forEach((chip) => {
-    chip.addEventListener('click', () => chip.classList.toggle('active'));
+    chip.addEventListener('click', () => chip.setAttribute('aria-pressed', String(chip.classList.toggle('active'))));
   });
 
   const cards = root.querySelectorAll('.flavor-card');
   const panels = root.querySelectorAll('.flavor-chip-panel');
   cards.forEach((card) => {
     card.addEventListener('click', () => {
-      cards.forEach((c) => c.classList.remove('active'));
+      cards.forEach((c) => { c.classList.remove('active'); c.setAttribute('aria-pressed', 'false'); });
       card.classList.add('active');
+      card.setAttribute('aria-pressed', 'true');
       panels.forEach((p) => p.classList.toggle('hidden', p.dataset.cat !== card.dataset.cat));
     });
   });
@@ -144,6 +154,18 @@ export function wireTastingProfile(root) {
       track.addEventListener('pointerup', onEnd, { once: true });
       track.addEventListener('pointercancel', onEnd, { once: true });
     });
+    // Keyboard / VoiceOver: arrows nudge the same dataset.value the pointer sets.
+    track.addEventListener('keydown', (e) => {
+      const step = { ArrowRight: 5, ArrowUp: 5, ArrowLeft: -5, ArrowDown: -5, PageUp: 10, PageDown: -10 }[e.key];
+      let next;
+      if (step != null) next = sliderValue(slider) + step;
+      else if (e.key === 'Home') next = 0;
+      else if (e.key === 'End') next = 100;
+      else return;
+      e.preventDefault();
+      slider.dataset.value = Math.max(0, Math.min(100, next));
+      positionThumb(slider);
+    });
     positionThumb(slider);
   });
 }
@@ -154,10 +176,10 @@ export function wireTastingProfile(root) {
 // single mutable record, so there is never saved profile data to restore
 // here even when editing an existing wine's other fields.
 export function resetTastingProfile(root) {
-  root.querySelectorAll('.chip.active[data-toggle]').forEach((chip) => chip.classList.remove('active'));
+  root.querySelectorAll('.chip.active[data-toggle]').forEach((chip) => { chip.classList.remove('active'); chip.setAttribute('aria-pressed', 'false'); });
   const cards = root.querySelectorAll('.flavor-card');
   const panels = root.querySelectorAll('.flavor-chip-panel');
-  cards.forEach((c, i) => c.classList.toggle('active', i === 0));
+  cards.forEach((c, i) => { c.classList.toggle('active', i === 0); c.setAttribute('aria-pressed', String(i === 0)); });
   panels.forEach((p, i) => p.classList.toggle('hidden', i !== 0));
   root.querySelectorAll('.taste-slider').forEach((slider) => {
     slider.dataset.value = String(DEFAULT_VALUE);
@@ -170,7 +192,7 @@ export function readTastingProfile(root) {
   const foodPairings = Array.from(root.querySelectorAll('.chip-row .chip.active[data-toggle]')).map((c) => c.textContent);
   const values = {};
   root.querySelectorAll('.taste-slider').forEach((slider) => {
-    values[slider.dataset.axis] = Number(slider.dataset.value) || DEFAULT_VALUE;
+    values[slider.dataset.axis] = sliderValue(slider);
   });
   return {
     flavorTags,

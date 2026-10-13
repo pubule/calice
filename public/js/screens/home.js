@@ -12,7 +12,10 @@ const DEFAULT_COLOR = '#5b2333';
 document.getElementById('home-explore-entry')?.addEventListener('click', () => navigate('#/esplora'));
 
 function selectHomeTab(tab) {
-  document.querySelectorAll('#home-tabs button').forEach((b) => b.classList.toggle('active', b.dataset.tab === tab));
+  document.querySelectorAll('#home-tabs button').forEach((b) => {
+    b.classList.toggle('active', b.dataset.tab === tab);
+    b.setAttribute('aria-pressed', String(b.dataset.tab === tab));
+  });
   document.querySelectorAll('.home-tab-panel').forEach((p) => { p.classList.toggle('hidden', p.dataset.tabPanel !== tab); });
 }
 
@@ -48,11 +51,15 @@ const expanded = { soon: false, regions: false, feed: false };
 function toggleLink(id, key, count, expandLabel) {
   const link = document.getElementById(id);
   if (!link) return;
+  // Empty link: keep it out of the tab order and the accessibility tree.
+  link.setAttribute('tabindex', count <= PREVIEW_COUNT ? '-1' : '0');
+  link.toggleAttribute('aria-hidden', count <= PREVIEW_COUNT);
   if (count <= PREVIEW_COUNT) {
     link.textContent = '';
     link.onclick = null;
     return;
   }
+  link.setAttribute('aria-expanded', String(expanded[key]));
   link.textContent = expanded[key] ? 'mostra meno' : expandLabel;
   link.onclick = () => {
     expanded[key] = !expanded[key];
@@ -67,7 +74,7 @@ function renderSoon() {
       (b) => `
       <div class="list-row">
         <span class="type-dot" style="background:${TYPE_COLOR[b.type] || DEFAULT_COLOR}"></span>
-        <div class="lbody">
+        <div class="lbody" style="cursor:default">
           <div class="lname">${escapeHtml(b.name)}</div>
           <div class="lsub">${escapeHtml(b.producer)} · ${escapeHtml(b.region ?? b.country)}</div>
         </div>
@@ -181,8 +188,8 @@ export async function mountHome() {
   document.getElementById('home-alerts').innerHTML = ''; // populated below, one banner per condition
   const lowStock = bottles.find((b) => b.quantity <= 2);
   const banners = [];
-  if (soon.length) banners.push(`<div class="alert-banner"><div class="txt"><b>Hai vini pronti da bere</b>${soon.length} bottiglie nella finestra di consumo</div><div class="alert-dismiss">&times;</div></div>`);
-  if (lowStock) banners.push(`<div class="alert-banner"><div class="txt"><b>Scorte in esaurimento</b>${escapeHtml(lowStock.name)}: restano ${lowStock.quantity} bottiglie</div><div class="alert-dismiss">&times;</div></div>`);
+  if (soon.length) banners.push(`<div class="alert-banner"><div class="txt"><b>Hai vini pronti da bere</b>${soon.length} bottiglie nella finestra di consumo</div><div class="alert-dismiss" role="button" tabindex="0" aria-label="Chiudi avviso">&times;</div></div>`);
+  if (lowStock) banners.push(`<div class="alert-banner"><div class="txt"><b>Scorte in esaurimento</b>${escapeHtml(lowStock.name)}: restano ${lowStock.quantity} bottiglie</div><div class="alert-dismiss" role="button" tabindex="0" aria-label="Chiudi avviso">&times;</div></div>`);
   document.getElementById('home-alerts').innerHTML = banners.join('');
   document.querySelectorAll('#home-alerts .alert-dismiss').forEach((btn) => {
     btn.addEventListener('click', () => btn.closest('.alert-banner').remove());

@@ -23,7 +23,7 @@ function resultRowHtml(w) {
     <div class="result-row" data-wine-id="${id}">
       ${photo}
       <div class="result-body"><div class="name">${name}${vintage}</div><div class="sub">${sub}</div></div>
-      <div class="add-btn" data-wine-id="${id}"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
+      <div class="add-btn" data-wine-id="${id}" role="button" tabindex="0" aria-label="Aggiungi ${name} alla cantina"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
     </div>`;
 }
 
@@ -89,10 +89,10 @@ function webCandidateRowHtml(candidate, i) {
     ? `<img class="result-photo photo" src="${escapeHtml(candidate.imageUrl)}" alt="">`
     : `<div class="result-photo photo photo-rosso"></div>`;
   return `
-    <div class="result-row" data-candidate="${i}">
+    <div class="result-row" data-candidate="${i}" role="button" tabindex="0">
       ${photo}
       <div class="result-body"><div class="name">${name}</div><div class="sub">${escapeHtml(source)}</div></div>
-      <div class="add-btn"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
+      <div class="add-btn" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
     </div>`;
 }
 
@@ -158,7 +158,7 @@ async function runSearch(query) {
     // record's photo/data might be poor or missing, so leave a way to pull
     // web candidates (Vivino-prioritized) anyway instead of only falling
     // back to the web on a local miss.
-    results.innerHTML = wines.map(resultRowHtml).join('') + `<div class="manual-link" id="force-web-search-link">Cerca comunque "${escapeHtml(query)}" sul web</div>`;
+    results.innerHTML = wines.map(resultRowHtml).join('') + `<div class="manual-link" id="force-web-search-link" role="button" tabindex="0">Cerca comunque "${escapeHtml(query)}" sul web</div>`;
     wireResults(results);
     document.getElementById('force-web-search-link')?.addEventListener('click', () => {
       results.innerHTML = `<p class="sub">Cerco "${escapeHtml(query)}" sul web <span class="loading-dots"><span></span><span></span><span></span></span></p>`;
@@ -376,7 +376,10 @@ if (recognizeTaste) {
 
 function resetNoteComposer() {
   document.getElementById('rec-note-text').value = '';
-  document.querySelectorAll('#rec-note-stars span.on').forEach((s) => s.classList.remove('on'));
+  document.querySelectorAll('#rec-note-stars span').forEach((s) => {
+    s.classList.remove('on');
+    s.setAttribute('aria-checked', 'false');
+  });
   if (recognizeTaste) resetTastingProfile(recognizeTaste);
 }
 
