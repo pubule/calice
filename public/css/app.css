@@ -559,3 +559,14 @@
   .grape-chip{display:inline-flex; align-items:center; gap:5px; background:#f4f2ea; border-radius:9999px; padding:4px 10px 4px 8px; font-size:11px; color:#5c5346;}
   .grape-chip .dot{width:6px; height:6px; border-radius:50%; flex-shrink:0;}
   .grape-chip.muted{background:none; padding-left:0; color:#a89b89; font-style:italic;}
+
+  /* ---- Fogli: maniglia e trascinamento ---- */
+  /* La maniglia è iniettata da js/sheet-gestures.js. È assoluta così non
+     sposta il layout dei fogli (che hanno gap/padding propri); la zona di
+     tocco è alta 44pt, stretta e centrata per non coprire il pulsante ×. */
+  .detail-sheet, .compare-sheet{position:relative; overscroll-behavior:contain;}
+  .sheet-grabber{position:absolute; top:0; left:50%; width:120px; margin-left:-60px; height:44px; z-index:3; display:flex; justify-content:center; align-items:flex-start; padding-top:7px; touch-action:none; cursor:grab;}
+  .sheet-grabber span{display:block; width:36px; height:5px; border-radius:3px; background:#d8ceb8; box-shadow:0 0 0 .5px rgba(36,30,26,.12);}
+  /* Header dei fogli: il trascinamento parte subito, senza che il browser
+     rubi il gesto per lo scroll. */
+  .compare-sheet .compare-head, .compare-sheet .topbar, .detail-sheet .detail-hero{touch-action:none;}

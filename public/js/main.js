@@ -7,6 +7,7 @@ import { mountStats } from './screens/stats.js';
 import { mountProfile } from './screens/profile.js';
 import { mountInviteAccept } from './screens/invite.js';
 import { mountExplore } from './screens/explore.js';
+import './sheet-gestures.js';
 
 function showView(id) {
   document.querySelectorAll('.view').forEach((v) => v.classList.remove('active', 'shown'));
