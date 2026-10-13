@@ -778,3 +778,33 @@ cui si scrive il codice sembra esserci una sola istanza nella pagina.
 Il modulo condiviso `public/js/tasting-profile.js` segue già questo
 pattern (tutte le funzioni prendono un `root` e scopano le query a
 quello) proprio per evitarlo in partenza.
+
+## Minimi HIG (accessibilità): non scendere sotto, ogni nuova UI li rispetta
+
+Fissati dall'audit secondo le Human Interface Guidelines di Apple (`HANDOFF.md`
+punto 19). Valgono per qualunque markup o CSS nuovo, non solo per quello
+già corretto:
+
+- **Testo mai sotto 11px**; secondario 12px. Colore del testo secondario
+  `#736a5d` (≥4,5:1 su crema, bianco e grigio dei selettori). **Non**
+  reintrodurre `#8f8474`/`#a89b89`/`#c2b8a8` come colore di testo: restano
+  ammessi solo per icone, bordi e decorazioni.
+- **Ogni controllo ≥44pt di area di tocco.** Se il controllo visibile è più
+  piccolo, estendere l'area con un `::after` trasparente (pattern nel blocco
+  `/* HIG: leggibilità e tocco */` di `app.css`) — ma un antenato con
+  `overflow:hidden/auto` lo ritaglia: controllare con `elementFromPoint`.
+- **Ogni controllo non nativo** (`div` con listener di click) prende
+  `role="button" tabindex="0"`, e `aria-label` se non ha testo visibile.
+  Invio/Spazio funzionano già grazie all'handler delegato in `main.js`.
+- **Stato di pressione**: aggiungere la classe del nuovo controllo alle
+  liste `:active` di `app.css`. Il `touchstart` vuoto in `main.js` serve a
+  iOS per applicare `:active` ai `div`: non toglierlo.
+- **Nuovi fogli dal basso**: registrarli in `js/sheet-gestures.js` (mappa
+  overlay → pulsante di chiusura), così hanno maniglia, tocco sullo sfondo
+  e trascinamento.
+- **Azioni distruttive**: conferma (`confirmModal`, `danger:true`) se
+  irreversibili, altrimenti `showToast(..., { actionLabel: 'Annulla' })`
+  da `js/toast.js`.
+- La scheda attiva del menu in basso la decide **solo** `showView()` in
+  `main.js`: una nuova vista senza scheda propria va aggiunta a
+  `TAB_FOR_VIEW`.

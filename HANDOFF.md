@@ -623,6 +623,65 @@ questo file è il riassunto "dove eravamo rimasti".
       bloccando le richieste verso `cdn.jsdelivr.net`: zero `pageerror`,
       scansione disattivata correttamente.
     - Nessuna modifica backend. `CACHE` a `v83`, `build 83`.
+19. **Audit secondo le Human Interface Guidelines di Apple + giro di fix
+    con 5 agenti paralleli.** Metodo dalle skill
+    `dickwu/apple-design-skill` (pagine HIG, 5 lenti, scala di gravità)
+    ed `emilkowalski/skills` › `apple-design` (movimento, gesti,
+    feedback). Giudizio iniziale: "Critical issues", soprattutto
+    accessibilità. Ogni agente ha lavorato in un worktree separato; i
+    rami sono stati uniti a mano su questo branch (conflitti solo in
+    `app.css`, `index.html`, `home.js`, `profile.js`, `sw.js`, tutti
+    risolti tenendo entrambe le parti).
+    - **A — navigazione**: la scheda attiva del menu in basso si
+      aggiornava solo al tocco (script inline in `index.html`, rimosso):
+      ora la imposta `showView()` in `main.js` (`TAB_FOR_VIEW`: Esplora e
+      invito accendono Home), con `aria-current="page"`. Nuova azione
+      **"Stappa una bottiglia"** nella scheda del vino (`PATCH
+      /api/bottles/:id` con `quantity−1`, già supportato dal backend ma
+      mai usato) con Annulla per 5s; all'ultima bottiglia chiede conferma
+      e cancella la riga. Conteggio Cantina "N vini · M bottiglie";
+      "resta 1 bottiglia" al singolare in Home.
+    - **B — leggibilità e tocco** (`app.css`, blocco `/* HIG: leggibilità
+      e tocco */`): grigi del testo a `#736a5d` (≥4,5:1), stelle spente
+      `#8e8779` (3:1, soglia icone), nessun testo sotto 11px, aree di
+      tocco ≥44pt tramite `::after` trasparenti (attenzione agli antenati
+      con `overflow:hidden`, vedi commento nel CSS), stato `:active` su
+      tutti i controlli, fogli in sola dissolvenza con riduzione
+      movimento. In `main.js` un `touchstart` vuoto: senza, iOS non
+      applica `:active` ai `div`.
+    - **C — VoiceOver**: `role`/`tabindex`/`aria-label` su tutti i
+      controlli non nativi (prima 118 senza ruolo, 15 senza nome → 0),
+      stelle come `radiogroup`, slider del gusto come `role="slider"` con
+      frecce, handler globale Invio/Spazio in `main.js`, anello di focus
+      `:focus-visible`. Corretto anche `Number(v) || 50` in
+      `tasting-profile.js`, che trasformava un valore 0 in 50.
+    - **D — fogli dal basso**: nuovo `js/sheet-gestures.js` — tocco sullo
+      sfondo, maniglia iniettata da JS, trascinamento verso il basso 1:1
+      con proiezione della velocità; la chiusura chiama sempre il `.click()`
+      del pulsante × esistente, così gira la pulizia di ogni foglio. 7
+      fogli coperti; `modal.js` escluso.
+    - **E — azioni distruttive**: nuovo `js/toast.js`; "Rimuovi dai
+      desideri" mostra "Rimosso dai desideri · Annulla" (l'annulla ricrea
+      la voce via `POST /api/cellars/:id/wishlist`: la voce torna in cima
+      con un id nuovo); "Seguito" chiede conferma prima di smettere di
+      seguire.
+    - Audit su 12 schermate, prima → dopo: testo <11px 96 → 0; contrasto
+      sotto soglia 116 → 10 (solo stelle spente, che passano la soglia
+      3:1 delle icone); controlli <28pt 68 → 10 (link testuali con
+      `::after` che la misura non vede); controlli non semantici 118 → 0.
+      Test di integrazione Playwright sul codice unito (scheda attiva,
+      stappa+annulla, tocco sullo sfondo, Invio da tastiera, toast,
+      conferma) tutti verdi, zero `pageerror`.
+    - **Da verificare su iPhone vero**: sensazione del trascinamento dei
+      fogli (momentum, conflitto con lo scroll), stato `:active` su iOS,
+      VoiceOver reale. `CACHE` a `v84`, `build 84`.
+    - **Fuori da questo giro, ancora aperti dall'audit**: Dynamic Type
+      (tutto è in `px`, il testo grande di iOS non ha effetto — serve
+      `font: -apple-system-body` + `rem`, lavoro ampio); due stili diversi
+      per lo stesso controllo a schede (pillola bordeaux nella scheda del
+      vino, bianca altrove); matita/cestino sempre visibili su ogni riga
+      della Cantina (iOS userebbe lo scorrimento laterale); "Aggiungi"
+      come scheda del menu (le schede dovrebbero navigare, non agire).
 
 ## Cose note, non (ancora) da rifare
 
@@ -677,6 +736,11 @@ questo file è il riassunto "dove eravamo rimasti".
   un modo per camuffare un caricamento ancora sfalsato.
 
 ## Prossimi passi possibili (non richiesti, solo spunti)
+
+- I quattro punti dell'audit HIG rimasti aperti (vedi punto 19), in
+  quest'ordine: Dynamic Type, stile unico per i controlli a schede,
+  scorrimento laterale sulle righe della Cantina, "Aggiungi" fuori dal
+  menu.
 
 - Ampliare la copertura regionale nei paesi con mappa (oggi solo un
   sottoinsieme di regioni/stati ha dati curati).
