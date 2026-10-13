@@ -1,6 +1,7 @@
 import { api } from '../api-client.js';
 import { escapeHtml, photoClass } from '../util.js';
-import { openLocationPicker, locationLabel } from './cellar.js';
+import { openLocationPicker, locationLabel, refreshCellarList } from './cellar.js';
+import { confirmModal } from '../modal.js';
 import { tastingProfileHtml, wireTastingProfile, resetTastingProfile, readTastingProfile, isTastingProfileEmpty, tasteSummary } from '../tasting-profile.js';
 
 let currentBottleId = null;
@@ -54,6 +55,65 @@ function renderHero(bottle) {
   document.getElementById('loc-value').textContent = locationLabel(bottle) || 'Non assegnata';
 }
 
+let undoTimer = null;
+
+function renderQuantity() {
+  const q = Number(currentBottle?.quantity) || 0;
+  document.getElementById('uncork-count').textContent = q === 1 ? 'Resta 1 bottiglia' : `Restano ${q} bottiglie`;
+}
+
+function hideUndo() {
+  clearTimeout(undoTimer);
+  undoTimer = null;
+  document.getElementById('uncork-undo')?.classList.add('hidden');
+}
+
+// Quantity changes go through PATCH /api/bottles/:id ({ quantity } only). The
+// bottle object is shared with cellar.js's list, so mutating it and asking
+// the list to re-render is all the list needs.
+async function setQuantity(bottle, quantity) {
+  await api.patch(`/api/bottles/${bottle.id}`, { quantity });
+  bottle.quantity = quantity;
+  if (currentBottle === bottle) renderQuantity();
+  refreshCellarList();
+}
+
+async function uncorkOne() {
+  const bottle = currentBottle;
+  if (!bottle) return;
+  const btn = document.getElementById('uncork-btn');
+  const before = Number(bottle.quantity) || 0;
+  btn.disabled = true;
+  try {
+    if (before <= 1) {
+      const ok = await confirmModal("Era l'ultima bottiglia: rimuovere il vino dalla cantina?", {
+        title: 'Ultima bottiglia',
+        confirmLabel: 'Rimuovi',
+        danger: true,
+      });
+      if (!ok) return;
+      await api.del(`/api/bottles/${bottle.id}`);
+      hideUndo();
+      document.getElementById('detail-overlay').classList.remove('open');
+      refreshCellarList(bottle.id);
+      return;
+    }
+    await setQuantity(bottle, before - 1);
+    clearTimeout(undoTimer);
+    const undo = document.getElementById('uncork-undo');
+    undo.classList.remove('hidden');
+    document.getElementById('uncork-undo-btn').onclick = async () => {
+      hideUndo();
+      await setQuantity(bottle, before);
+    };
+    undoTimer = setTimeout(hideUndo, 5000);
+  } catch (err) {
+    console.error('uncork failed', err);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
 async function loadNotes(bottleId) {
   const notes = await api.get(`/api/bottles/${bottleId}/notes`);
   document.getElementById('notes-mine').innerHTML =
@@ -86,6 +146,8 @@ export async function openDetail(bottle, me) {
   currentBottle = bottle;
   currentMeId = me.id;
   document.getElementById('detail-overlay').classList.add('open');
+  hideUndo();
+  renderQuantity();
   renderHero(bottle);
   await Promise.all([loadNotes(currentBottleId), loadPhotos(currentBottleId)]);
 }
@@ -97,6 +159,8 @@ export async function openDetail(bottle, me) {
 // here, mirroring cellar.js's wireStaticControls(), instead of re-attaching
 // a fresh listener (and stacking duplicates) on every openDetail() call.
 function wireStaticControls() {
+  document.getElementById('uncork-btn')?.addEventListener('click', uncorkOne);
+
   document.getElementById('detail-close')?.addEventListener('click', () => {
     document.getElementById('detail-overlay').classList.remove('open');
   });

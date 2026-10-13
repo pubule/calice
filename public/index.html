@@ -260,6 +260,14 @@
           <div class="loc-edit" id="loc-edit-btn">modifica</div>
         </div>
 
+        <div class="uncork-block" id="uncork-block">
+          <div class="uncork-row">
+            <div class="uncork-text"><b>Bottiglie in cantina</b><span id="uncork-count">Restano 1</span></div>
+            <button type="button" class="uncork-btn" id="uncork-btn">Stappa una bottiglia</button>
+          </div>
+          <div class="uncork-undo hidden" id="uncork-undo"><span>Bottiglia stappata</span><button type="button" id="uncork-undo-btn">Annulla</button></div>
+        </div>
+
         <div class="rev-tabs">
           <div class="rev-tab active" data-tab="mine">Le tue note</div>
           <div class="rev-tab" data-tab="others">Dalla community</div>
@@ -348,14 +356,8 @@
   </div>
 </div>
 <script>
-  document.querySelectorAll('.navbtn[data-view]').forEach(btn=>{
-    btn.addEventListener('click',()=>{
-      document.querySelectorAll('.navbtn').forEach(b=>b.classList.remove('active'));
-      btn.classList.add('active');
-      document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
-      document.getElementById(btn.dataset.view).classList.add('active');
-    });
-  });
+  // Tab bar clicks and the active tab are handled by js/main.js (navigate()
+  // + showView()), so every route change keeps the highlighted tab in sync.
   // Cantina list rendering, wishlist, and compare-selection are now owned by
   // js/screens/cellar.js (driven by real API data instead of hardcoded rows).
   // The detail sheet (open/close, location picker, photo gallery, notes
