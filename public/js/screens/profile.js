@@ -25,7 +25,7 @@ async function renderFollows() {
   const follows = await api.get('/api/follows');
   const el = document.getElementById('profile-follows');
   if (!el) return;
-  el.innerHTML = follows.length ? follows.map(followRowHtml).join('') : '<p style="font-size:11.5px;color:#8f8474;">Non segui ancora nessuno.</p>';
+  el.innerHTML = follows.length ? follows.map(followRowHtml).join('') : '<p style="font-size:11.5px;color:#736a5d;">Non segui ancora nessuno.</p>';
   el.querySelectorAll('.follow-btn').forEach((btn) =>
     btn.addEventListener('click', async () => {
       // Re-fetch from the server after the mutation rather than trusting an

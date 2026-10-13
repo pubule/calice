@@ -453,7 +453,7 @@ function renderElementDetail(id) {
     }
     html += '</div></div>';
   }
-  html += `<p class="page-sub" style="margin:0; font-size:11.5px; color:#8f8474; text-align:center;">Tocca uno slot vuoto per posizionarci ${picker ? '"' + escapeHtml(picker.bottle.name) + '"' : 'una bottiglia'}. Tocca uno slot pieno per vederne il contenuto.</p></div>`;
+  html += `<p class="page-sub" style="margin:0; font-size:11.5px; color:#736a5d; text-align:center;">Tocca uno slot vuoto per posizionarci ${picker ? '"' + escapeHtml(picker.bottle.name) + '"' : 'una bottiglia'}. Tocca uno slot pieno per vederne il contenuto.</p></div>`;
   body.innerHTML = html;
 
   document.getElementById('delete-element-btn').addEventListener('click', () => deleteCurrentElement());
@@ -539,7 +539,7 @@ function renderBottlePickerForSlot(elId, tier, col, depth) {
   const slotLabel = tier == null ? 'questo elemento' : `Livello ${tier} · ${colLetter(col)}.${depth}`;
   const body = document.getElementById('elements-body');
   body.innerHTML = `
-    <p class="page-sub" style="margin:0 0 4px; font-size:11.5px; color:#8f8474;">${slotLabel} — scegli quale bottiglia mettere qui:</p>
+    <p class="page-sub" style="margin:0 0 4px; font-size:11.5px; color:#736a5d;">${slotLabel} — scegli quale bottiglia mettere qui:</p>
     <div id="pick-bottle-list" style="display:flex; flex-direction:column; gap:9px;">${
       currentBottles.length
         ? currentBottles
