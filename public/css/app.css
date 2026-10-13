@@ -648,3 +648,21 @@
   /* Header dei fogli: il trascinamento parte subito, senza che il browser
      rubi il gesto per lo scroll. */
   .compare-sheet .compare-head, .compare-sheet .topbar, .detail-sheet .detail-hero{touch-action:none;}
+
+  /* Navigazione: Esplora e Aggiungi */
+  /* Aggiungi è un'azione, non una sezione: pulsante tondo 44pt nelle
+     intestazioni di Home e Cantina (la scheda del menu è Esplora). Pulsante
+     nativo, quindi la pressione è già coperta da `button:not(:disabled):active`. */
+  .add-wine-btn{flex:none; width:44px; height:44px; padding:0; border:none; border-radius:50%; background:#5b2333; color:#fff; display:flex; align-items:center; justify-content:center; cursor:pointer; -webkit-tap-highlight-color:transparent; touch-action:manipulation; box-shadow:0 1px 3px rgba(91,35,51,.35);}
+  .add-wine-btn svg{width:20px; height:20px; stroke:#fff; stroke-width:2.2; fill:none; stroke-linecap:round;}
+  /* La riga dell'intestazione resta alta come prima: il pulsante da 44pt
+     sporge con margini negativi invece di allargarla. */
+  .topbar .add-wine-btn{margin:-8px 0;}
+  .topbar-actions{display:flex; align-items:center; gap:14px; min-width:0;}
+  .topbar-actions .cantina-switch{min-width:0;}
+  .topbar-actions .cantina-switch span{max-width:120px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  /* Aggiungi: freccia indietro + titolo, allineati a sinistra. */
+  #view-add .add-header .topbar{justify-content:flex-start; gap:12px;}
+  #view-add .add-header .topbar .screen-title{margin-top:0;}
+  /* Cinque schede: le etichette non vanno mai a capo. */
+  .navbtn{white-space:nowrap; padding-left:2px; padding-right:2px;}
