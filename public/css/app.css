@@ -262,9 +262,9 @@
   .loc-row .loc-text{flex:1; font-size:12px;}
   .loc-row .loc-text b{display:block; font-size:12px; color:#736a5d; font-weight:600; margin-bottom:1px;}
   .loc-edit{font-size:11px; color:#5b2333; font-weight:600; border-bottom:1px solid #e0c7cd; cursor:pointer; flex-shrink:0;}
-  .rev-tabs{display:flex; gap:8px;}
-  .rev-tab{flex:1; text-align:center; padding:8px; border-radius:9999px; font-size:11.5px; border:1px solid #e2e0d8; color:#756b60; cursor:pointer;}
-  .rev-tab.active{background:#5b2333; border-color:#5b2333; color:#f7f5f0;}
+  .rev-tabs{display:flex; background:#efece3; border-radius:9999px; padding:3px;}
+  .rev-tab{flex:1; text-align:center; padding:8px; border-radius:9999px; font-size:11.5px; font-weight:600; color:#736a5d; cursor:pointer; font-family:'Archivo',sans-serif;}
+  .rev-tab.active{background:#ffffff; color:#241e1a; box-shadow:0 1px 2px rgba(0,0,0,.06);}
   .rev-card{background:#ffffff; border:1px solid #e2e0d8; border-radius:12px; padding:12px;}
   .rev-head{display:flex; align-items:center; gap:8px;}
   .rev-avatar{width:26px; height:26px; border-radius:50%; background:#f0efe9; display:flex; align-items:center; justify-content:center; font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:600; flex-shrink:0;}
