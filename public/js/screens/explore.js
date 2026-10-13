@@ -257,10 +257,6 @@ function selectCountry(id) {
 }
 
 function wireStaticControls() {
-  document.getElementById('explore-back-btn')?.addEventListener('click', () => {
-    window.location.hash = '#/home';
-  });
-
   document.getElementById('explore-dd-head')?.addEventListener('click', () => {
     document.getElementById('explore-dd').classList.contains('open') ? closeDropdown() : openDropdown();
   });

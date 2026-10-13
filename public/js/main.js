@@ -10,7 +10,20 @@ import { mountExplore } from './screens/explore.js';
 import './sheet-gestures.js';
 
 // Views without a tab of their own light the tab they are reached from.
-const TAB_FOR_VIEW = { 'view-explore': 'view-home', 'view-invite': 'view-home' };
+// Add is an action, not a section (HIG tab bars): it is opened from the "+"
+// buttons in Home and Cantina and keeps Cantina lit.
+const TAB_FOR_VIEW = { 'view-add': 'view-cellar', 'view-invite': 'view-home' };
+
+// Tab → route. The route names are not all `view-<name>` (Esplora lives at
+// #/esplora, kept as is because links may exist), so tabs navigate through an
+// explicit map instead of deriving the hash from the view id.
+const HASH_FOR_VIEW = {
+  'view-home': '#/home',
+  'view-cellar': '#/cellar',
+  'view-explore': '#/esplora',
+  'view-stats': '#/stats',
+  'view-profile': '#/profile',
+};
 
 function showView(id) {
   const tabView = TAB_FOR_VIEW[id] ?? id;
@@ -95,7 +108,40 @@ document.querySelector('.logout')?.addEventListener('click', () => {
 });
 
 document.querySelectorAll('.navbtn[data-view]').forEach((btn) => {
-  btn.addEventListener('click', () => navigate('#/' + btn.dataset.view.replace('view-', '')));
+  btn.addEventListener('click', () => navigate(HASH_FOR_VIEW[btn.dataset.view]));
+});
+
+// "+" in the Home and Cantina headers: Add is an action, not a tab.
+['home-add-btn', 'cellar-add-btn'].forEach((id) => {
+  document.getElementById(id)?.addEventListener('click', () => navigate('#/add'));
+});
+
+// Back from Add. Each history entry is stamped with its depth inside the app
+// (history.state.calDepth): a cold start, including a deep link to #/add, is
+// depth 0, every in-app hash navigation is one deeper, and traversing history
+// keeps the stamps already stored. So depth > 0 means the previous entry is
+// ours and history.back() is safe; at depth 0 it would leave the app (or do
+// nothing in a standalone PWA), so go to Cantina instead.
+let calDepth = 0;
+function stampHistoryDepth() {
+  try {
+    const stored = history.state?.calDepth;
+    calDepth = Number.isInteger(stored) ? stored : calDepth + 1;
+    if (stored !== calDepth) history.replaceState({ ...(history.state || {}), calDepth }, '');
+  } catch {
+    calDepth = 0; // history API unavailable: always take the safe branch
+  }
+}
+try {
+  const initial = history.state?.calDepth;
+  calDepth = Number.isInteger(initial) ? initial : 0;
+  if (initial !== calDepth) history.replaceState({ ...(history.state || {}), calDepth }, '');
+} catch { /* see above */ }
+window.addEventListener('hashchange', stampHistoryDepth);
+
+document.getElementById('add-back-btn')?.addEventListener('click', () => {
+  if (calDepth > 0) history.back();
+  else navigate('#/cellar');
 });
 
 // Cloudflare Access already gated this request before it reached us, so
