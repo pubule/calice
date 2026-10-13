@@ -673,15 +673,16 @@
      rubi il gesto per lo scroll. */
   .compare-sheet .compare-head, .compare-sheet .topbar, .detail-sheet .detail-hero{touch-action:none;}
 
-  /* Navigazione: Esplora e Aggiungi */
-  /* Aggiungi è un'azione, non una sezione: pulsante tondo 44pt nelle
-     intestazioni di Home e Cantina (la scheda del menu è Esplora). Pulsante
-     nativo, quindi la pressione è già coperta da `button:not(:disabled):active`. */
-  .add-wine-btn{flex:none; width:44px; height:44px; padding:0; border:none; border-radius:50%; background:#5b2333; color:#fff; display:flex; align-items:center; justify-content:center; cursor:pointer; -webkit-tap-highlight-color:transparent; touch-action:manipulation; box-shadow:0 1px 3px rgba(91,35,51,.35);}
-  .add-wine-btn svg{width:20px; height:20px; stroke:#fff; stroke-width:2.2; fill:none; stroke-linecap:round;}
-  /* La riga dell'intestazione resta alta come prima: il pulsante da 44pt
-     sporge con margini negativi invece di allargarla. */
-  .topbar .add-wine-btn{margin:-8px 0;}
+  /* Navigazione: "+" centrale nel menu */
+  /* Aggiungere una bottiglia è l'azione più frequente: ha il suo posto al
+     centro del menu, come cerchio in rilievo (non una scheda come le altre:
+     niente etichetta visibile, aria-label "Aggiungi vino"). Il cerchio sporge
+     sopra il bordo del menu con un margine negativo, quindi l'altezza del menu
+     non cambia; il bordo crema lo stacca dal contenuto che scorre sotto. */
+  .navbtn.nav-add{justify-content:flex-start; padding-top:0; padding-bottom:0;}
+  .nav-add-circle{width:60px; height:60px; margin-top:-24px; box-sizing:border-box; border:4px solid #f7f5f0; border-radius:50%; background:#5b2333; box-shadow:0 4px 12px rgba(91,35,51,.35); display:flex; align-items:center; justify-content:center; flex-shrink:0;}
+  .nav-add-circle svg{width:24px; height:24px; stroke:#fff; stroke-width:2.2; fill:none; stroke-linecap:round;}
+  .navbtn.nav-add.active .nav-add-circle{background:#4a1c29;}
   .topbar-actions{display:flex; align-items:center; gap:14px; min-width:0; margin-left:auto;}
   .topbar-actions .cantina-switch{min-width:0;}
   .topbar-actions .cantina-switch span{max-width:calc(120rem/17); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}

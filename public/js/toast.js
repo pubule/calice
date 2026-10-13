@@ -28,10 +28,17 @@ export function showToast(message, { actionLabel, onAction, duration = 5000 } = 
   t.querySelector('.toast-msg').textContent = message;
   btn.textContent = actionLabel ?? '';
   btn.classList.toggle('hidden', !actionLabel);
-  // Sit just above the tab bar. Measured each time: its height can change
-  // (e.g. when the keyboard hides it, offsetHeight becomes 0 and we fall back).
-  const navH = document.querySelector('.navbar')?.offsetHeight || 64;
-  t.style.bottom = `${navH + 12}px`;
+  // Sit just above the highest point of the tab bar — the raised "+" circle
+  // pokes above the bar itself, and the toast is centred right over it.
+  // Measured each time: the keyboard can hide the bar (no layout box → 64px
+  // fallback).
+  const nav = document.querySelector('.navbar');
+  const navH = nav?.offsetHeight || 64;
+  const circle = document.querySelector('.nav-add-circle');
+  const raised = nav?.offsetHeight && circle
+    ? Math.max(0, nav.getBoundingClientRect().top - circle.getBoundingClientRect().top)
+    : 0;
+  t.style.bottom = `${navH + raised + 12}px`;
   // Re-assigning onclick drops the previous toast's handler, so a stale
   // action can never fire for the toast that replaced it.
   btn.onclick = () => {

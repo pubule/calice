@@ -809,8 +809,12 @@ già corretto:
   `main.js`: una nuova vista senza scheda propria va aggiunta a
   `TAB_FOR_VIEW`; una nuova scheda va aggiunta a `HASH_FOR_VIEW` (le
   rotte non sono tutte `#/<nome-vista>`: Esplora è `#/esplora`). Il menu
-  contiene solo sezioni: le azioni (come Aggiungi, pulsante "+") stanno
-  nelle intestazioni delle schermate.
+  ha quattro sezioni più, al centro, il "+" in rilievo di Aggiungi (scelto
+  dall'utente su mockup, al posto della scheda Esplora che resta una
+  sotto-sezione della Home): nessun'altra azione nel menu. Qualunque cosa
+  si appoggi sopra il menu (toast, pannelli) va posizionata sopra il punto
+  **più alto** del menu, cioè il cerchio che sporge di 21px (vedi
+  `toast.js`), non sopra `.navbar.offsetHeight`.
 - **Testo in `calc(Nrem/17)`, mai in `px`** (Dynamic Type: la base segue
   l'impostazione Dimensioni testo dell'iPhone, limitata fra 17 e 34px
   dallo script inline in `<head>` di `index.html`). Non usare rem

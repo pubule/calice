@@ -687,15 +687,10 @@ questo file è il riassunto "dove eravamo rimasti".
       restano nel DOM e aprono la riga quando ricevono il focus.
       "Modifica vino" / "Elimina dalla cantina" anche nella scheda del
       vino (`editBottle()`/`deleteBottle()` esportate da `cellar.js`).
-    - **Menu in basso**: Home · Cantina · **Esplora** · Statistiche ·
-      Profilo. "Aggiungi" non è più una scheda (le schede navigano, non
-      agiscono): pulsante "+" da 44pt in testa a Home e Cantina. La
-      schermata Aggiungi accende Cantina e ha un pulsante Indietro: ogni
-      voce di cronologia porta `history.state.calDepth`; se è >0 si fa
-      `history.back()`, altrimenti (apertura diretta) si va a `#/cellar`.
-      Le schede navigano tramite `HASH_FOR_VIEW` in `main.js` (Esplora
-      vive su `#/esplora`, non `#/explore`). Il pulsante Indietro di
-      Esplora è stato tolto: ora è una sezione di primo livello.
+    - **Menu in basso**: Esplora come scheda e "+" nelle intestazioni —
+      **superato dal punto 21**. Resta valido il pulsante Indietro di
+      Aggiungi con `history.state.calDepth` (>0 → `history.back()`,
+      apertura diretta → `#/cellar`) e la mappa `HASH_FOR_VIEW`.
     - **Dynamic Type**: il testo segue l'impostazione Dimensioni testo
       dell'iPhone. `html` usa `font: -apple-system-body` (solo WebKit,
       dentro `@supports`; altrove resta 17px), tutte le dimensioni del
@@ -721,6 +716,26 @@ questo file è il riassunto "dove eravamo rimasti".
       (convivenza con lo scroll verticale), Dimensioni testo fino al
       massimo (la base deve fermarsi a 34px) anche cambiandola con l'app
       in background, VoiceOver sulle azioni nascoste delle righe.
+
+21. **"+" al centro del menu (scelta dell'utente su mockup).** Tela con
+    quattro varianti (com'era / "+" centrale in rilievo / "+" centrale
+    piatto con etichetta / "+" centrale con scelta rapida): scelta la
+    **B**. Menu: Home · Cantina · **(+)** · Statistiche · Profilo. Il "+" è
+    un `.navbtn.nav-add` con `data-view="view-add"` (si accende da solo su
+    Aggiungi) e dentro un cerchio bordeaux da 60px (`.nav-add-circle`) che
+    sporge 21px sopra il bordo del menu con margine negativo: l'altezza del
+    menu resta 49pt. Nessuna etichetta visibile, `aria-label="Aggiungi
+    vino"`. Tolti i "+" dalle intestazioni di Home e Cantina. Esplora torna
+    sotto-sezione della Home (`TAB_FOR_VIEW` → Home) con il suo pulsante
+    Indietro ripristinato.
+    - **Effetto collaterale corretto**: il toast "Annulla" era posizionato
+      sull'altezza del menu, e il suo bordo inferiore cadeva 9px sotto la
+      cima del cerchio: i due si sovrapponevano. `toast.js` ora misura il punto più alto del menu,
+      cerchio compreso. Regola in `CLAUDE.md`.
+    - Verificato con Playwright: ogni voce del menu, tocco sulla parte
+      sporgente del cerchio, Indietro da Aggiungi ed Esplora, 320px senza
+      overflow; test di integrazione 11/11 e audit invariati.
+      `CACHE` a `v86`, `build 86`.
 
 ## Cose note, non (ancora) da rifare
 

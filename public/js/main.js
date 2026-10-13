@@ -10,17 +10,16 @@ import { mountExplore } from './screens/explore.js';
 import './sheet-gestures.js';
 
 // Views without a tab of their own light the tab they are reached from.
-// Add is an action, not a section (HIG tab bars): it is opened from the "+"
-// buttons in Home and Cantina and keeps Cantina lit.
-const TAB_FOR_VIEW = { 'view-add': 'view-cellar', 'view-invite': 'view-home' };
+// Esplora is a sub-section opened from Home, so it keeps Home lit. Add has its
+// own slot in the bar (the raised "+"), which lights itself.
+const TAB_FOR_VIEW = { 'view-explore': 'view-home', 'view-invite': 'view-home' };
 
-// Tab → route. The route names are not all `view-<name>` (Esplora lives at
-// #/esplora, kept as is because links may exist), so tabs navigate through an
-// explicit map instead of deriving the hash from the view id.
+// Tab → route, explicit rather than derived from the view id (routes are not
+// all `#/<name>`: Esplora lives at #/esplora).
 const HASH_FOR_VIEW = {
   'view-home': '#/home',
   'view-cellar': '#/cellar',
-  'view-explore': '#/esplora',
+  'view-add': '#/add',
   'view-stats': '#/stats',
   'view-profile': '#/profile',
 };
@@ -109,11 +108,6 @@ document.querySelector('.logout')?.addEventListener('click', () => {
 
 document.querySelectorAll('.navbtn[data-view]').forEach((btn) => {
   btn.addEventListener('click', () => navigate(HASH_FOR_VIEW[btn.dataset.view]));
-});
-
-// "+" in the Home and Cantina headers: Add is an action, not a tab.
-['home-add-btn', 'cellar-add-btn'].forEach((id) => {
-  document.getElementById(id)?.addEventListener('click', () => navigate('#/add'));
 });
 
 // Back from Add. Each history entry is stamped with its depth inside the app
