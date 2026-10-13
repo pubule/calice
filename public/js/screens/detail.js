@@ -1,6 +1,6 @@
 import { api } from '../api-client.js';
 import { escapeHtml, photoClass } from '../util.js';
-import { openLocationPicker, locationLabel, refreshCellarList } from './cellar.js';
+import { openLocationPicker, locationLabel, refreshCellarList, editBottle, deleteBottle } from './cellar.js';
 import { confirmModal } from '../modal.js';
 import { tastingProfileHtml, wireTastingProfile, resetTastingProfile, readTastingProfile, isTastingProfileEmpty, tasteSummary } from '../tasting-profile.js';
 
@@ -160,6 +160,26 @@ export async function openDetail(bottle, me) {
 // a fresh listener (and stacking duplicates) on every openDetail() call.
 function wireStaticControls() {
   document.getElementById('uncork-btn')?.addEventListener('click', uncorkOne);
+
+  // Same actions as the swipe on a Cantina row (kept here too: a swipe is
+  // invisible to VoiceOver and keyboard users).
+  document.getElementById('detail-edit-btn')?.addEventListener('click', () => {
+    if (!currentBottle) return;
+    editBottle(currentBottle, (updated) => {
+      // The list was re-fetched: swap in the fresh object and redraw the header.
+      if (!updated || currentBottleId !== updated.id) return;
+      currentBottle = updated;
+      renderHero(updated);
+      renderQuantity();
+    });
+  });
+  document.getElementById('detail-delete-btn')?.addEventListener('click', async () => {
+    if (!currentBottle) return;
+    if (await deleteBottle(currentBottle)) {
+      hideUndo();
+      document.getElementById('detail-overlay').classList.remove('open');
+    }
+  });
 
   document.getElementById('detail-close')?.addEventListener('click', () => {
     document.getElementById('detail-overlay').classList.remove('open');

@@ -94,7 +94,7 @@
   .rowcheck{display:none; width:20px; height:20px; border-radius:50%; border:1.5px solid #d8ceb8; align-items:center; justify-content:center; flex-shrink:0;}
   .check-ic{display:none; width:12px; height:12px;}
   #cellar-list.selecting .rowcheck{display:flex;}
-  #cellar-list.selecting .row-actions{display:none;}
+  #cellar-list.selecting .swipe-actions{display:none;}
   .cellar-row.selected{border-color:#5b2333; background:#fbf3f5;}
   .cellar-row.selected .rowcheck{background:#5b2333; border-color:#5b2333;}
   .cellar-row.selected .check-ic{display:block;}
@@ -109,7 +109,6 @@
   .cellar-row .cinfo .sub{font-size:12px; color:#736a5d; margin-top:2px;}
   .cellar-row .cprice{font-family:'JetBrains Mono',monospace; font-size:12px; font-weight:600; text-align:right; flex-shrink:0;}
   .cellar-row .cprice small{display:block; font-size:11px; color:#736a5d; font-weight:500; font-family:'Archivo',sans-serif; margin-top:1px;}
-  .row-actions{display:flex; flex-direction:column; gap:4px; flex-shrink:0;}
   .icon-btn{width:30px; height:30px; border-radius:50%; display:flex; align-items:center; justify-content:center; background:#f2f0e9; cursor:pointer;}
   .icon-btn svg{width:12px; height:12px; stroke:#756b60;}
   .icon-btn.danger svg{stroke:#8a3244;}
@@ -587,8 +586,6 @@
   .detail-hero .close::after, .compare-head .close::after, .back-btn::after, .alert-dismiss::after, .icon-btn::after{content:''; position:absolute; inset:-8px;}
   .detail-hero .close::after{inset:-7px;}
   .icon-btn::after{inset:-7px;}
-  .row-actions .icon-btn:first-child::after{inset:-7px -7px -2px;}
-  .row-actions .icon-btn:last-child::after{inset:-2px -7px -7px;}
   .camera-close::after{content:''; position:absolute; inset:-5px;}
   .follow-btn::after, .wish-add::after, .invite-btn::after{content:''; position:absolute; inset:-9px -4px;}
   .add-note button::after, .compare-bar .cb-go::after{content:''; position:absolute; inset:-4px;}
@@ -666,3 +663,30 @@
   #view-add .add-header .topbar .screen-title{margin-top:0;}
   /* Cinque schede: le etichette non vanno mai a capo. */
   .navbtn{white-space:nowrap; padding-left:2px; padding-right:2px;}
+
+/* Righe Cantina: azioni a scorrimento */
+/* .cellar-item avvolge riga + azioni (mai fratelli diretti di .cellar-row).
+   Le azioni stanno SOTTO la riga, che le scopre scorrendo verso sinistra;
+   a riposo hanno opacity:0 perché gli angoli arrotondati della riga
+   lascerebbero intravedere il colore. */
+.cellar-item{position:relative; border-radius:12px; overflow:hidden;}
+.cellar-item .cellar-row{position:relative; z-index:1; touch-action:pan-y; -webkit-user-select:none; user-select:none; -webkit-touch-callout:none;}
+.cellar-item .cellar-row .cphoto{-webkit-user-drag:none;}
+.cellar-item .cellar-row.snapping{transition:transform .28s cubic-bezier(.2,.8,.2,1), border-color .15s, background .15s;}
+/* :active standard è translucido e lascerebbe vedere le azioni sotto */
+.cellar-item .cellar-row:not(.selected):active{background:#ece9e4;}
+.swipe-actions{position:absolute; top:0; right:0; bottom:0; width:152px; display:flex;}
+.cellar-item:not(.peek) .swipe-actions{opacity:0;}
+.swipe-action{flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; min-width:72px; color:#ffffff; font-size:12px; font-weight:600; cursor:pointer; -webkit-user-select:none; user-select:none;}
+.swipe-action svg{width:20px; height:20px;}
+.swipe-edit{background:#756b60;}
+.swipe-delete{background:#8a3244;}
+.swipe-action:active{filter:brightness(.88);}
+.swipe-action:focus-visible{outline:2px solid #ffffff; outline-offset:-5px;}
+@media (prefers-reduced-motion: reduce){ .cellar-item .cellar-row.snapping{transition:border-color .15s, background .15s;} }
+
+/* Scheda del vino: Modifica / Elimina (stesse azioni dello scorrimento) */
+.detail-actions{display:flex; gap:10px;}
+.detail-action{flex:1; min-height:44px; display:flex; align-items:center; justify-content:center; gap:8px; padding:0 12px; border-radius:12px; border:1px solid #e2e0d8; background:#ffffff; color:#241e1a; font-family:'Archivo',sans-serif; font-size:13px; font-weight:600; cursor:pointer;}
+.detail-action svg{width:16px; height:16px; flex-shrink:0;}
+.detail-action.danger{background:#f7e9ec; border-color:#ecd0d6; color:#8a3244;}
