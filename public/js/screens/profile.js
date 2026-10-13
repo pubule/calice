@@ -25,7 +25,7 @@ async function renderFollows() {
   const follows = await api.get('/api/follows');
   const el = document.getElementById('profile-follows');
   if (!el) return;
-  el.innerHTML = follows.length ? follows.map(followRowHtml).join('') : '<p style="font-size:11.5px;color:#736a5d;">Non segui ancora nessuno.</p>';
+  el.innerHTML = follows.length ? follows.map(followRowHtml).join('') : '<p style="font-size:calc(11.5rem/17);color:#736a5d;">Non segui ancora nessuno.</p>';
   el.querySelectorAll('.follow-btn').forEach((btn) =>
     btn.addEventListener('click', async () => {
       // Unfollowing is easy to hit by accident, so confirm first. confirmModal

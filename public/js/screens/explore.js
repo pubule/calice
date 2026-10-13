@@ -168,7 +168,7 @@ function detailTemplate(name, wines, categories) {
     )
     .join('');
   return `
-    <h3 style="font-family:'Newsreader',serif; font-weight:500; font-size:18px; letter-spacing:-0.01em; margin:0 0 16px;">${name}</h3>
+    <h3 style="font-family:'Newsreader',serif; font-weight:500; font-size:calc(18rem/17); letter-spacing:-0.01em; margin:0 0 16px;">${name}</h3>
     <div class="segmented">
       <button class="active" data-tab="wines" aria-pressed="true">Vini</button>
       <button data-tab="categories" aria-pressed="false">Categorie</button>
@@ -213,7 +213,7 @@ function renderDetail(country) {
   }
   if (!current.hasData) {
     el.innerHTML = `
-      <h3 style="font-family:'Newsreader',serif; font-weight:500; font-size:18px; letter-spacing:-0.01em; margin:0 0 4px;">${current.name}</h3>
+      <h3 style="font-family:'Newsreader',serif; font-weight:500; font-size:calc(18rem/17); letter-spacing:-0.01em; margin:0 0 4px;">${current.name}</h3>
       <div class="explore-no-data">Dati in arrivo per questa regione.<br>Presto disponibili denominazioni, uve e stili.</div>`;
     return;
   }

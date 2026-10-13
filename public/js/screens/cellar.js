@@ -207,7 +207,9 @@ function renderList(bottles) {
 // tracks the finger 1:1, rubber-bands past its limits, and on release a
 // velocity projection (not the raw position) decides open vs closed.
 
-const SWIPE_W = 152; // two 76px actions
+// Width of the revealed actions: two 76px actions at the default text size,
+// wider when Dynamic Type enlarges their labels (the CSS sizes the box).
+const swipeWidth = (item) => item.querySelector('.swipe-actions')?.offsetWidth || 152;
 const SWIPE_SLOP = 10; // px before the direction is decided
 let openItem = null; // the .cellar-item currently showing its actions
 let openedAt = 0;
@@ -232,7 +234,7 @@ function settle(item, open, animate) {
   item.classList.toggle('is-open', open);
   const anim = animate && !prefersReducedMotion();
   row.classList.toggle('snapping', anim);
-  row.style.transform = `translate3d(${open ? -SWIPE_W : 0}px,0,0)`;
+  row.style.transform = `translate3d(${open ? -swipeWidth(item) : 0}px,0,0)`;
   if (open) {
     openItem = item;
     openedAt = Date.now();
@@ -269,10 +271,12 @@ function wireSwipe(list) {
     if (openItem && openItem !== item) closeOpenItem();
     row.classList.remove('snapping');
     item._tok = (item._tok ?? 0) + 1; // cancel a pending settle cleanup
-    const base = item === openItem ? -SWIPE_W : 0;
+    const w = swipeWidth(item);
+    const base = item === openItem ? -w : 0;
     swipe = {
       item,
       row,
+      w,
       id: e.pointerId,
       x0: e.clientX,
       y0: e.clientY,
@@ -304,8 +308,8 @@ function wireSwipe(list) {
     swipe.samples.push({ t: e.timeStamp, x: e.clientX });
     if (swipe.samples.length > 8) swipe.samples.shift();
     let x = swipe.base + dx; // 1:1 with the finger, from where it was grabbed
-    if (x > 0) x = rubber(x, SWIPE_W);
-    else if (x < -SWIPE_W) x = -SWIPE_W - rubber(-SWIPE_W - x, SWIPE_W);
+    if (x > 0) x = rubber(x, swipe.w);
+    else if (x < -swipe.w) x = -swipe.w - rubber(-swipe.w - x, swipe.w);
     swipe.x = x;
     swipe.row.style.transform = `translate3d(${x}px,0,0)`;
     e.preventDefault();
@@ -323,7 +327,7 @@ function wireSwipe(list) {
     const dt = e.timeStamp - first.t;
     const v = !cancelled && dt > 0 ? ((e.clientX - first.x) / dt) * 1000 : 0; // px/s
     const projected = s.x + (v / 1000) * (0.99 / (1 - 0.99));
-    settle(s.item, projected < -SWIPE_W / 2, true);
+    settle(s.item, projected < -s.w / 2, true);
   };
   list.addEventListener('pointerup', (e) => end(e, false));
   list.addEventListener('pointercancel', (e) => end(e, true));
@@ -692,7 +696,7 @@ function renderElementDetail(id) {
     }
     html += '</div></div>';
   }
-  html += `<p class="page-sub" style="margin:0; font-size:11.5px; color:#736a5d; text-align:center;">Tocca uno slot vuoto per posizionarci ${picker ? '"' + escapeHtml(picker.bottle.name) + '"' : 'una bottiglia'}. Tocca uno slot pieno per vederne il contenuto.</p></div>`;
+  html += `<p class="page-sub" style="margin:0; font-size:calc(11.5rem/17); color:#736a5d; text-align:center;">Tocca uno slot vuoto per posizionarci ${picker ? '"' + escapeHtml(picker.bottle.name) + '"' : 'una bottiglia'}. Tocca uno slot pieno per vederne il contenuto.</p></div>`;
   body.innerHTML = html;
 
   document.getElementById('delete-element-btn').addEventListener('click', () => deleteCurrentElement());
@@ -778,7 +782,7 @@ function renderBottlePickerForSlot(elId, tier, col, depth) {
   const slotLabel = tier == null ? 'questo elemento' : `Livello ${tier} · ${colLetter(col)}.${depth}`;
   const body = document.getElementById('elements-body');
   body.innerHTML = `
-    <p class="page-sub" style="margin:0 0 4px; font-size:11.5px; color:#736a5d;">${slotLabel} — scegli quale bottiglia mettere qui:</p>
+    <p class="page-sub" style="margin:0 0 4px; font-size:calc(11.5rem/17); color:#736a5d;">${slotLabel} — scegli quale bottiglia mettere qui:</p>
     <div id="pick-bottle-list" style="display:flex; flex-direction:column; gap:9px;">${
       currentBottles.length
         ? currentBottles
