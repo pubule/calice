@@ -13,7 +13,12 @@ const TAB_FOR_VIEW = { 'view-explore': 'view-home', 'view-invite': 'view-home' }
 
 function showView(id) {
   const tabView = TAB_FOR_VIEW[id] ?? id;
-  document.querySelectorAll('.navbtn[data-view]').forEach((b) => b.classList.toggle('active', b.dataset.view === tabView));
+  document.querySelectorAll('.navbtn[data-view]').forEach((b) => {
+    const current = b.dataset.view === tabView;
+    b.classList.toggle('active', current);
+    if (current) b.setAttribute('aria-current', 'page');
+    else b.removeAttribute('aria-current');
+  });
   document.querySelectorAll('.view').forEach((v) => v.classList.remove('active', 'shown'));
   const next = document.getElementById(id);
   if (!next) return;
@@ -128,3 +133,8 @@ document.addEventListener('keydown', (e) => {
   e.preventDefault(); // Space would otherwise scroll the page
   el.click();
 });
+
+// iOS Safari only applies :active to non-link elements while some touchstart
+// listener exists on the page — without this the press states in app.css
+// never show on divs with role="button".
+document.addEventListener('touchstart', () => {}, { passive: true });
