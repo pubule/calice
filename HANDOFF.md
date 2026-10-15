@@ -782,6 +782,18 @@ questo file è il riassunto "dove eravamo rimasti".
       dipende una funzione JS nuova va messo dove arriva insieme a quel JS,
       non solo nell'HTML.
 
+23. **Note di degustazione: falliva il salvataggio in produzione.** Causa:
+    la migrazione `0006_tasting_profile.sql` non era mai stata applicata
+    al D1 remoto (fermo alla 0005), mentre il codice inseriva le colonne
+    del profilo di gusto. Il payload inviato dall'app era corretto
+    (verificato con Playwright). Applicata a mano con lo strumento
+    Cloudflare D1 e registrata in `d1_migrations`; nessun dato toccato
+    (le note in produzione erano 0). Il deploy non applica le migrazioni:
+    regola in `CLAUDE.md`. Aperto: decidere se aggiungere
+    `wrangler d1 migrations apply --remote` al workflow (richiede che il
+    token `CLOUDFLARE_API_TOKEN` abbia il permesso D1:Edit, da verificare
+    prima, altrimenti blocca ogni deploy).
+
 ## Cose note, non (ancora) da rifare
 
 - `status-bar-style` è `black-translucent` (non più `default`), `.screen`

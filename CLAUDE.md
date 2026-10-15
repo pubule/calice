@@ -481,6 +481,27 @@ producono due SQLite fisicamente diversi anche con lo stesso
 alla stessa directory di stato indipendentemente da quale config
 usano.
 
+## Il deploy NON applica le migrazioni D1 — applicarle a mano a ogni nuova migrazione
+
+`.github/workflows/deploy.yml` esegue solo `wrangler deploy` (codice e
+asset). Le migrazioni in `worker/migrations/` vanno applicate al database
+di produzione a parte. Successo davvero: la `0006_tasting_profile.sql`
+(colonne del profilo di gusto delle note) è rimasta non applicata per
+settimane e **ogni nota con aromi/abbinamenti/cursori falliva** in
+produzione con "Vino salvato, ma il salvataggio della nota di degustazione
+è fallito" — il codice inseriva colonne che non esistevano. In locale e nei
+test tutto passava, perché lì le migrazioni girano sempre.
+
+**Regola**: chi aggiunge un file in `worker/migrations/` lo applica in
+produzione nello stesso giro del deploy, e controlla prima con
+`select name from d1_migrations` (database `calice-db`, id
+`01336527-aa78-4967-909e-eb423784c90d`). Si può fare con
+`wrangler d1 migrations apply calice-db --remote` oppure, dalla sessione,
+con lo strumento Cloudflare `d1_database_query`: in quel caso eseguire lo
+SQL della migrazione **e** registrarla con
+`insert into d1_migrations (name) values ('<file>.sql')`, altrimenti un
+futuro `migrations apply` la rieseguirebbe (e un `ADD COLUMN` doppio fallisce).
+
 ## Endpoint PATCH che sovrascrive dati opzionali: mai `coalesce`, serve un overwrite completo
 
 Deciso per `PATCH /api/wines/:id` (`HANDOFF.md` punto 10), ma è una
