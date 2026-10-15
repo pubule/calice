@@ -802,8 +802,8 @@ questo file è il riassunto "dove eravamo rimasti".
     scheda del vino "Salva nota" si disattiva durante l'invio, mostra il
     toast "Nota salvata" e, se fallisce, un avviso (prima falliva in
     silenzio). Motivo: senza riscontro l'utente aveva premuto più volte e
-    in produzione ci sono 5 note quasi uguali sulla bottiglia 10 (id 4–8,
-    15/10 sera): non cancellate, decide l'utente.
+    in produzione c'erano 7 note di prova sulla bottiglia 10 (id 2–8, 15/10
+    sera, nessun testo reale): cancellate su richiesta dell'utente.
 
 ## Cose note, non (ancora) da rifare
 
