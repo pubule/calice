@@ -8,7 +8,7 @@
     "directory": "public"
   },
   "d1_databases": [
-    { "binding": "DB", "database_name": "calice-db", "database_id": "01336527-aa78-4967-909e-eb423784c90d" }
+    { "binding": "DB", "database_name": "calice-db", "database_id": "01336527-aa78-4967-909e-eb423784c90d", "migrations_dir": "worker/migrations" }
   ],
   "r2_buckets": [
     { "binding": "PHOTOS", "bucket_name": "calice-photos" }

@@ -492,8 +492,11 @@ produzione con "Vino salvato, ma il salvataggio della nota di degustazione
 è fallito" — il codice inseriva colonne che non esistevano. In locale e nei
 test tutto passava, perché lì le migrazioni girano sempre.
 
-**Regola**: chi aggiunge un file in `worker/migrations/` lo applica in
-produzione nello stesso giro del deploy, e controlla prima con
+**Ora il workflow le applica da solo** (passo "Apply D1 migrations" prima
+del deploy, `migrations_dir` puntato a `worker/migrations` nel
+`wrangler.jsonc` di radice). Se quel passo fallisce per permessi, il token
+`CLOUDFLARE_API_TOKEN` non ha D1:Edit. Per applicarle a mano (es. senza
+deploy), controllare prima con
 `select name from d1_migrations` (database `calice-db`, id
 `01336527-aa78-4967-909e-eb423784c90d`). Si può fare con
 `wrangler d1 migrations apply calice-db --remote` oppure, dalla sessione,

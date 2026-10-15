@@ -789,10 +789,9 @@ questo file è il riassunto "dove eravamo rimasti".
     (verificato con Playwright). Applicata a mano con lo strumento
     Cloudflare D1 e registrata in `d1_migrations`; nessun dato toccato
     (le note in produzione erano 0). Il deploy non applica le migrazioni:
-    regola in `CLAUDE.md`. Aperto: decidere se aggiungere
-    `wrangler d1 migrations apply --remote` al workflow (richiede che il
-    token `CLOUDFLARE_API_TOKEN` abbia il permesso D1:Edit, da verificare
-    prima, altrimenti blocca ogni deploy).
+    regola in `CLAUDE.md`. Poi, su richiesta dell'utente, il workflow
+    di deploy applica le migrazioni da solo prima del deploy
+    (`migrations_dir` aggiunto al `wrangler.jsonc` di radice).
 
 ## Cose note, non (ancora) da rifare
 
