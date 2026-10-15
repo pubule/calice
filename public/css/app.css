@@ -278,6 +278,14 @@
   .detail-hero .info .name{font-family:'Newsreader',serif; font-weight:500; font-size:calc(20rem/17);}
   .detail-hero .info .sub{font-size:calc(12rem/17); opacity:.85; margin-top:2px;}
   .detail-hero .badge-score{top:14px; left:18px; right:auto;}
+  /* A product photo from the web search (Vivino) is a bottle cut-out, tall
+     and narrow: stretched with cover across the wide hero it showed only a
+     zoomed patch of glass, never the label. Shown whole instead, on the right
+     over a light backdrop, with the text in dark ink on the left. */
+  .detail-hero.has-product{min-height:240px; background-color:#ece7de; background-repeat:no-repeat; background-size:auto 88%; background-position:right 64px bottom 0;}
+  .detail-hero.has-product .scrim2{display:none;}
+  .detail-hero.has-product .info{color:#241e1a; padding-right:110px;}
+  .detail-hero.has-product .info .sub{color:#736a5d; opacity:1;}
   .detail-body{padding:16px 18px 4px; display:flex; flex-direction:column; gap:18px;}
   .loc-row{display:flex; align-items:center; gap:10px; background:#ffffff; border:1px solid #e2e0d8; border-radius:12px; padding:12px 14px;}
   .loc-row svg{stroke:#5b2333; flex-shrink:0;}

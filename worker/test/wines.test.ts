@@ -58,6 +58,34 @@ describe('POST /api/wines', () => {
     expect(body.source).toBe('custom');
   });
 
+  it('reuses an existing wine with the same name, producer and vintage, filling only its blanks', async () => {
+    const auth = signup('dup@b.com');
+    const post = (body: object) =>
+      app.request('/api/wines', { method: 'POST', body: JSON.stringify(body), headers: { ...auth, 'content-type': 'application/json' } }, env);
+    const existing = await env.DB.prepare(`select id from wines where name = 'Barolo DOCG'`).first<{ id: number }>();
+
+    const res = await post({
+      name: '  barolo docg ', producer: 'ELIO ALTARE', region: 'Langhe', country: 'Italia', type: 'rosso', vintage: 2016,
+      imageUrl: 'https://images.vivino.com/x.png', grapeVariety: 'Nebbiolo',
+    });
+    const wine = await res.json<any>();
+    expect(wine.id).toBe(existing!.id);
+    expect(wine.region).toBe('Piemonte'); // not overwritten
+    expect(wine.name).toBe('Barolo DOCG');
+    expect(wine.image_url).toBe('https://images.vivino.com/x.png'); // blank filled
+    expect(wine.grape_variety).toBe('Nebbiolo');
+
+    // A different vintage, or no vintage, is a different wine.
+    const other = await (await post({ name: 'Barolo DOCG', producer: 'Elio Altare', country: 'Italia', type: 'rosso', vintage: 2017 })).json<any>();
+    expect(other.id).not.toBe(existing!.id);
+    const nv1 = await (await post({ name: 'Barolo DOCG', producer: 'Elio Altare', country: 'Italia', type: 'rosso' })).json<any>();
+    const nv2 = await (await post({ name: 'barolo docg', producer: 'elio altare', country: 'Italia', type: 'rosso' })).json<any>();
+    expect(nv1.id).not.toBe(existing!.id);
+    expect(nv2.id).toBe(nv1.id);
+    const { n } = (await env.DB.prepare('select count(*) as n from wines').first<{ n: number }>())!;
+    expect(n).toBe(3);
+  });
+
   it('rejects an invalid type with 400', async () => {
     const auth = signup('c2@b.com');
     const res = await app.request(

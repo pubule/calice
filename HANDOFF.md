@@ -828,12 +828,27 @@ questo file è il riassunto "dove eravamo rimasti".
     - "Salva" non si disattivava: un secondo tocco durante la creazione del
       vino lo avrebbe creato due volte. Ora resta disattivato per tutto il
       salvataggio (verificato rallentando la richiesta di proposito).
-    - **Aperto, non toccato**: ogni aggiunta da ricerca web crea un vino
-      nuovo nel catalogo anche se uno identico esiste già (due "Franciacorta
-      Batudè Brut" dopo due aggiunte). Proposta: riusare il vino esistente
-      con stesso nome + produttore + annata.
+    - Il catalogo duplicato emerso qui è chiuso al punto 27.
     - Nota tecnica: `pkill -f "wrangler dev"` (e simili) uccide anche la
       shell che lo lancia, perché il suo testo contiene lo stesso pattern.
+
+27. **Catalogo senza doppioni + foto della bottiglia intera** (build 92).
+    - `POST /api/wines` riusa il vino esistente con stesso nome +
+      produttore + annata (maiuscole e spazi ai bordi ignorati, annata
+      nulla = annata nulla) invece di crearne uno nuovo. Del vino
+      esistente si riempiono **solo i campi vuoti** (regione, codice a
+      barre, uve, denominazione, foto) — mai sovrascritto, perché è
+      condiviso e qualcuno può averlo corretto. In produzione non c'erano
+      doppioni da ripulire (verificato con una query prima del cambio).
+      Le **bottiglie** restano righe separate: aggiungere due volte lo
+      stesso vino alla stessa cantina dà due righe (possono avere
+      posizioni diverse) — non unificate di proposito.
+    - Scheda del vino: la foto da Vivino è un ritaglio di bottiglia alto
+      e stretto; con `background-size:cover` sull'intestazione larga se
+      ne vedeva solo un ingrandimento del vetro, mai l'etichetta. Con
+      `image_url` l'intestazione prende la classe `.has-product`:
+      bottiglia intera a destra su fondo chiaro, testo scuro a sinistra,
+      niente velatura. Senza foto resta il gradiente per tipo di prima.
 
 ## Cose note, non (ancora) da rifare
 

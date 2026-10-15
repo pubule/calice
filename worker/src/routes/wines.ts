@@ -65,6 +65,32 @@ wineRoutes.post('/', async (c) => {
     return c.json({ error: 'vintage must be an integer between 1900 and 2100' }, 400);
   }
 
+  // The catalog is shared: adding the same bottle twice (or two members adding
+  // the same web-search result) used to create one wine row per add, so the
+  // catalog filled with copies. Same name + producer + vintage (case and
+  // surrounding spaces ignored, null vintage matching null) is the same wine:
+  // reuse it. Only blanks are filled from the new data — never overwrite what
+  // the existing row (possibly edited by someone) already says.
+  const existing = await c.env.DB
+    .prepare(
+      `select id from wines
+       where lower(trim(name)) = lower(trim(?)) and lower(trim(producer)) = lower(trim(?)) and vintage is ?
+       order by id limit 1`,
+    )
+    .bind(body.name, body.producer, body.vintage ?? null)
+    .first<{ id: number }>();
+  if (existing) {
+    const wine = await c.env.DB
+      .prepare(
+        `update wines set region = coalesce(region, ?), barcode = coalesce(barcode, ?), grape_variety = coalesce(grape_variety, ?),
+           denomination = coalesce(denomination, ?), image_url = coalesce(image_url, ?)
+         where id = ? returning *`,
+      )
+      .bind(body.region ?? null, body.barcode ?? null, body.grapeVariety ?? null, body.denomination ?? null, body.imageUrl ?? null, existing.id)
+      .first();
+    return c.json(wine);
+  }
+
   const wine = await c.env.DB
     .prepare(
       `insert into wines (name, producer, region, country, type, vintage, barcode, grape_variety, denomination, image_url, source, created_by)
