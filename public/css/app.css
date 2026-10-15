@@ -588,7 +588,8 @@
   .aroma-chips{flex-wrap:wrap; overflow:visible;}
   .aroma-wines{display:flex; flex-direction:column;}
   .aroma-wines div{display:flex; justify-content:space-between; gap:12px; padding:8px 0; border-top:1px solid #efece5; font-size:calc(13rem/17);}
-  .aroma-wines div span:last-child{color:#736a5d; text-align:right;}
+  .aroma-wines div span:first-child{flex-shrink:0; max-width:45%;}
+  .aroma-wines div span:last-child{color:#736a5d; text-align:right; min-width:0;}
   .aroma-mine{font-size:calc(12rem/17); font-weight:600; color:#5b2333;}
   #palate-wheel{display:block; width:100%; max-width:320px; height:auto; margin:0 auto; flex-shrink:0;}
   .palate-group{display:flex; flex-direction:column; gap:6px;}

@@ -1,13 +1,13 @@
 import { api } from '../api-client.js';
 import { escapeHtml } from '../util.js';
 import { FLAVOR_CATEGORIES } from '../tasting-profile.js';
-import { AROMA_GUIDE } from '../data/aroma-guide.js';
+import { AROMA_GUIDE, TAG_WINES, TAG_NOTES } from '../data/aroma-guide.js';
 
 // Ruota degli aromi (#/aromi). Two panes:
-// - "Aromi": a half dial of the 8 families that turns under the finger (or
+// - "Aromi": a half dial of the aroma families that turns under the finger (or
 //   with the arrows); the family at the top pointer drives the card below —
-//   origin, description, every aroma, textbook wines. Tapping an aroma opens
-//   its detail above the card.
+//   origin, description, every aroma, the wines known for the most of them.
+//   Tapping an aroma opens its detail above the card.
 // - "Il mio palato": the full wheel with a spike per aroma, as long as how
 //   often the user picked it in their own notes (GET /api/me/palate).
 // Same vocabulary as the note composer (FLAVOR_CATEGORIES), so every aroma a
@@ -40,6 +40,26 @@ function arc(r0, r1, a0, a1) {
   return `M${x0},${y0}A${r1},${r1} 0 ${big} 1 ${x1},${y1}L${x2},${y2}A${r0},${r0} 0 ${big} 0 ${x3},${y3}Z`;
 }
 const familyOf = (tag) => FLAVOR_CATEGORIES.find((f) => f.tags.includes(tag));
+
+// Wine → its aromas, in wheel order, from TAG_WINES (aroma → wines).
+function aromasByWine(tags) {
+  const map = new Map();
+  for (const t of tags) for (const w of TAG_WINES[t] ?? []) map.set(w, [...(map.get(w) ?? []), t]);
+  return map;
+}
+const ALL_TAGS = FLAVOR_CATEGORIES.flatMap((f) => f.tags);
+const WINE_AROMAS = aromasByWine(ALL_TAGS);
+
+// A family's wines: those named for the most of its aromas first (ties keep
+// wheel order), each with the aromas of this family it shows.
+function familyWines(f, limit = 6) {
+  return [...aromasByWine(f.tags)].sort((a, b) => b[1].length - a[1].length).slice(0, limit);
+}
+function wineRowsHtml(rows) {
+  return `<div class="aroma-wines">${rows
+    .map(([w, tags]) => `<div><span>${escapeHtml(w)}</span><span>${escapeHtml(tags.join(', ').toLowerCase())}</span></div>`)
+    .join('')}</div>`;
+}
 
 function timesLabel(n) {
   return n ? `Nelle tue note: ${n} ${n === 1 ? 'volta' : 'volte'}` : 'Non ancora nelle tue note';
@@ -85,6 +105,7 @@ function goTo(i) {
 
 function familyCardHtml(f) {
   const guide = AROMA_GUIDE[f.id];
+  const wines = familyWines(f);
   const chips = f.tags
     .map((t) => `<div class="chip${t === selectedTag ? ' active' : ''}" data-tag="${escapeHtml(t)}" role="button" tabindex="0" aria-pressed="${t === selectedTag}">${escapeHtml(t)}</div>`)
     .join('');
@@ -94,20 +115,26 @@ function familyCardHtml(f) {
       <div class="aroma-card-title">${escapeHtml(f.label)}</div>
       <p class="aroma-card-desc">${escapeHtml(guide.desc)}</p>
       <div class="chip-row aroma-chips">${chips}</div>
-      <div class="field-label">Dove lo trovi</div>
-      <div class="aroma-wines">${guide.wines.map(([w, a]) => `<div><span>${escapeHtml(w)}</span><span>${escapeHtml(a)}</span></div>`).join('')}</div>
+      ${wines.length ? `<div class="field-label">Dove lo trovi</div>${wineRowsHtml(wines)}` : ''}
     </div>`;
 }
 
 function tagCardHtml(tag) {
   const f = familyOf(tag);
   const guide = AROMA_GUIDE[f.id];
-  const wines = guide.wines.filter(([, a]) => a.toLowerCase().includes(tag.toLowerCase()));
+  // Each wine with every aroma it is known for, so "Barolo" under Rosa also
+  // reads catrame, tabacco, liquirizia… — the aroma in context.
+  const wines = (TAG_WINES[tag] ?? []).map((w) => [w, [tag, ...(WINE_AROMAS.get(w) ?? []).filter((t) => t !== tag)].slice(0, 6)]);
+  const body = TAG_NOTES[tag]
+    ? `<p class="aroma-card-desc">${escapeHtml(TAG_NOTES[tag])}</p>`
+    : wines.length
+      ? `<div class="field-label">Vini in cui si trova</div>${wineRowsHtml(wines)}`
+      : `<p class="aroma-card-desc">${escapeHtml(guide.desc)}</p>`;
   return `
     <div class="aroma-card aroma-tag-card">
       <span class="aroma-pill" style="background:${f.bg};color:${f.fg}">${escapeHtml(f.label)} · ${escapeHtml(guide.origin)}</span>
       <div class="aroma-card-title">${escapeHtml(tag)}</div>
-      ${wines.length ? `<div class="aroma-wines">${wines.map(([w, a]) => `<div><span>${escapeHtml(w)}</span><span>${escapeHtml(a)}</span></div>`).join('')}</div>` : ''}
+      ${body}
       <div class="aroma-mine">${timesLabel(palate.tags[tag] ?? 0)}</div>
     </div>`;
 }

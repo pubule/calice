@@ -888,6 +888,19 @@ questo file è il riassunto "dove eravamo rimasti".
       `.aroma-pane.hidden{display:none}` serve perché `.aroma-pane` viene
       dopo `.hidden` nel CSS.
 
+30. **Ruota completa + vini per aroma** (build 96). Aromi da 102 a 141 in
+    9 famiglie (lessico WSET: litchi, uva, cassis, catrame, cera d'api,
+    pietra bagnata, cherosene…) più la famiglia **Difetti** (tappo,
+    ossidato, acetico, ridotto, smalto, muffa) per poter segnare una
+    bottiglia difettosa. In `aroma-guide.js` i 3 vini fissi per famiglia
+    sono stati sostituiti da `TAG_WINES` (aroma → vini tipici, nomi scritti
+    sempre uguali perché la schermata raggruppa per nome): la scheda di un
+    aroma elenca i suoi vini con gli altri aromi per cui sono noti, la lista
+    di famiglia mostra i 6 vini con più aromi di quella famiglia. I difetti
+    hanno `TAG_NOTES` (cosa si sente e cosa significa) al posto dei vini.
+    Geranio, Medicinale e Anice sono senza vini di proposito: nessun
+    esempio da manuale certo, meglio vuoto che inventato.
+
 ## Cose note, non (ancora) da rifare
 
 - `status-bar-style` è `black-translucent` (non più `default`), `.screen`

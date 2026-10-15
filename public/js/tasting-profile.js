@@ -6,7 +6,7 @@
 // Aroma families follow the tasting lexicons sommeliers use (WSET's
 // systematic approach, AIS): primary fruit/floral/vegetal/spice, secondary
 // oak and lees/yeast (the whole Franciacorta/Champagne vocabulary), tertiary
-// evolution, mineral. Tags are stored as their plain label (flavor_tags is a
+// evolution, mineral, plus faults (so a corked bottle can be noted). Tags are stored as their plain label (flavor_tags is a
 // JSON array of strings), so a label already used in saved notes must never
 // be renamed — moving it to another family is harmless. No label may appear
 // twice across families: readTastingProfile() would record it twice.
@@ -18,6 +18,8 @@ export const FLAVOR_CATEGORIES = [
       'Fragola', 'Lampone', 'Ciliegia', 'Amarena', 'Ribes', 'Frutti di bosco', 'Mora', 'Mirtillo', 'Prugna',
       'Mela verde', 'Mela', 'Pera', 'Pesca', 'Albicocca', 'Agrumi', 'Limone', 'Pompelmo', 'Arancia',
       'Ananas', 'Mango', 'Frutto della passione', 'Banana', 'Melone', 'Fico', 'Uvetta', 'Frutta cotta', 'Confettura',
+      'Litchi', 'Uva', 'Cassis', 'Ciliegia nera', 'Mirtillo rosso', 'Lime', "Scorza d'arancia", 'Nettarina',
+      'Mela cotogna', 'Uva spina', 'Prugna secca', 'Albicocca secca', "Marmellata d'arancia", 'Kirsch', 'Dattero',
     ],
   },
   {
@@ -32,14 +34,15 @@ export const FLAVOR_CATEGORIES = [
         <circle cx="0" cy="0" r="3" fill="#f5e9ef"/>
       </g>
     </svg>`,
-    tags: ['Rosa', 'Violetta', 'Fiori bianchi', 'Zagara', 'Acacia', 'Gelsomino', 'Sambuco', 'Camomilla', 'Lavanda', 'Fiori secchi'],
+    tags: ['Rosa', 'Violetta', 'Fiori bianchi', 'Zagara', 'Acacia', 'Gelsomino', 'Sambuco', 'Camomilla', 'Lavanda', 'Fiori secchi', 'Caprifoglio', 'Geranio'],
   },
   {
     id: 'vegetale', label: 'Vegetale', bg: '#e8efe3', fg: '#3f6a3a',
     icon: '<svg viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22C6 12 12 6 22 6c0 10-6 16-16 16z"/><path d="M6 22l9-9"/></svg>',
     tags: [
       'Erbaceo', 'Erba tagliata', 'Fieno', 'Peperone verde', 'Foglia di pomodoro', 'Bosso', 'Menta', 'Eucalipto',
-      'Salvia', 'Timo', 'Rosmarino', 'Finocchio', 'Tè', 'Macchia mediterranea',
+      'Salvia', 'Timo', 'Rosmarino', 'Finocchio', 'Tè', 'Macchia mediterranea', 'Asparago', 'Foglia di ribes',
+      'Aneto', 'Medicinale',
     ],
   },
   {
@@ -56,25 +59,31 @@ export const FLAVOR_CATEGORIES = [
   {
     id: 'legno', label: 'Legno', bg: '#efe6dc', fg: '#6a4a2a',
     icon: '<svg viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="14" cy="14" r="9"/><circle cx="14" cy="14" r="5.5"/><circle cx="14" cy="14" r="2"/></svg>',
-    tags: ['Legno', 'Rovere tostato', 'Cedro', 'Cocco', 'Affumicato', 'Tostato', 'Caffè', 'Cacao', 'Cioccolato fondente', 'Resina'],
+    tags: ['Legno', 'Rovere tostato', 'Cedro', 'Cocco', 'Affumicato', 'Tostato', 'Caffè', 'Cacao', 'Cioccolato fondente', 'Resina', 'Caramello mou', 'Legno bruciato'],
   },
   {
     id: 'lieviti', label: 'Lieviti', bg: '#f4ead8', fg: '#7a5a2a',
     icon: '<svg viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13a5 5 0 0 1 3-6h12a5 5 0 0 1 3 6v9H5z"/><path d="M11 11l-2 3M16 11l-2 3M21 11l-2 3"/></svg>',
-    tags: ['Crosta di pane', 'Lievito', 'Brioche', 'Biscotto', 'Pasticceria', 'Burro', 'Panna', 'Yogurt'],
+    tags: ['Crosta di pane', 'Lievito', 'Brioche', 'Biscotto', 'Pasticceria', 'Burro', 'Panna', 'Yogurt', 'Pasta di pane', 'Formaggio'],
   },
   {
     id: 'evoluto', label: 'Evoluto', bg: '#ece6e0', fg: '#5a4636',
     icon: '<svg viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M4 14a10 8 0 0 1 20 0z"/><path d="M11 14v7a3 3 0 0 0 6 0v-7"/></svg>',
     tags: [
       'Cuoio', 'Tabacco', 'Sottobosco', 'Funghi', 'Tartufo', 'Terra', 'Selvatico', 'Foglie secche', 'Balsamico',
-      'Miele', 'Caramello', 'Mandorla', 'Nocciola', 'Noce', 'Marzapane',
+      'Miele', 'Caramello', 'Mandorla', 'Nocciola', 'Noce', 'Marzapane', 'Catrame', "Cera d'api", 'Foglie bagnate',
+      'Carne', 'Stalla',
     ],
   },
   {
     id: 'minerale', label: 'Minerale', bg: '#e6eaec', fg: '#4a5a66',
     icon: '<svg viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4l7.5 6.5L14 24l-7.5-13.5z"/><path d="M7.5 10.5h13"/></svg>',
-    tags: ['Minerale', 'Pietra focaia', 'Gesso', 'Grafite', 'Salino', 'Iodato', 'Idrocarburi', 'Ferroso'],
+    tags: ['Minerale', 'Pietra focaia', 'Gesso', 'Grafite', 'Salino', 'Iodato', 'Idrocarburi', 'Ferroso', 'Pietra bagnata', 'Lana bagnata', 'Cherosene'],
+  },
+  {
+    id: 'difetti', label: 'Difetti', bg: '#f3e4e0', fg: '#9a3b2e',
+    icon: '<svg viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14 5l10 17H4z"/><path d="M14 12v4.5"/><circle cx="14" cy="19.3" r=".9" fill="currentColor" stroke="none"/></svg>',
+    tags: ['Tappo', 'Ossidato', 'Acetico', 'Ridotto', 'Smalto', 'Muffa'],
   },
 ];
 
