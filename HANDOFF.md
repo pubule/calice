@@ -849,6 +849,10 @@ questo file è il riassunto "dove eravamo rimasti".
       `image_url` l'intestazione prende la classe `.has-product`:
       bottiglia intera a destra su fondo chiaro, testo scuro a sinistra,
       niente velatura. Senza foto resta il gradiente per tipo di prima.
+    - Build 93: stesso problema nelle miniature (lista Cantina, scatole,
+      risultati di ricerca): le `<img>` di foto prodotto hanno la classe
+      `product` e `object-fit:contain` (bottiglia intera), mentre le foto
+      senza `product` restano `cover`.
 
 ## Cose note, non (ancora) da rifare
 

@@ -18,7 +18,7 @@ function resultRowHtml(w) {
   const sub = `${producer} · ${escapeHtml(w.region ?? w.country)}`;
   const id = escapeHtml(w.id);
   const photo = w.image_url
-    ? `<img class="result-photo photo" src="${escapeHtml(w.image_url)}" alt="">`
+    ? `<img class="result-photo photo product" src="${escapeHtml(w.image_url)}" alt="">`
     : `<div class="result-photo photo ${photoClass(w.type)}"></div>`;
   return `
     <div class="result-row" data-wine-id="${id}">
@@ -97,7 +97,7 @@ function webCandidateRowHtml(candidate, i) {
     }
   }
   const photo = candidate.imageUrl
-    ? `<img class="result-photo photo" src="${escapeHtml(candidate.imageUrl)}" alt="">`
+    ? `<img class="result-photo photo product" src="${escapeHtml(candidate.imageUrl)}" alt="">`
     : `<div class="result-photo photo photo-rosso"></div>`;
   return `
     <div class="result-row" data-candidate="${i}" role="button" tabindex="0">

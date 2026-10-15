@@ -50,7 +50,7 @@ function colLetter(i) {
 // generic type-tinted placeholder whenever one is on file.
 function photoHtml(b, className) {
   return b.image_url
-    ? `<img class="${className} photo" src="${escapeHtml(b.image_url)}" alt="">`
+    ? `<img class="${className} photo product" src="${escapeHtml(b.image_url)}" alt="">`
     : `<div class="${className} photo ${photoClass(b.type)}"></div>`;
 }
 
