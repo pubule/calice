@@ -1,7 +1,8 @@
 import { api } from '../api-client.js';
 import { escapeHtml, photoClass } from '../util.js';
 import { openLocationPicker, locationLabel, refreshCellarList, editBottle, deleteBottle } from './cellar.js';
-import { confirmModal } from '../modal.js';
+import { confirmModal, alertModal } from '../modal.js';
+import { showToast } from '../toast.js';
 import { tastingProfileHtml, wireTastingProfile, resetTastingProfile, readTastingProfile, isTastingProfileEmpty, tasteSummary } from '../tasting-profile.js';
 
 let currentBottleId = null;
@@ -217,8 +218,9 @@ function wireStaticControls() {
   detailTaste.innerHTML = tastingProfileHtml();
   wireTastingProfile(detailTaste);
 
-  document.getElementById('note-submit')?.addEventListener('click', async () => {
-    if (currentBottleId == null) return;
+  const noteSubmit = document.getElementById('note-submit');
+  noteSubmit?.addEventListener('click', async () => {
+    if (currentBottleId == null || noteSubmit.disabled) return;
     const textEl = document.getElementById('note-text');
     const text = textEl.value.trim();
     const starsGroup = document.querySelector('#detail-overlay .stars-input');
@@ -230,16 +232,29 @@ function wireStaticControls() {
     // no star was tapped) — a profile-only save with no stars stays 0
     // (genuinely unrated) instead of inventing a rating nobody gave.
     const rating = starsOn || (text ? 3 : 0);
-    await api.post(`/api/bottles/${currentBottleId}/notes`, {
-      rating,
-      text,
-      flavorTags: profile.flavorTags,
-      foodPairings: profile.foodPairings,
-      tasteAcidity: profile.tasteAcidity,
-      tasteSweetness: profile.tasteSweetness,
-      tasteTannin: profile.tasteTannin,
-      tasteBody: profile.tasteBody,
-    });
+    // Disabled while in flight and confirmed on success: with no feedback a
+    // tap looked like it did nothing, and repeated taps saved the same note
+    // five times in production. A failure used to be silent too.
+    noteSubmit.disabled = true;
+    try {
+      await api.post(`/api/bottles/${currentBottleId}/notes`, {
+        rating,
+        text,
+        flavorTags: profile.flavorTags,
+        foodPairings: profile.foodPairings,
+        tasteAcidity: profile.tasteAcidity,
+        tasteSweetness: profile.tasteSweetness,
+        tasteTannin: profile.tasteTannin,
+        tasteBody: profile.tasteBody,
+      });
+    } catch (err) {
+      console.error(err);
+      await alertModal('Non è stato possibile salvare la nota. Riprova.', { title: 'Nota non salvata' });
+      return;
+    } finally {
+      noteSubmit.disabled = false;
+    }
+    showToast('Nota salvata');
     textEl.value = '';
     starsGroup.querySelectorAll('span').forEach((s) => {
       s.classList.remove('on');

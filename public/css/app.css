@@ -297,8 +297,11 @@
   .add-note{background:#ffffff; border:1px solid #e2e0d8; border-radius:12px; padding:12px; display:flex; flex-direction:column; gap:8px;}
   .add-note textarea{border:none; resize:none; font-family:'Archivo',sans-serif; font-size:max(calc(16rem/17), 16px); color:#241e1a; outline:none; min-height:44px; background:transparent;}
   .add-note .row{display:flex; align-items:center; justify-content:space-between;}
-  .add-note .stars-input span{font-size:15px; display:inline-block; padding:15px 8px; line-height:1; color:#8e8779; cursor:pointer;}
-  .add-note .stars-input span.on{color:#8a6a1a;}
+  /* Empty stars are an outline, chosen ones a gold fill: the state reads
+     from the shape, not from two close shades (#8e8779 vs #8a6a1a were
+     indistinguishable on the phone). */
+  .add-note .stars-input span{font-size:24px; display:inline-block; padding:10px 5px; line-height:1; color:transparent; -webkit-text-stroke:1.3px #8e8779; cursor:pointer; transition:color .12s ease, -webkit-text-stroke-color .12s ease;}
+  .add-note .stars-input span.on{color:#d4a017; -webkit-text-stroke-color:#a37a0c;}
   .add-note button{background:#5b2333; color:#f7f5f0; border:none; border-radius:9999px; padding:10px 16px; min-height:36px; font-size:calc(11rem/17); font-weight:600; font-family:'Archivo',sans-serif; cursor:pointer;}
 
   /* ---- profilo di gusto: card di sapore, slider, abbinamenti (tasting-profile.js) ---- */

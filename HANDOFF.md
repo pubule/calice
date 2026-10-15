@@ -796,6 +796,15 @@ questo file è il riassunto "dove eravamo rimasti".
     aggiunto il permesso; verificato con un deploy ("No migrations to
     apply!") e il passo è tornato bloccante.
 
+24. **Note: stelle leggibili e conferma del salvataggio** (build 89).
+    Le stelle vuote ora sono un contorno e quelle scelte un pieno dorato
+    (prima `#8e8779` contro `#8a6a1a`, indistinguibili sul telefono). Nella
+    scheda del vino "Salva nota" si disattiva durante l'invio, mostra il
+    toast "Nota salvata" e, se fallisce, un avviso (prima falliva in
+    silenzio). Motivo: senza riscontro l'utente aveva premuto più volte e
+    in produzione ci sono 5 note quasi uguali sulla bottiglia 10 (id 4–8,
+    15/10 sera): non cancellate, decide l'utente.
+
 ## Cose note, non (ancora) da rifare
 
 - `status-bar-style` è `black-translucent` (non più `default`), `.screen`
