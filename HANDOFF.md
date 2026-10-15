@@ -870,6 +870,24 @@ questo file è il riassunto "dove eravamo rimasti".
       (classe `has-action` in `toast.js`); prima teneva 6px a destra per il
       pulsante assente.
 
+29. **Ruota degli aromi** (build 95, `#/aromi`, `screens/aromas.js`).
+    Scelta dall'utente su mockup: direzione B (mezza ruota delle 8 famiglie
+    che gira col dito o con le frecce, scheda famiglia sotto con origine,
+    descrizione, tutti gli aromi e vini tipici; tocco su un aroma = scheda
+    dell'aroma sopra) + "Il mio palato" della C (ruota completa con uno
+    spicchio per aroma lungo quanto spesso compare nelle **proprie** note,
+    da `GET /api/me/palate`, che conta ogni aroma una volta per nota).
+    - Il vocabolario è `FLAVOR_CATEGORIES` di `tasting-profile.js`
+      (esportato), lo stesso della nota: la ruota non ha una lista propria.
+      I testi per famiglia stanno in `js/data/aroma-guide.js`, per `id`.
+    - In Home la riga sta sotto "Esplora vini per paese", stesso stile
+      `.explore-entry`; le due righe sono avvolte in `.explore-links` (niente
+      gap del flex della vista fra le due, bordo unico) e il reveal ora
+      punta a `home-explore-links`.
+    - Ricaduto ancora nel bug `.hidden` contro `display:flex` di CLAUDE.md:
+      `.aroma-pane.hidden{display:none}` serve perché `.aroma-pane` viene
+      dopo `.hidden` nel CSS.
+
 ## Cose note, non (ancora) da rifare
 
 - `status-bar-style` è `black-translucent` (non più `default`), `.screen`

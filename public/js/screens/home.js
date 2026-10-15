@@ -10,6 +10,7 @@ const TYPE_COLOR = { rosso: '#5b2333', bianco: '#b9a750', bollicine: '#6b7a4f', 
 const DEFAULT_COLOR = '#5b2333';
 
 document.getElementById('home-explore-entry')?.addEventListener('click', () => navigate('#/esplora'));
+document.getElementById('home-aromas-entry')?.addEventListener('click', () => navigate('#/aromi'));
 
 function selectHomeTab(tab) {
   document.querySelectorAll('#home-tabs button').forEach((b) => {
@@ -118,7 +119,7 @@ function renderAll() {
   renderFeed();
 }
 
-const REVEAL_IDS = ['home-greet-name', 'home-stats', 'home-alerts', 'home-explore-entry', 'home-tabs-block'];
+const REVEAL_IDS = ['home-greet-name', 'home-stats', 'home-alerts', 'home-explore-links', 'home-tabs-block'];
 
 // Called once, after every section's real content is already in the DOM
 // (mountHome awaits everything via Promise.all first) — all sections fade in

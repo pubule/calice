@@ -10,7 +10,7 @@
 // JSON array of strings), so a label already used in saved notes must never
 // be renamed — moving it to another family is harmless. No label may appear
 // twice across families: readTastingProfile() would record it twice.
-const FLAVOR_CATEGORIES = [
+export const FLAVOR_CATEGORIES = [
   {
     id: 'frutta', label: 'Frutta', bg: '#f7e8e9', fg: '#8a3244',
     icon: '<svg viewBox="0 0 28 28" fill="currentColor"><circle cx="10" cy="16" r="5"/><circle cx="17" cy="12" r="5"/><circle cx="18" cy="20" r="4.5"/></svg>',

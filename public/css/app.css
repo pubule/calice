@@ -561,6 +561,41 @@
   .explore-entry .body{flex:1; min-width:0;}
   .explore-entry .title{font-family:'Newsreader',serif; font-weight:500; font-size:calc(15rem/17); letter-spacing:-0.01em;}
   .explore-entry .sub{font-size:calc(12rem/17); color:#736a5d; margin-top:2px;}
+  /* Esplora and Ruota degli aromi read as one block: no gap between them
+     (the .view column gap is for independent sections) and one shared rule. */
+  .explore-links{display:flex; flex-direction:column;}
+  .explore-entry + .explore-entry{border-top:none;}
+
+  /* Ruota degli aromi (#/aromi) */
+  .aroma-pane{display:flex; flex-direction:column; gap:12px;}
+  .aroma-pane.hidden{display:none;}
+  #view-aromas .topbar{justify-content:flex-start; gap:12px;}
+  #view-aromas .topbar .screen-title{margin-top:0;}
+  .aroma-dial-wrap{margin:0 -16px; aspect-ratio:2.4/1; overflow:hidden; flex-shrink:0;}
+  #aroma-dial{display:block; width:120%; height:auto; margin-left:-10%; touch-action:pan-y; user-select:none; -webkit-user-select:none; cursor:pointer;}
+  #aroma-dial .aroma-spin{transform-origin:150px 150px; transition:transform .45s cubic-bezier(.3,.7,.2,1);}
+  #aroma-dial path{transition:opacity .25s ease;}
+  .aroma-dial-nav{display:flex; align-items:center; justify-content:space-between; gap:12px;}
+  .aroma-arrow{width:44px; height:44px; border-radius:50%; border:1px solid #e2e0d8; background:#ffffff; color:#241e1a; display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0;}
+  .aroma-arrow svg{width:18px; height:18px;}
+  .aroma-dial-label{font-family:'Newsreader',serif; font-weight:500; font-size:calc(20rem/17); text-align:center;}
+  .aroma-hint{font-size:calc(11.5rem/17); color:#736a5d; text-align:center; margin-top:-6px;}
+  .aroma-card{background:#ffffff; border:1px solid #e2e0d8; border-radius:14px; padding:14px; display:flex; flex-direction:column; gap:10px;}
+  #aroma-card{display:flex; flex-direction:column; gap:12px;}
+  .aroma-pill{align-self:flex-start; font-family:'JetBrains Mono',monospace; font-size:calc(11rem/17); letter-spacing:.06em; text-transform:uppercase; padding:3px 9px; border-radius:9999px;}
+  .aroma-card-title{font-family:'Newsreader',serif; font-weight:500; font-size:calc(19rem/17); letter-spacing:-0.01em;}
+  .aroma-card-desc{margin:0; font-size:calc(13rem/17); line-height:1.45; color:#4a4239;}
+  .aroma-chips{flex-wrap:wrap; overflow:visible;}
+  .aroma-wines{display:flex; flex-direction:column;}
+  .aroma-wines div{display:flex; justify-content:space-between; gap:12px; padding:8px 0; border-top:1px solid #efece5; font-size:calc(13rem/17);}
+  .aroma-wines div span:last-child{color:#736a5d; text-align:right;}
+  .aroma-mine{font-size:calc(12rem/17); font-weight:600; color:#5b2333;}
+  #palate-wheel{display:block; width:100%; max-width:320px; height:auto; margin:0 auto; flex-shrink:0;}
+  .palate-group{display:flex; flex-direction:column; gap:6px;}
+  .palate-fam{display:flex; align-items:center; gap:7px; font-size:calc(12rem/17); font-weight:600;}
+  .palate-dot{width:8px; height:8px; border-radius:50%;}
+  .palate-chip{cursor:default;}
+  .palate-group .chip-row{flex-wrap:wrap; overflow:visible;}
 
   /* ---- esplora vini per paese: dropdown regione ---- */
   .explore-dd-head{display:flex; align-items:center; justify-content:space-between; background:#ffffff; border:1px solid #e2e0d8; border-radius:10px; padding:12px 14px; min-height:44px; cursor:pointer;}

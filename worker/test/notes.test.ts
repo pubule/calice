@@ -160,3 +160,19 @@ describe('tasting notes visibility', () => {
     expect(bad.status).toBe(400);
   });
 });
+
+describe('GET /api/me/palate', () => {
+  it('counts each aroma once per note, only across the caller’s own notes', async () => {
+    const json = { ...ownerAuth, 'content-type': 'application/json' };
+    const post = (body: object, headers = json) => app.request(`/api/bottles/${bottleId}/notes`, { method: 'POST', body: JSON.stringify(body), headers }, env);
+    await post({ rating: 4, text: 'a', flavorTags: ['Ciliegia', 'Rosa'] });
+    await post({ rating: 3, text: 'b', flavorTags: ['Ciliegia'] });
+    await post({ rating: 3, text: 'c' });
+    const other = await signup('other@notes.com');
+    await env.DB.prepare('insert into cellar_members (cellar_id, user_id, role) values (?, ?, ?)').bind(cellarId, other.userId, 'member').run();
+    await post({ rating: 3, text: 'd', flavorTags: ['Rosa'] }, { ...other.auth, 'content-type': 'application/json' });
+
+    const res = await app.request('/api/me/palate', { headers: ownerAuth }, env);
+    expect(await res.json()).toEqual({ notes: 2, tags: { Ciliegia: 2, Rosa: 1 } });
+  });
+});

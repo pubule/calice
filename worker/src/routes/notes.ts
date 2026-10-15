@@ -136,3 +136,28 @@ noteRoutes.get('/:bottleId/notes', async (c) => {
     .all();
   return c.json(rows.results.map(parseNote));
 });
+
+// "Il mio palato" in the aroma wheel: how often the caller picked each aroma
+// across all their own notes. Counted here rather than shipping every note to
+// the client; flavor_tags is a JSON array per note (see parseNote).
+export const palateRoutes = new Hono<{ Bindings: Env; Variables: { userId: number } }>();
+palateRoutes.use('*', requireAuth);
+
+palateRoutes.get('/palate', async (c) => {
+  const rows = await c.env.DB
+    .prepare('select flavor_tags from tasting_notes where user_id = ? and flavor_tags is not null')
+    .bind(c.get('userId'))
+    .all<{ flavor_tags: string }>();
+  const tags: Record<string, number> = {};
+  for (const row of rows.results) {
+    let list: unknown;
+    try {
+      list = JSON.parse(row.flavor_tags);
+    } catch {
+      continue;
+    }
+    if (!Array.isArray(list)) continue;
+    for (const t of new Set(list)) if (typeof t === 'string') tags[t] = (tags[t] ?? 0) + 1;
+  }
+  return c.json({ notes: rows.results.length, tags });
+});

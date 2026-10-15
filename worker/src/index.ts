@@ -6,7 +6,7 @@ import { recognizeRoutes } from './routes/recognize';
 import { cellarBottleRoutes, bottleRoutes } from './routes/bottles';
 import { cellarElementRoutes, elementRoutes } from './routes/elements';
 import { cellarWishlistRoutes, wishlistItemRoutes } from './routes/wishlist';
-import { noteRoutes } from './routes/notes';
+import { noteRoutes, palateRoutes } from './routes/notes';
 import { photoRoutes, photoFileRoutes } from './routes/photos';
 import { followRoutes, activityRoutes } from './routes/follows';
 import { pushRoutes } from './routes/push';
@@ -43,6 +43,7 @@ app.route('/api/bottles', photoRoutes);
 app.route('/api/photos', photoFileRoutes);
 app.route('/api/follows', followRoutes);
 app.route('/api/me', activityRoutes);
+app.route('/api/me', palateRoutes);
 app.route('/api/push', pushRoutes);
 
 export default {
