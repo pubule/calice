@@ -89,7 +89,7 @@ export const FLAVOR_CATEGORIES = [
 
 // The palate structure of a tasting sheet. Column taste_<id> in
 // tasting_notes for each (migrations 0006 and 0007).
-const TASTE_AXES = [
+export const TASTE_AXES = [
   { id: 'acidity', key: 'tasteAcidity', name: 'Acidità', left: 'Piatto', right: 'Acidulo' },
   { id: 'sweetness', key: 'tasteSweetness', name: 'Dolcezza', left: 'Secco', right: 'Dolce' },
   { id: 'tannin', key: 'tasteTannin', name: 'Tannicità', left: 'Morbido', right: 'Tannico' },

@@ -597,6 +597,61 @@
   .palate-dot{width:8px; height:8px; border-radius:50%;}
   .palate-chip{cursor:default;}
   .palate-group .chip-row{flex-wrap:wrap; overflow:visible;}
+  /* Wheel: wine filter and "Cosa aspettarti" (shared with Assaggio guidato) */
+  .aroma-filters{display:grid; grid-template-columns:1fr 1.5fr; gap:8px;}
+  .aroma-filters select{width:100%;}
+  .aroma-chips .chip.lit{border-color:currentColor; font-weight:600;}
+  .aroma-chips .chip.dim{opacity:.5;}
+  .aroma-filter-note{color:#736a5d; font-size:calc(12rem/17);}
+  .expect-bars{display:flex; flex-direction:column; gap:8px;}
+  .expect-row{display:grid; grid-template-columns:calc(78rem/17) 1fr calc(86rem/17); align-items:center; gap:8px; font-size:calc(12rem/17); color:#736a5d;}
+  .expect-name{color:#241e1a;}
+  .expect-track{height:6px; border-radius:9999px; background:#efece5; position:relative;}
+  .expect-track i{position:absolute; top:50%; width:12px; height:12px; margin:-6px 0 0 -6px; border-radius:50%; background:#5b2333;}
+  .expect-side{text-align:right;}
+  .expect-group{display:flex; flex-direction:column; gap:6px;}
+  .expect-fam{font-size:calc(12rem/17); font-weight:600;}
+  .expect-group .chip-row{flex-wrap:wrap;}
+
+  /* Assaggio guidato (#/assaggio) */
+  .tasting-body{display:flex; flex-direction:column; gap:12px;}
+  #view-tasting .tasting-top{justify-content:flex-start; gap:12px; flex-wrap:nowrap;}
+  #view-tasting .tasting-top .screen-title{margin-top:0; flex:1; min-width:0; font-size:calc(16rem/17);}
+  .tasting-stepn{font-family:'JetBrains Mono',monospace; font-size:calc(11rem/17); letter-spacing:.06em; color:#736a5d; white-space:nowrap;}
+  .tasting-bar{display:flex; gap:4px;}
+  .tasting-bar span{flex:1; height:3px; border-radius:2px; background:#e7e2d8;}
+  .tasting-bar span.on{background:#5b2333;}
+  .tasting-wine{background:#f4e8eb; color:#5b2333;}
+  .tasting-lede{margin:0; font-size:calc(13rem/17); line-height:1.45; color:#4a4239;}
+  .tasting-body select.search, .tasting-body input.search{width:100%;}
+  .tasting-body .primary-btn:disabled{opacity:.45;}
+  .tasting-empty{margin:0; font-size:calc(12.5rem/17); color:#736a5d;}
+  .tasting-stars{color:#b8860b; font-size:calc(14rem/17); letter-spacing:1px; white-space:nowrap;}
+  .tasting-stars.big{font-size:calc(22rem/17);}
+  .tasting-body .chip-row{flex-wrap:wrap;}
+  .chip.expected{border-style:dashed; border-color:#b8ab97; color:#241e1a;}
+  .chip.expected.active{border-style:solid; border-color:#5b2333; color:#f7f5f0;}
+  .tasting-foot{position:sticky; bottom:0; margin:0 -16px; padding:10px 16px 6px; background:linear-gradient(180deg, rgba(247,245,240,0), #f7f5f0 35%);}
+  .tasting-delete{background:#f4e3e6; color:#8a2336;}
+  .tasting-legend{display:flex; gap:16px; font-size:calc(11.5rem/17); color:#736a5d;}
+  .tasting-legend i{display:inline-block; width:18px; height:11px; border-radius:9999px; vertical-align:-1px; margin-right:5px;}
+  .tasting-legend .lg-exp{border:2px dashed #b8ab97;}
+  .tasting-legend .lg-you{background:#5b2333;}
+  .tasting-sliders{gap:16px;}
+  .gs{display:flex; flex-direction:column; gap:5px;}
+  .gs-labels{display:flex; justify-content:space-between; gap:8px; font-size:calc(11.5rem/17); color:#736a5d;}
+  .gs-labels .gs-name{color:#241e1a; font-weight:600;}
+  .gs-labels .dom{color:#241e1a; font-weight:600;}
+  .gs-track{height:36px; border-radius:9999px; background:#efece5; position:relative; cursor:pointer; touch-action:none;}
+  .gs-exp{position:absolute; top:50%; width:30px; height:22px; margin:-11px 0 0 -15px; border-radius:9999px; border:2px dashed #b8ab97;}
+  .gs-thumb{position:absolute; top:50%; width:42px; height:28px; margin:-14px 0 0 -21px; border-radius:9999px; background:#5b2333; box-shadow:0 1px 3px rgba(0,0,0,.2);}
+  .gs-track.untouched .gs-thumb{background:#cfc6b6; box-shadow:none;}
+  .tasting-hint{margin:0; font-size:calc(11.5rem/17); color:#736a5d;}
+  .tasting-score{display:flex; align-items:baseline; gap:8px; flex-wrap:wrap;}
+  .tasting-score b{font-family:'Newsreader',serif; font-weight:500; font-size:calc(30rem/17);}
+  .tasting-score span{font-size:calc(12.5rem/17); color:#736a5d;}
+  .tasting-diff div.off span:last-child{color:#5b2333; font-weight:600;}
+  .tasting-row{cursor:pointer;}
 
   /* ---- esplora vini per paese: dropdown regione ---- */
   .explore-dd-head{display:flex; align-items:center; justify-content:space-between; background:#ffffff; border:1px solid #e2e0d8; border-radius:10px; padding:12px 14px; min-height:44px; cursor:pointer;}

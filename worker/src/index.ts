@@ -10,6 +10,7 @@ import { noteRoutes, palateRoutes } from './routes/notes';
 import { photoRoutes, photoFileRoutes } from './routes/photos';
 import { followRoutes, activityRoutes } from './routes/follows';
 import { pushRoutes } from './routes/push';
+import { tastingRoutes } from './routes/tastings';
 import { runNotificationScan, checkPhotoStorageUsage, checkSearchUsage } from './cron';
 
 export type Env = {
@@ -45,6 +46,7 @@ app.route('/api/follows', followRoutes);
 app.route('/api/me', activityRoutes);
 app.route('/api/me', palateRoutes);
 app.route('/api/push', pushRoutes);
+app.route('/api/tastings', tastingRoutes);
 
 export default {
   fetch: app.fetch,

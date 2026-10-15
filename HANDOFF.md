@@ -901,6 +901,30 @@ questo file è il riassunto "dove eravamo rimasti".
     Geranio, Medicinale e Anice sono senza vini di proposito: nessun
     esempio da manuale certo, meglio vuoto che inventato.
 
+31. **Filtro per vino nella ruota + Assaggio guidato** (build 97).
+    Deciso con l'utente su due mockup: filtri a tendina **Tipo + Vino**
+    (Paese scartato, nessun terzo filtro), e la degustazione a passi come
+    sezione propria in Home, con qualunque vino, non solo quelli in cantina.
+    - `aroma-guide.js` ha ora `WINE_STYLES` (tipo + gusto atteso sui 7 assi
+      per i 105 vini di `TAG_WINES`, valori indicativi scritti a mano) e
+      `WINE_TYPES`. `js/wine-expectation.js` è il modulo comune a ruota e
+      assaggio: aromi attesi, gusto atteso (tannino 0 = non pertinente →
+      `null`), opzioni dei menu, scheda "Cosa aspettarti".
+    - Ruota: scelto un vino, gira sulla famiglia con più suoi aromi, ogni
+      spicchio ha un numero (aromi del vino lì dentro), quelli a zero si
+      spengono; in alto la scheda "Cosa aspettarti" con il pulsante
+      "Assaggio guidato" → `#/assaggio?vino=<nome>`.
+    - Assaggio guidato (`screens/tasting.js`, `#/assaggio`): scelta vino +
+      etichetta facoltativa → Naso (aromi attesi tratteggiati + "Senti
+      altro?") → Bocca (cursori con il segno dell'atteso; un cursore non
+      toccato resta grigio e **non viene salvato**, così l'atteso non
+      diventa la risposta) → Giudizio → Riepilogo (atteso contro sentito)
+      → salva. Storico nella stessa schermata, riapribile ed eliminabile.
+    - Server: tabella `tastings` (migrazione 0008), `routes/tastings.ts`
+      (GET/POST/DELETE, solo i propri), stessa validazione delle note
+      (`validateNote` esportata da `notes.ts`). `/api/me/palate` conta anche
+      gli assaggi.
+
 ## Cose note, non (ancora) da rifare
 
 - `status-bar-style` è `black-translucent` (non più `default`), `.screen`

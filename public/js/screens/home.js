@@ -11,6 +11,7 @@ const DEFAULT_COLOR = '#5b2333';
 
 document.getElementById('home-explore-entry')?.addEventListener('click', () => navigate('#/esplora'));
 document.getElementById('home-aromas-entry')?.addEventListener('click', () => navigate('#/aromi'));
+document.getElementById('home-tasting-entry')?.addEventListener('click', () => navigate('#/assaggio'));
 
 function selectHomeTab(tab) {
   document.querySelectorAll('#home-tabs button').forEach((b) => {

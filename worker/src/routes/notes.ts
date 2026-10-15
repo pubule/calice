@@ -34,14 +34,14 @@ function parseNote(row: Record<string, unknown> | null) {
   };
 }
 
-type NoteBody = {
+export type NoteBody = {
   rating: number; text: string; flavorTags?: string[]; foodPairings?: string[];
   tasteAcidity?: number | null; tasteSweetness?: number | null; tasteTannin?: number | null; tasteBody?: number | null;
   tasteAlcohol?: number | null; tasteIntensity?: number | null; tasteFinish?: number | null;
 };
 
 // Shared by create and update: same rules either way.
-function validateNote(body: NoteBody): string | null {
+export function validateNote(body: NoteBody): string | null {
   if (typeof body.rating !== 'number' || Number.isNaN(body.rating) || body.rating < 0 || body.rating > 5) {
     return 'rating must be a number between 0 and 5';
   }
@@ -145,8 +145,13 @@ palateRoutes.use('*', requireAuth);
 
 palateRoutes.get('/palate', async (c) => {
   const rows = await c.env.DB
-    .prepare('select flavor_tags from tasting_notes where user_id = ? and flavor_tags is not null')
-    .bind(c.get('userId'))
+    // Notes on bottles and guided tastings (tastings.ts) both feed the palate.
+    .prepare(
+      `select flavor_tags from tasting_notes where user_id = ? and flavor_tags is not null
+       union all
+       select flavor_tags from tastings where user_id = ? and flavor_tags is not null`,
+    )
+    .bind(c.get('userId'), c.get('userId'))
     .all<{ flavor_tags: string }>();
   const tags: Record<string, number> = {};
   for (const row of rows.results) {

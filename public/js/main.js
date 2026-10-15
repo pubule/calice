@@ -8,12 +8,13 @@ import { mountProfile } from './screens/profile.js';
 import { mountInviteAccept } from './screens/invite.js';
 import { mountExplore } from './screens/explore.js';
 import { mountAromas } from './screens/aromas.js';
+import { mountTasting } from './screens/tasting.js';
 import './sheet-gestures.js';
 
 // Views without a tab of their own light the tab they are reached from.
 // Esplora is a sub-section opened from Home, so it keeps Home lit. Add has its
 // own slot in the bar (the raised "+"), which lights itself.
-const TAB_FOR_VIEW = { 'view-explore': 'view-home', 'view-aromas': 'view-home', 'view-invite': 'view-home' };
+const TAB_FOR_VIEW = { 'view-explore': 'view-home', 'view-aromas': 'view-home', 'view-tasting': 'view-home', 'view-invite': 'view-home' };
 
 // Tab → route, explicit rather than derived from the view id (routes are not
 // all `#/<name>`: Esplora lives at #/esplora).
@@ -101,6 +102,7 @@ registerRoute('#/profile', async () => { showView('view-profile'); await mountPr
 registerRoute('#/invite/:code', async (search, params) => { showView('view-invite'); await mountInviteAccept(search, params); });
 registerRoute('#/esplora', async () => { showView('view-explore'); await mountExplore(); });
 registerRoute('#/aromi', async () => { showView('view-aromas'); await mountAromas(); });
+registerRoute('#/assaggio', async (search) => { showView('view-tasting'); await mountTasting(search); });
 
 document.querySelector('.logout')?.addEventListener('click', () => {
   // Cloudflare Access, not the app, owns the session: this clears the
