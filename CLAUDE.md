@@ -495,9 +495,9 @@ test tutto passava, perché lì le migrazioni girano sempre.
 **Ora il workflow le applica da solo** (passo "Apply D1 migrations" prima
 del deploy, `migrations_dir` puntato a `worker/migrations` nel
 `wrangler.jsonc` di radice). Se quel passo fallisce per permessi, il token
-`CLOUDFLARE_API_TOKEN` non ha D1:Edit — ed è il caso attuale: il passo è
-`continue-on-error` e lascia solo un avviso sul run, quindi **finché
-l'avviso compare le migrazioni restano da applicare a mano**. Per applicarle a mano (es. senza
+`CLOUDFLARE_API_TOKEN` ha perso D1:Edit (errore 7403): il passo è
+bloccante, quindi in quel caso il deploy non parte. Il permesso è stato
+aggiunto dall'utente e verificato ("No migrations to apply!"). Per applicarle a mano (es. senza
 deploy), controllare prima con
 `select name from d1_migrations` (database `calice-db`, id
 `01336527-aa78-4967-909e-eb423784c90d`). Si può fare con
