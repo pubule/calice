@@ -775,6 +775,12 @@ questo file è il riassunto "dove eravamo rimasti".
     - Il debug ora mostra anche `firstHit`, il record grezzo di Vivino:
       utile per scoprire altri campi da precompilare (es. annata, vitigni).
     - Test: 140 verdi. `CACHE` a `v87`, `build 87`.
+    - **Build 88**: sul telefono la foto restava a tutta altezza pur con i
+      campi già precompilati — cioè `add.js` nuovo ma `index.html` (dove
+      stava il `max-height`) vecchio in cache. La dimensione ora la imposta
+      `sizeReviewPhoto()` in `add.js`. Regola generale: uno stile da cui
+      dipende una funzione JS nuova va messo dove arriva insieme a quel JS,
+      non solo nell'HTML.
 
 ## Cose note, non (ancora) da rifare
 

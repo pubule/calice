@@ -415,6 +415,13 @@ function resetNoteComposer() {
   if (recognizeTaste) resetTastingProfile(recognizeTaste);
 }
 
+// The review photo's size is set here, not only in index.html's markup: a
+// device can run this module fresh while still holding an older cached
+// index.html (seen in production — new prefill, full-height photo).
+function sizeReviewPhoto(img) {
+  Object.assign(img.style, { display: 'block', width: 'auto', height: 'auto', maxWidth: '100%', maxHeight: '180px', margin: '0 auto', borderRadius: '10px', objectFit: 'contain' });
+}
+
 function openRecognizeSheet(suggestion, capturedPhotoDataUrl) {
   sheetMode = 'create';
   editingWineId = null;
@@ -439,6 +446,7 @@ function openRecognizeSheet(suggestion, capturedPhotoDataUrl) {
 
   const photoWrap = document.getElementById('recognize-photo-wrap');
   const photoImg = document.getElementById('recognize-photo');
+  sizeReviewPhoto(photoImg);
   const shownPhoto = capturedPhotoDataUrl ?? suggestion.imageUrl;
   if (shownPhoto) {
     photoImg.src = shownPhoto;
@@ -494,6 +502,7 @@ export function openEditWineSheet(bottle, onSaved) {
 
   const photoWrap = document.getElementById('recognize-photo-wrap');
   const photoImg = document.getElementById('recognize-photo');
+  sizeReviewPhoto(photoImg);
   if (bottle.image_url) {
     photoImg.src = bottle.image_url;
     photoWrap.style.display = '';
@@ -618,7 +627,9 @@ document.getElementById('rec-photo-input')?.addEventListener('change', async (e)
   const file = e.target.files?.[0];
   if (!file) return;
   pendingPhotoFile = await compressForUpload(file);
-  document.getElementById('recognize-photo').src = URL.createObjectURL(pendingPhotoFile);
+  const photoImg = document.getElementById('recognize-photo');
+  sizeReviewPhoto(photoImg);
+  photoImg.src = URL.createObjectURL(pendingPhotoFile);
   document.getElementById('recognize-photo-wrap').style.display = '';
 });
 
