@@ -792,6 +792,10 @@ questo file è il riassunto "dove eravamo rimasti".
     regola in `CLAUDE.md`. Poi, su richiesta dell'utente, il workflow
     di deploy applica le migrazioni da solo prima del deploy
     (`migrations_dir` aggiunto al `wrangler.jsonc` di radice).
+    **Primo run: errore 7403, il token non ha D1:Edit.** Il passo è quindi
+    `continue-on-error` (avviso sul run, il deploy prosegue) finché
+    l'utente non aggiunge il permesso al token in Cloudflare → API Tokens;
+    dopo, togliere `continue-on-error` dal workflow.
 
 ## Cose note, non (ancora) da rifare
 

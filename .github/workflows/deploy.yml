@@ -37,11 +37,20 @@ jobs:
       # tracks them in d1_migrations), so this is a no-op on most runs. It
       # exists because 0006 sat unapplied for weeks and every tasting note
       # with a taste profile failed in production. Needs the token to carry
-      # D1:Edit; without it this step fails and the deploy doesn't run.
+      # D1:Edit. The first run failed with code 7403 (token not authorized
+      # for D1), so until that permission is added this step must not block
+      # deploys: on failure it leaves a warning on the run and the deploy goes
+      # ahead. Once the token has D1:Edit, drop continue-on-error so a pending
+      # migration can never again be skipped silently.
       - name: Apply D1 migrations
+        continue-on-error: true
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-        run: ./worker/node_modules/.bin/wrangler d1 migrations apply calice-db --remote
+        run: |
+          ./worker/node_modules/.bin/wrangler d1 migrations apply calice-db --remote || {
+            echo "::warning title=Migrazioni D1 non applicate::Il token CLOUDFLARE_API_TOKEN non ha il permesso D1:Edit. Le nuove migrazioni in worker/migrations vanno applicate a mano finché non lo si aggiunge."
+            exit 1
+          }
 
       - name: Deploy
         env:
