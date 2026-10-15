@@ -25,7 +25,18 @@ describe('hitToCandidate', () => {
       sourceUrl: 'https://www.vivino.com/IT/it/ambrosini-franciacorta-batude-brut/w/2667819',
       snippet: 'Bollicine · Franciacorta, Italia',
       imageUrl: 'https://images.vivino.com/thumbs/abc_pb_x300.png',
+      prefill: { name: 'Franciacorta Batudè Brut', producer: 'Ambrosini', country: 'Italia', type: 'bollicine', denomination: 'Franciacorta' },
     });
+  });
+
+  it('turns an ISO country code into the Italian name, and reads grapes when the record carries them', () => {
+    const c = hitToCandidate({ id: 9, name: 'Barolo Brunate', type_id: 1, winery: { name: 'Elio Altare' }, region: { name: 'Barolo', country: 'it' }, grapes: [{ name: 'Nebbiolo' }] });
+    expect(c?.prefill).toEqual({ name: 'Barolo Brunate', producer: 'Elio Altare', country: 'Italia', type: 'rosso', denomination: 'Barolo', grapeVariety: 'Nebbiolo' });
+    expect(c?.snippet).toBe('Rosso · Barolo, Italia');
+  });
+
+  it('leaves the type out when Vivino\'s type has no match in the app (dessert, fortified)', () => {
+    expect(hitToCandidate({ id: 9, name: 'Recioto', type_id: 7 })?.prefill?.type).toBeUndefined();
   });
 
   it('does not repeat the winery when the wine name already contains it', () => {

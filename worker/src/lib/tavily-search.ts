@@ -1,6 +1,9 @@
 import { fetchWithTimeout } from './fetch-timeout';
 
-export type WineCandidate = { title?: string; snippet?: string; sourceUrl?: string; imageUrl?: string };
+// `prefill`: structured fields for the add sheet, when the source knows them
+// (Vivino's own search does; a Tavily web page doesn't).
+export type WinePrefill = { name?: string; producer?: string; country?: string; type?: string; denomination?: string; grapeVariety?: string };
+export type WineCandidate = { title?: string; snippet?: string; sourceUrl?: string; imageUrl?: string; prefill?: WinePrefill };
 export type TavilySearchResult = { candidates: WineCandidate[]; creditsUsed: number };
 
 const MAX_CANDIDATES = 10;

@@ -2,6 +2,7 @@ import { api } from '../api-client.js';
 import { escapeHtml, photoClass } from '../util.js';
 import { alertModal, promptModal } from '../modal.js';
 import { tastingProfileHtml, wireTastingProfile, resetTastingProfile, readTastingProfile, isTastingProfileEmpty } from '../tasting-profile.js';
+import { COUNTRIES } from '../data/wine-atlas.js';
 
 let currentCellarId = null;
 
@@ -105,6 +106,34 @@ function currentQuery() {
   return document.getElementById('add-search-input')?.value.trim() ?? '';
 }
 
+const SHEET_TYPES = new Set(['rosso', 'bianco', 'bollicine', 'rosato']);
+const foldText = (t) => String(t ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+
+// Vivino's "region" for a wine is usually its appellation ("Franciacorta",
+// "Barolo"). When it names one of Esplora's atlas wines exactly, the atlas
+// supplies what Vivino doesn't: the administrative region (Franciacorta →
+// Lombardia), the tier (→ "Franciacorta DOCG") and the grape — only when
+// the appellation has a single one (Barolo → Nebbiolo): for a blend the
+// atlas lists what the rules allow, not what this bottle is, so nothing is
+// guessed. Fields Vivino already gave win.
+function completeFromAtlas(prefill) {
+  if (!prefill?.denomination) return prefill;
+  const country = COUNTRIES.find((c) => foldText(c.name) === foldText(prefill.country));
+  const wanted = foldText(prefill.denomination);
+  for (const region of country?.regions ?? []) {
+    const wine = (region.wines ?? []).find((w) => foldText(w.name) === wanted);
+    if (!wine) continue;
+    return {
+      ...prefill,
+      region: prefill.region ?? region.name,
+      denomination: wine.appellation ? `${wine.name} ${wine.appellation}` : wine.name,
+      grapeVariety: prefill.grapeVariety ?? (wine.grapes?.length === 1 ? wine.grapes[0] : undefined),
+      type: prefill.type ?? (SHEET_TYPES.has(wine.type) ? wine.type : undefined),
+    };
+  }
+  return prefill;
+}
+
 async function searchWeb(query) {
   const results = document.getElementById('add-results');
   const countEl = document.getElementById('add-results-count');
@@ -127,7 +156,10 @@ async function searchWeb(query) {
   results.querySelectorAll('[data-candidate]').forEach((row) => {
     row.addEventListener('click', () => {
       const c = candidates[Number(row.dataset.candidate)];
-      openRecognizeSheet({ name: query, imageUrl: c.imageUrl, sourceUrl: c.sourceUrl, rawText: c.snippet });
+      // Vivino candidates carry structured fields (prefill); a Tavily page
+      // doesn't, so the typed query stays the name, as before.
+      const prefill = completeFromAtlas(c.prefill) ?? {};
+      openRecognizeSheet({ ...prefill, name: prefill.name ?? query, imageUrl: c.imageUrl, sourceUrl: c.sourceUrl, rawText: c.snippet });
     });
   });
   // "Non lo trovi? Aggiungilo manualmente" below the results list already

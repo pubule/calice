@@ -757,9 +757,24 @@ questo file è il riassunto "dove eravamo rimasti".
       mancare una), parole doppie contate una volta, parole generiche
       ignorate (tenuta, cantina, DOCG, IGT…), suffisso "| Vivino …" tolto
       per intero, niente immagini.
-    - Test: 138 verdi (nuovi test su Vivino, sul fallback, sul caso
-      "ambrosini batud" e sul suffisso brasiliano). Solo worker: shell
-      invariato, `CACHE` resta `v86`.
+    - **Confermato dall'utente in produzione**: `/debug?q=ambrosini` dà
+      `ok:true`, e la ricerca restituisce il Batudè con la sua foto.
+    - **Campi precompilati** (build 87): ogni candidato Vivino porta
+      `prefill` (nome del vino senza cantina, produttore, paese in italiano
+      dal codice ISO via `Intl.DisplayNames`, tipo mappato sui 4 dell'app,
+      denominazione = la "region" di Vivino, vitigni se il record li ha).
+      In `add.js`, `completeFromAtlas()` cerca la denominazione fra i vini
+      dell'atlante di Esplora: se la trova aggiunge regione amministrativa
+      (Franciacorta → Lombardia), livello ("Franciacorta DOCG") e vitigno
+      **solo se l'atlante ne elenca uno** (Barolo → Nebbiolo; sui blend
+      l'atlante dice cosa permette il disciplinare, non cosa c'è in quella
+      bottiglia, quindi non si indovina). I candidati Tavily, senza
+      `prefill`, si comportano come prima.
+    - Foto nel foglio "Rivedi e conferma" ridotta: max 180px d'altezza,
+      centrata (prima occupava tutta la larghezza).
+    - Il debug ora mostra anche `firstHit`, il record grezzo di Vivino:
+      utile per scoprire altri campi da precompilare (es. annata, vitigni).
+    - Test: 140 verdi. `CACHE` a `v87`, `build 87`.
 
 ## Cose note, non (ancora) da rifare
 

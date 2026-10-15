@@ -7,7 +7,8 @@ import { searchWine as defaultSearchWine } from '../lib/tavily-search';
 import { searchVivino as defaultSearchVivino, queryVivino } from '../lib/vivino-search';
 import type { Env } from '../index';
 
-export type WineCandidate = { title?: string; snippet?: string; sourceUrl?: string; imageUrl?: string };
+export type { WineCandidate } from '../lib/tavily-search';
+import type { WineCandidate } from '../lib/tavily-search';
 
 export type Suggestion = {
   name?: string; producer?: string; country?: string; region?: string;

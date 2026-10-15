@@ -1,5 +1,5 @@
 import { fetchWithTimeout } from './fetch-timeout';
-import type { WineCandidate } from './tavily-search';
+import type { WineCandidate, WinePrefill } from './tavily-search';
 
 // Vivino's own wine search — the index behind the search box on
 // vivino.com (Algolia, queried by the site's frontend with a public,
@@ -23,6 +23,28 @@ export const VIVINO_ALGOLIA = {
 const MAX_CANDIDATES = 10;
 
 const TYPE_LABEL: Record<number, string> = { 1: 'Rosso', 2: 'Bianco', 3: 'Bollicine', 4: 'Rosato', 7: 'Dolce', 24: 'Fortificato' };
+// The add sheet's own types (its <select>): dessert/fortified have no match,
+// so they are left for the user to pick.
+const APP_TYPE: Record<number, string> = { 1: 'rosso', 2: 'bianco', 3: 'bollicine', 4: 'rosato' };
+
+// Vivino gives the country as an ISO code ("it"); the app stores the Italian
+// name ("Italia"), which is also what Esplora's atlas is keyed by.
+function countryName(raw: string | undefined): string | undefined {
+  if (!raw) return undefined;
+  if (!/^[a-z]{2}$/i.test(raw)) return raw;
+  try {
+    const name = new Intl.DisplayNames(['it'], { type: 'region' }).of(raw.toUpperCase());
+    return name && name !== raw.toUpperCase() ? name : raw;
+  } catch {
+    return raw;
+  }
+}
+
+function grapeNames(hit: any): string | undefined {
+  const list = Array.isArray(hit?.grapes) ? hit.grapes : [];
+  const names = list.map((g: any) => str(typeof g === 'string' ? g : g?.name)).filter(Boolean);
+  return names.length ? names.join(', ') : undefined;
+}
 
 function str(v: unknown): string | undefined {
   return typeof v === 'string' && v.trim() ? v.trim() : undefined;
@@ -49,7 +71,7 @@ export function hitToCandidate(hit: any): WineCandidate | null {
   const sourceUrl = slug ? `https://www.vivino.com/IT/it/${slug}/w/${id}` : `https://www.vivino.com/IT/it/w/${id}`;
 
   const region = str(hit?.region?.name);
-  const country = str(hit?.region?.country?.name) ?? str(hit?.region?.country);
+  const country = countryName(str(hit?.region?.country?.name) ?? str(hit?.region?.country?.code) ?? str(hit?.region?.country));
   const type = typeof hit?.type_id === 'number' ? TYPE_LABEL[hit.type_id] : undefined;
   const snippet = [type, [region, country].filter(Boolean).join(', ')].filter(Boolean).join(' · ') || undefined;
 
@@ -57,13 +79,21 @@ export function hitToCandidate(hit: any): WineCandidate | null {
     str(hit?.image?.variations?.bottle_medium) ?? str(hit?.image?.variations?.bottle_large) ?? str(hit?.image?.location),
   );
 
-  const candidate: WineCandidate = { title, sourceUrl };
+  const prefill: WinePrefill = { name };
+  if (winery) prefill.producer = winery;
+  if (country) prefill.country = country;
+  if (typeof hit?.type_id === 'number' && APP_TYPE[hit.type_id]) prefill.type = APP_TYPE[hit.type_id];
+  if (region) prefill.denomination = region;
+  const grapes = grapeNames(hit);
+  if (grapes) prefill.grapeVariety = grapes;
+
+  const candidate: WineCandidate = { title, sourceUrl, prefill };
   if (snippet) candidate.snippet = snippet;
   if (imageUrl) candidate.imageUrl = imageUrl;
   return candidate;
 }
 
-export type VivinoDiagnostics = { ok: boolean; status?: number; hitCount?: number; firstHitKeys?: string[]; error?: string; candidates: WineCandidate[] };
+export type VivinoDiagnostics = { ok: boolean; status?: number; hitCount?: number; firstHitKeys?: string[]; firstHit?: unknown; error?: string; candidates: WineCandidate[] };
 
 export async function queryVivino(query: string, fetchImpl: typeof fetch = fetch): Promise<VivinoDiagnostics> {
   const { appId, apiKey, index } = VIVINO_ALGOLIA;
@@ -95,6 +125,8 @@ export async function queryVivino(query: string, fetchImpl: typeof fetch = fetch
     status: res.status,
     hitCount: hits.length,
     firstHitKeys: hits[0] && typeof hits[0] === 'object' ? Object.keys(hits[0]).slice(0, 40) : [],
+    // The raw record, to see which other fields could pre-fill the sheet.
+    firstHit: hits[0],
     candidates,
   };
 }
