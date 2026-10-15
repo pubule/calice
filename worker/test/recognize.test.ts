@@ -138,6 +138,26 @@ describe('buildSuggestion', () => {
     expect(usage?.credits).toBe(2);
   });
 
+  it('uses Vivino\'s own search first for a text query — no Tavily call, no credit logged', async () => {
+    await env.DB.exec('DELETE FROM tavily_usage;');
+    const vivino = [{ title: 'Ambrosini Franciacorta Batudè Brut', sourceUrl: 'https://www.vivino.com/IT/it/ambrosini-franciacorta-batude-brut/w/2667819' }];
+    const searchVivino = async (query: string) => { expect(query).toBe('ambrosini batud'); return vivino; };
+    const searchWine = async (): Promise<never> => { throw new Error('Tavily should not be called'); };
+    const enrichFromWikidata = async () => null;
+    const result = await buildSuggestion(env, { query: 'ambrosini batud' }, { searchVivino, searchWine, enrichFromWikidata } as any);
+    expect(result.candidates).toEqual(vivino);
+    expect(await env.DB.prepare('select count(*) as n from tavily_usage').first<{ n: number }>()).toEqual({ n: 0 });
+  });
+
+  it('falls back to Tavily when Vivino\'s search fails or finds nothing', async () => {
+    const candidates = [{ title: 'Zamuner Brut', sourceUrl: 'https://www.vivino.com/it/zamuner-brut/w/1' }];
+    const searchVivino = async () => null;
+    const searchWine = async () => ({ candidates, creditsUsed: 1 });
+    const enrichFromWikidata = async () => null;
+    const result = await buildSuggestion(env, { query: 'Zamuner brut' }, { searchVivino, searchWine, enrichFromWikidata } as any);
+    expect(result.candidates).toEqual(candidates);
+  });
+
   it('keeps just the name when Tavily finds no candidates for the query', async () => {
     const searchWine = async () => ({ candidates: [], creditsUsed: 1 });
     const enrichFromWikidata = async () => null;

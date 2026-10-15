@@ -21,23 +21,25 @@ const FETCH_POOL = 15;
 // more domains is not simply "more coverage".
 const SEARCH_DOMAINS = ['vivino.com'];
 
-const STOPWORDS = new Set(['il', 'lo', 'la', 'i', 'gli', 'le', 'di', 'del', 'dello', 'della', 'dei', 'degli', 'delle', 'e', 'un', 'una', 'vino']);
+// Articles and the generic "kind of producer" words: "tenuta", "cantina",
+// "azienda agricola" are how people say a producer's name, but Vivino's
+// titles and slugs usually drop them ("Ambrosini Franciacorta Batudè" for
+// "batude di tenuta Ambrosini"), so requiring them would drop the right wine.
+const STOPWORDS = new Set([
+  'il', 'lo', 'la', 'i', 'gli', 'le', 'di', 'del', 'dello', 'della', 'dei', 'degli', 'delle', 'e', 'un', 'una', 'vino', 'vini',
+  'tenuta', 'tenute', 'cantina', 'cantine', 'azienda', 'agricola', 'winery', 'estate',
+  // Appellation tiers: "Barolo DOCG" must still find pages titled just "Barolo".
+  'docg', 'doc', 'igt', 'igp', 'dop', 'aoc',
+]);
 
+// Deduplicated: "blanc de blanc" is one requirement, not two — counted
+// twice, a Sauvignon Blanc matched two words out of three and got through.
 function queryWords(query: string): string[] {
-  return query
+  const words = query
     .toLowerCase()
     .split(/\s+/)
     .filter((w) => w.length > 2 && !STOPWORDS.has(w));
-}
-
-// The longest query word is the best local proxy for "the distinctive
-// term" (usually the producer or wine name) when there's no corpus to
-// compute real term-frequency weighting from — a generic descriptor like
-// "blanc"/"rosso" is typically shorter than a producer/wine name and would
-// otherwise let an unrelated same-category result slip past the relevance
-// filter below.
-function keyWord(words: string[]): string | undefined {
-  return words.slice().sort((a, b) => b.length - a.length)[0];
+  return [...new Set(words)];
 }
 
 // Being on vivino.com does NOT mean a result is about the searched wine —
@@ -63,9 +65,18 @@ function fold(text: string): string {
   return text.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 }
 
-function isRelevant(word: string, candidate: WineCandidate): boolean {
+// Every meaningful word has to show up, not just the longest one. Keying on
+// the single longest word let "ambrosini batud" through for EVERY Ambrosini
+// wine (Altri Sangiovese, Franciacorta Brut, Lorenzo Riserva…) — the word
+// that actually picks the wine, "batud", was never checked. Matched as a
+// substring, so a word still being typed ("batud") counts. With three or
+// more words one may miss, so a single extra word the page doesn't repeat
+// (a vintage, a "brut") doesn't empty the list.
+function isRelevant(words: string[], candidate: WineCandidate): boolean {
+  if (!words.length) return true;
   const haystack = fold(`${candidate.title ?? ''} ${candidate.sourceUrl ?? ''}`);
-  return haystack.includes(fold(word));
+  const hits = words.filter((w) => haystack.includes(fold(w))).length;
+  return hits >= (words.length >= 3 ? words.length - 1 : words.length);
 }
 
 // Vivino publishes the same wine page in several languages under
@@ -145,8 +156,10 @@ function isWinePage(sourceUrl?: string): boolean {
 // in one production list. It is noise in every single row, and it is also
 // what the add sheet pre-fills the wine name from, so it would end up
 // saved in the cellar.
+// Everything after the separator goes, not just one word: "| Vivino
+// Português (Brasil)" reached the picker with "(Brasil)" still attached.
 function cleanTitle(title: string): string {
-  return title.replace(/\s*[|\-–—]\s*Vivino(?:\s+\S+)?\s*$/iu, '').trim() || title;
+  return title.replace(/\s*[|\-–—]\s*Vivino(?:\s.*)?$/iu, '').trim() || title;
 }
 
 // Tavily's scraped `content` is raw page text — often littered with
@@ -161,10 +174,7 @@ function cleanSnippet(text: string): string {
   return cleaned.slice(0, SNIPPET_MAX_LEN).replace(/\s+\S*$/, '') + '…';
 }
 
-// One call, not two like the old Google integration: Tavily returns web
-// results (title/content/url/score) and images in the same response when
-// include_images is set. Requesting several results instead of committing
-// to one matters here — a specific product query (e.g. "Zamuner Riserva
+// Requesting several results instead of committing to one matters here — a specific product query (e.g. "Zamuner Riserva
 // del Fondatore") often has more than one plausible match (the producer's
 // own site, a specific retailer product page, Vivino), so the app can't
 // reliably guess "the" right one. Showing a few lets the user pick, same
@@ -178,11 +188,11 @@ function cleanSnippet(text: string): string {
 // depth was tried too and costs 2 credits instead of basic's 1 for results
 // that weren't meaningfully better.
 //
-// Images and results are paired by index — Tavily doesn't tie a specific
-// image to a specific result, so this is a best-effort zip, good enough
-// since the user visually confirms whichever candidate they tap. The zip
-// happens before the score re-sort below so each candidate keeps its own
-// paired image when candidates get reordered.
+// No images: Tavily returns them as a separate list not tied to any
+// result, and pairing them by index put the same unrelated bottle photo on
+// every row — which then got saved into the cellar with the wine. Vivino's
+// own search (vivino-search.ts) carries each wine's real photo; this
+// fallback shows none rather than a wrong one.
 // The query goes out verbatim. It used to carry a " vino" suffix, which
 // bought nothing once the search was already restricted to vivino.com —
 // every page there is a wine page — while "vino" reads as Spanish just as
@@ -192,7 +202,7 @@ export async function searchWine(query: string, apiKey: string, fetchImpl: typeo
   const res = await fetchWithTimeout('https://api.tavily.com/search', 8000, fetchImpl, {
     method: 'POST',
     headers: { 'content-type': 'application/json', authorization: `Bearer ${apiKey}` },
-    body: JSON.stringify({ query, max_results: FETCH_POOL, include_images: true, include_domains: SEARCH_DOMAINS }),
+    body: JSON.stringify({ query, max_results: FETCH_POOL, include_domains: SEARCH_DOMAINS }),
   });
   if (!res || !res.ok) return null;
 
@@ -204,7 +214,6 @@ export async function searchWine(query: string, apiKey: string, fetchImpl: typeo
   }
 
   const results: any[] = Array.isArray(body?.results) ? body.results : [];
-  const images: any[] = Array.isArray(body?.images) ? body.images : [];
   const built: { candidate: WineCandidate; tavilyScore: number }[] = [];
   for (let i = 0; i < Math.min(FETCH_POOL, results.length); i++) {
     const r = results[i];
@@ -212,9 +221,6 @@ export async function searchWine(query: string, apiKey: string, fetchImpl: typeo
     if (typeof r?.title === 'string' && r.title.trim()) candidate.title = cleanTitle(r.title.trim());
     if (typeof r?.content === 'string' && r.content.trim()) candidate.snippet = cleanSnippet(r.content.trim());
     if (typeof r?.url === 'string' && r.url.trim()) candidate.sourceUrl = r.url.trim();
-    const rawImage = images[i];
-    const imageUrl = typeof rawImage === 'string' ? rawImage : rawImage?.url;
-    if (typeof imageUrl === 'string' && imageUrl.trim()) candidate.imageUrl = imageUrl.trim();
     if (Object.keys(candidate).length) {
       built.push({ candidate, tavilyScore: typeof r?.score === 'number' ? r.score : 0 });
     }
@@ -228,8 +234,8 @@ export async function searchWine(query: string, apiKey: string, fetchImpl: typeo
   // for that — rather than resurrecting off-topic candidates that looked
   // enough like a real Zamuner bottle to fool someone into saving the
   // wrong wine.
-  const distinctiveWord = keyWord(queryWords(query));
-  const filtered = distinctiveWord ? built.filter((b) => isRelevant(distinctiveWord, b.candidate)) : built;
+  const words = queryWords(query);
+  const filtered = built.filter((b) => isRelevant(words, b.candidate));
 
   // Stable sort on Tavily's score alone: candidates that tie keep Tavily's
   // own relevance order relative to each other. Language plays no part

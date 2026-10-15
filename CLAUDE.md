@@ -632,6 +632,24 @@ con guardia resta vuota.
 
 ## Ricerca web dei vini (Tavily): tre filtri diversi, non confonderli
 
+**Aggiornamento (ottobre): la fonte principale non è più Tavily.** La
+ricerca per nome interroga prima la ricerca interna di Vivino
+(`worker/src/lib/vivino-search.ts`: l'indice Algolia che alimenta la
+casella di ricerca del sito, con la chiave pubblica di sola lettura che usa
+il loro frontend). Restituisce gli stessi risultati che l'utente vede su
+vivino.com e la foto vera di ogni vino. **Non è un'API ufficiale**: ogni
+errore restituisce `null` e si ricade su Tavily, quindi la ricerca non si
+rompe se Vivino cambia chiave o indice. Per controllare cosa riceve il
+Worker in produzione: `GET /api/wines/recognize/debug?q=…` (non chiama
+Tavily, non consuma crediti). Il codice barre resta solo su Tavily.
+Nella riserva Tavily sono cambiate tre cose rispetto a quanto scritto sotto:
+**tutte** le parole significative devono comparire nel titolo o
+nell'URL (non solo la più lunga: su "ambrosini batud" passavano tutti i
+vini Ambrosini); le parole generiche (tenuta, cantina, DOCG…) non contano;
+**niente immagini**, perché Tavily non lega un'immagine a un risultato e
+l'abbinamento per posizione metteva la stessa foto sbagliata su ogni riga,
+che poi finiva salvata in cantina.
+
 `worker/src/lib/tavily-search.ts` restringe la ricerca a `vivino.com`, ma
 essere su Vivino non basta: ci sono **tre** problemi distinti, con tre
 rimedi distinti, e confonderli porta a "sistemare" quello sbagliato.

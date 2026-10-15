@@ -18,7 +18,9 @@ describe('searchWine', () => {
     expect(capturedBody.include_domains).toEqual(['vivino.com']);
   });
 
-  it('zips results and images by index into candidates, and counts one credit spent', async () => {
+  it('maps results into candidates without images, and counts one credit spent', async () => {
+    // Images used to be zipped onto results by index; Tavily doesn't tie an
+    // image to a result, so every row ended up with the same unrelated photo.
     const fetchImpl = fakeFetch(200, {
       results: [
         { title: 'Barolo DOCG', content: 'Rosso piemontese.', url: 'https://vivino.com/it/barolo-docg/w/1', score: 0.8 },
@@ -30,18 +32,18 @@ describe('searchWine', () => {
     expect(result).toEqual({
       creditsUsed: 1,
       candidates: [
-        { title: 'Barolo DOCG', snippet: 'Rosso piemontese.', sourceUrl: 'https://vivino.com/it/barolo-docg/w/1', imageUrl: 'https://vivino.com/bottiglia1.jpg' },
-        { title: 'Barolo DOCG Riserva', snippet: 'Vino corposo.', sourceUrl: 'https://vivino.com/it/barolo-docg-riserva/w/2', imageUrl: 'https://vivino.com/bottiglia2.jpg' },
+        { title: 'Barolo DOCG', snippet: 'Rosso piemontese.', sourceUrl: 'https://vivino.com/it/barolo-docg/w/1' },
+        { title: 'Barolo DOCG Riserva', snippet: 'Vino corposo.', sourceUrl: 'https://vivino.com/it/barolo-docg-riserva/w/2' },
       ],
     });
   });
 
   it('reorders candidates by Tavily\'s own relevance score', async () => {
-    // Both mention "fondatore" (the distinctive word) so neither trips the
-    // relevance filter — only their Tavily score should differ.
+    // Both carry every query word so neither trips the relevance filter —
+    // only their Tavily score should differ.
     const fetchImpl = fakeFetch(200, {
       results: [
-        { title: 'Trovato: Fondatore', content: 'n/a', url: 'https://vivino.com/it/trovato-fondatore/w/1', score: 0.3 },
+        { title: 'Zamuner Fondatore Riserva 2015', content: 'n/a', url: 'https://vivino.com/it/zamuner-fondatore-riserva/w/1', score: 0.3 },
         { title: 'Zamuner Riserva del Fondatore', content: 'Cantina Zamuner.', url: 'https://vivino.com/it/riserva-del-fondatore/w/2', score: 0.9 },
       ],
       images: [],
@@ -49,7 +51,7 @@ describe('searchWine', () => {
     const result = await searchWine('Zamuner Riserva del Fondatore', 'key', fetchImpl);
     expect(result?.candidates.map((c) => c.sourceUrl)).toEqual([
       'https://vivino.com/it/riserva-del-fondatore/w/2',
-      'https://vivino.com/it/trovato-fondatore/w/1',
+      'https://vivino.com/it/zamuner-fondatore-riserva/w/1',
     ]);
   });
 
@@ -90,15 +92,6 @@ describe('searchWine', () => {
     const fetchImpl = fakeFetch(200, { results, images: [] });
     const result = await searchWine('il', 'key', fetchImpl);
     expect(result?.candidates).toHaveLength(10);
-  });
-
-  it('handles image objects with a url field', async () => {
-    const fetchImpl = fakeFetch(200, {
-      results: [{ title: 'Barolo DOCG', content: 'Rosso piemontese.', url: 'https://vivino.com/it/barolo/w/1', score: 0.8 }],
-      images: [{ url: 'https://x/barolo.jpg', description: 'Bottiglia di Barolo' }],
-    });
-    const result = await searchWine('Barolo DOCG', 'key', fetchImpl);
-    expect(result?.candidates[0]?.imageUrl).toBe('https://x/barolo.jpg');
   });
 
   it('cleans markdown-separator noise and long boilerplate out of the snippet', async () => {
@@ -177,6 +170,7 @@ describe('searchWine', () => {
         { title: 'Zamuner Amarone della Valpolicella | Vivino English', content: 'n/a', url: 'https://www.vivino.com/it/a/w/1', score: 0.9 },
         { title: 'Zamuner Valecchia Rosso | Vivino Italiano', content: 'n/a', url: 'https://www.vivino.com/it/b/w/2', score: 0.8 },
         { title: 'Zamuner Daniele Riserva del Fondatore Brut Rosé - Vivino', content: 'n/a', url: 'https://www.vivino.com/it/c/w/3', score: 0.7 },
+        { title: 'Zamuner Rosso | Vivino Português (Brasil)', content: 'n/a', url: 'https://www.vivino.com/BR/pt-BR/d/w/4', score: 0.6 },
       ],
       images: [],
     });
@@ -185,6 +179,7 @@ describe('searchWine', () => {
       'Zamuner Amarone della Valpolicella',
       'Zamuner Valecchia Rosso',
       'Zamuner Daniele Riserva del Fondatore Brut Rosé',
+      'Zamuner Rosso',
     ]);
   });
 
@@ -289,7 +284,10 @@ describe('searchWine', () => {
     ]);
   });
 
-  it('"Batude Tenuta Ambrosini": collapses the duplicate but keeps the producer\'s other wine', async () => {
+  it('"Batude Tenuta Ambrosini": collapses the duplicate and drops the producer\'s other wines', async () => {
+    // Every meaningful word must match ("tenuta" is generic and ignored):
+    // keying on "ambrosini" alone let every Ambrosini wine through for a
+    // search that names the Batudè — seen in production on "ambrosini batud".
     const fetchImpl = fakeFetch(200, {
       results: [
         { title: 'Tenuta Ambrosini Batude | Vivino Español', content: 'n/a', url: 'https://www.vivino.com/es/tenuta-ambrosini-batude/w/5501', score: 0.81 },
@@ -301,16 +299,27 @@ describe('searchWine', () => {
     const result = await searchWine('batude di tenuta Ambrosini', 'key', fetchImpl);
     expect(result?.candidates.map((c) => c.sourceUrl)).toEqual([
       'https://www.vivino.com/it/tenuta-ambrosini-batude/w/5501',
-      'https://www.vivino.com/it/tenuta-ambrosini-franciacorta/w/5502',
     ]);
   });
 
+  it('matches a word still being typed, and drops the producer\'s other wines ("ambrosini batud")', async () => {
+    const fetchImpl = fakeFetch(200, {
+      results: [
+        { title: 'Ambrosini Franciacorta Batudè Brut | Vivino', content: 'n/a', url: 'https://www.vivino.com/IT/it/ambrosini-franciacorta-batude/w/2667819', score: 0.8 },
+        { title: 'Ambrosini Altri Sangiovese | Vivino', content: 'n/a', url: 'https://www.vivino.com/IT/it/ambrosini-altri-sangiovese/w/111', score: 0.79 },
+        { title: 'Ambrosini Franciacorta Lorenzo Ambrosini Riserva | Vivino', content: 'n/a', url: 'https://www.vivino.com/IT/it/ambrosini-lorenzo/w/112', score: 0.78 },
+      ],
+    });
+    const result = await searchWine('ambrosini batud', 'key', fetchImpl);
+    expect(result?.candidates.map((c) => c.title)).toEqual(['Ambrosini Franciacorta Batudè Brut']);
+  });
+
   it('characterises a real weak spot: the right wine is dropped when its page never names the producer', async () => {
-    // "batude di tenuta Ambrosini" keys the relevance filter on "ambrosini"
-    // (the longest word), not on "batude". If Vivino titles and slugs the
-    // page by the wine name alone, the correct bottle matches nothing and is
-    // filtered out — the user sees "nessun risultato" for a wine that WAS
-    // returned. Searching the bare wine name instead is the workaround.
+    // "batude di tenuta Ambrosini" needs both "batude" and "ambrosini". If
+    // Vivino titles and slugs the page by the wine name alone, the producer
+    // is missing and the correct bottle is filtered out. Searching the bare
+    // wine name is the workaround — and Vivino's own search (vivino-search.ts)
+    // is tried before this fallback anyway.
     const onlyWineName = {
       results: [{ title: 'Batude 2019 | Vivino', content: 'n/a', url: 'https://www.vivino.com/it/batude/w/5501', score: 0.9 }],
       images: [],

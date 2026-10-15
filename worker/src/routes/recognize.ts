@@ -4,6 +4,7 @@ import { lookupBarcode as defaultLookupBarcode } from '../lib/open-food-facts';
 import { enrichFromWikidata as defaultEnrichFromWikidata } from '../lib/wikidata';
 import { runVisionOcr as defaultRunVisionOcr } from '../lib/vision-ocr';
 import { searchWine as defaultSearchWine } from '../lib/tavily-search';
+import { searchVivino as defaultSearchVivino, queryVivino } from '../lib/vivino-search';
 import type { Env } from '../index';
 
 export type WineCandidate = { title?: string; snippet?: string; sourceUrl?: string; imageUrl?: string };
@@ -21,6 +22,8 @@ export type RecognizeDeps = {
   enrichFromWikidata: typeof defaultEnrichFromWikidata;
   runVisionOcr: (photoBase64: string) => ReturnType<typeof defaultRunVisionOcr>;
   searchWine: (query: string) => ReturnType<typeof defaultSearchWine>;
+  // Optional so callers (and tests) that only exercise other paths can omit it.
+  searchVivino?: (query: string) => ReturnType<typeof defaultSearchVivino>;
 };
 
 function defaultDeps(env: Env): RecognizeDeps {
@@ -29,6 +32,7 @@ function defaultDeps(env: Env): RecognizeDeps {
     enrichFromWikidata: defaultEnrichFromWikidata,
     runVisionOcr: (photoBase64) => defaultRunVisionOcr(env.AI, photoBase64),
     searchWine: (query) => defaultSearchWine(query, env.TAVILY_API_KEY),
+    searchVivino: (query) => defaultSearchVivino(query),
   };
 }
 
@@ -104,11 +108,20 @@ export async function buildSuggestion(
   // ranks a retailer's page above the producer's own site, so this doesn't
   // guess which one is "right" — it hands back a few and the frontend lets
   // the user pick, same review-before-save principle as everywhere else.
+  //
+  // Vivino's own search first — the same results the user sees on
+  // vivino.com, with each wine's real photo, and no Tavily credit spent.
+  // Tavily only when Vivino fails or finds nothing (vivino-search.ts).
   if (body.query && !suggestion.name) {
     suggestion.name = body.query;
-    const web = await deps.searchWine(body.query);
-    if (web?.candidates.length) suggestion.candidates = web.candidates;
-    await logTavilyUsage(env, web?.creditsUsed);
+    const vivino = await deps.searchVivino?.(body.query);
+    if (vivino?.length) {
+      suggestion.candidates = vivino;
+    } else {
+      const web = await deps.searchWine(body.query);
+      if (web?.candidates.length) suggestion.candidates = web.candidates;
+      await logTavilyUsage(env, web?.creditsUsed);
+    }
   }
 
   if (suggestion.name && !suggestion.grapeVariety) {
@@ -121,6 +134,15 @@ export async function buildSuggestion(
 
 export const recognizeRoutes = new Hono<{ Bindings: Env; Variables: { userId: number } }>();
 recognizeRoutes.use('*', requireAuth);
+
+// Reports what the Vivino search actually receives from the deployed Worker
+// (status, hit count, field names, mapped candidates) — it is an unofficial
+// endpoint that can't be exercised from the dev sandbox. Never calls Tavily.
+recognizeRoutes.get('/debug', async (c) => {
+  const q = c.req.query('q')?.trim();
+  if (!q) return c.json({ error: 'q required' }, 400);
+  return c.json(await queryVivino(q));
+});
 
 recognizeRoutes.post('/', async (c) => {
   const body = await c.req.json<{ barcode?: string; photoBase64?: string; query?: string }>();

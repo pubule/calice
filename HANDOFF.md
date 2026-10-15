@@ -737,6 +737,30 @@ questo file è il riassunto "dove eravamo rimasti".
       overflow; test di integrazione 11/11 e audit invariati.
       `CACHE` a `v86`, `build 86`.
 
+22. **Ricerca vini sul web: prima Vivino, poi Tavily.** Segnalazione
+    utente con screenshot su "ambrosini batud": tutti i vini Ambrosini in
+    lista, un titolo con "| Vivino Português (Brasil)" e la stessa foto
+    (sbagliata) su ogni riga, mentre la ricerca di vivino.com/IT/it era
+    corretta.
+    - Nuovo `worker/src/lib/vivino-search.ts`: interroga l'indice di
+      ricerca di Vivino (Algolia, chiave pubblica del loro frontend).
+      `buildSuggestion()` lo usa per primo sulle ricerche per nome; se
+      fallisce o non trova nulla, si passa a Tavily. **Non verificato dal
+      vivo**: da questo ambiente vivino.com, algolia.net e api.tavily.com
+      sono bloccati dalla policy di rete. App id, chiave e nome dell'indice
+      sono quelli noti del frontend di Vivino ma vanno confermati dopo il
+      deploy con `GET /api/wines/recognize/debug?q=ambrosini` (da browser,
+      dopo il login): `ok:true` e `hitCount>0` = funziona; altrimenti
+      `status`/`error` dicono cosa correggere in `VIVINO_ALGOLIA`. Finché
+      non funziona, l'app usa Tavily come prima, ma con i filtri corretti.
+    - Riserva Tavily: filtro su tutte le parole (con 3+ parole ne può
+      mancare una), parole doppie contate una volta, parole generiche
+      ignorate (tenuta, cantina, DOCG, IGT…), suffisso "| Vivino …" tolto
+      per intero, niente immagini.
+    - Test: 138 verdi (nuovi test su Vivino, sul fallback, sul caso
+      "ambrosini batud" e sul suffisso brasiliano). Solo worker: shell
+      invariato, `CACHE` resta `v86`.
+
 ## Cose note, non (ancora) da rifare
 
 - `status-bar-style` è `black-translucent` (non più `default`), `.screen`
