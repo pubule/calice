@@ -805,6 +805,16 @@ questo file è il riassunto "dove eravamo rimasti".
     in produzione c'erano 7 note di prova sulla bottiglia 10 (id 2–8, 15/10
     sera, nessun testo reale): cancellate su richiesta dell'utente.
 
+25. **"Salva nota" ripetuto aggiorna invece di duplicare** (build 90,
+    richiesta utente). Nuovo `PATCH /api/bottles/:bottleId/notes/:noteId`
+    (solo l'autore, solo su quella bottiglia; overwrite completo di tutti i
+    campi, validazione condivisa con il POST in `validateNote()`). Nella
+    scheda del vino il primo tocco crea la nota, il modulo resta compilato,
+    il pulsante diventa "Aggiorna nota" e i tocchi successivi aggiornano la
+    stessa nota ("Nota aggiornata"). Riaprendo la scheda il compositore
+    riparte vuoto per una nota nuova (prima non veniva mai azzerato fra una
+    bottiglia e l'altra). Test: 141 verdi.
+
 ## Cose note, non (ancora) da rifare
 
 - `status-bar-style` è `black-translucent` (non più `default`), `.screen`

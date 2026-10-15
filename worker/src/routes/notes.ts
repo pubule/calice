@@ -32,42 +32,77 @@ function parseNote(row: Record<string, unknown> | null) {
   };
 }
 
+type NoteBody = {
+  rating: number; text: string; flavorTags?: string[]; foodPairings?: string[];
+  tasteAcidity?: number | null; tasteSweetness?: number | null; tasteTannin?: number | null; tasteBody?: number | null;
+};
+
+// Shared by create and update: same rules either way.
+function validateNote(body: NoteBody): string | null {
+  if (typeof body.rating !== 'number' || Number.isNaN(body.rating) || body.rating < 0 || body.rating > 5) {
+    return 'rating must be a number between 0 and 5';
+  }
+  if (typeof body.text !== 'string' || body.text.length > 2000) return 'text must be a string up to 2000 chars';
+  if (body.flavorTags != null && !isTagArray(body.flavorTags)) {
+    return `flavorTags must be an array of up to ${MAX_TAGS} strings (max ${MAX_TAG_LEN} chars each)`;
+  }
+  if (body.foodPairings != null && !isTagArray(body.foodPairings)) {
+    return `foodPairings must be an array of up to ${MAX_TAGS} strings (max ${MAX_TAG_LEN} chars each)`;
+  }
+  for (const axis of TASTE_AXES) {
+    if (!isTasteValue(body[axis])) return `${axis} must be an integer between 0 and 100`;
+  }
+  return null;
+}
+
+function noteValues(body: NoteBody) {
+  return [
+    body.rating, body.text,
+    body.flavorTags?.length ? JSON.stringify(body.flavorTags) : null,
+    body.foodPairings?.length ? JSON.stringify(body.foodPairings) : null,
+    body.tasteAcidity ?? null, body.tasteSweetness ?? null, body.tasteTannin ?? null, body.tasteBody ?? null,
+  ];
+}
+
 noteRoutes.post('/:bottleId/notes', async (c) => {
   const bottleId = Number(c.req.param('bottleId'));
   const userId = c.get('userId');
   const bottle = await c.env.DB.prepare('select cellar_id from bottles where id = ?').bind(bottleId).first<{ cellar_id: number }>();
   if (!bottle || !(await isCellarMember(c.env.DB, bottle.cellar_id, userId))) return c.json({ error: 'not found' }, 404);
-  const body = await c.req.json<{
-    rating: number; text: string; flavorTags?: string[]; foodPairings?: string[];
-    tasteAcidity?: number | null; tasteSweetness?: number | null; tasteTannin?: number | null; tasteBody?: number | null;
-  }>();
-  if (typeof body.rating !== 'number' || Number.isNaN(body.rating) || body.rating < 0 || body.rating > 5) {
-    return c.json({ error: 'rating must be a number between 0 and 5' }, 400);
-  }
-  if (typeof body.text !== 'string' || body.text.length > 2000) {
-    return c.json({ error: 'text must be a string up to 2000 chars' }, 400);
-  }
-  if (body.flavorTags != null && !isTagArray(body.flavorTags)) {
-    return c.json({ error: `flavorTags must be an array of up to ${MAX_TAGS} strings (max ${MAX_TAG_LEN} chars each)` }, 400);
-  }
-  if (body.foodPairings != null && !isTagArray(body.foodPairings)) {
-    return c.json({ error: `foodPairings must be an array of up to ${MAX_TAGS} strings (max ${MAX_TAG_LEN} chars each)` }, 400);
-  }
-  for (const axis of TASTE_AXES) {
-    if (!isTasteValue(body[axis])) return c.json({ error: `${axis} must be an integer between 0 and 100` }, 400);
-  }
+  const body = await c.req.json<NoteBody>();
+  const error = validateNote(body);
+  if (error) return c.json({ error }, 400);
   const note = await c.env.DB
     .prepare(
       `insert into tasting_notes (bottle_id, user_id, rating, text, flavor_tags, food_pairings, taste_acidity, taste_sweetness, taste_tannin, taste_body)
        values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) returning *`,
     )
-    .bind(
-      bottleId, userId, body.rating, body.text,
-      body.flavorTags?.length ? JSON.stringify(body.flavorTags) : null,
-      body.foodPairings?.length ? JSON.stringify(body.foodPairings) : null,
-      body.tasteAcidity ?? null, body.tasteSweetness ?? null, body.tasteTannin ?? null, body.tasteBody ?? null,
-    )
+    .bind(bottleId, userId, ...noteValues(body))
     .first();
+  return c.json(parseNote(note));
+});
+
+// Saving again from the same open sheet updates the note it just created
+// instead of adding a near-identical one. The client always sends the whole
+// composer, so every field is overwritten (CLAUDE.md: no coalesce when the
+// client sends the full form). Only the note's author, on that bottle.
+noteRoutes.patch('/:bottleId/notes/:noteId', async (c) => {
+  const bottleId = Number(c.req.param('bottleId'));
+  const noteId = Number(c.req.param('noteId'));
+  const userId = c.get('userId');
+  const body = await c.req.json<NoteBody>();
+  const error = validateNote(body);
+  if (error) return c.json({ error }, 400);
+  const note = await c.env.DB
+    .prepare(
+      `update tasting_notes
+       set rating = ?, text = ?, flavor_tags = ?, food_pairings = ?, taste_acidity = ?, taste_sweetness = ?, taste_tannin = ?, taste_body = ?
+       where id = ? and bottle_id = ? and user_id = ?
+       returning *`,
+    )
+    .bind(...noteValues(body), noteId, bottleId, userId)
+    .first();
+  if (!note) return c.json({ error: 'not found' }, 404);
   return c.json(parseNote(note));
 });
 

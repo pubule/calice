@@ -8,6 +8,9 @@ import { tastingProfileHtml, wireTastingProfile, resetTastingProfile, readTastin
 let currentBottleId = null;
 let currentBottle = null; // same object reference cellar.js's currentBottles holds, mutated in place on save
 let currentMeId = null;
+// The note saved from the composer since the sheet was opened: saving again
+// updates it instead of adding a near-identical one. Cleared on every open.
+let savedNoteId = null;
 
 function noteHtml(n) {
   // rating/text/author_name all come from the API as unvalidated JSON (no
@@ -142,12 +145,18 @@ async function loadPhotos(bottleId) {
   });
 }
 
+let resetNoteComposerFn = () => {};
+function resetNoteComposer() {
+  resetNoteComposerFn();
+}
+
 export async function openDetail(bottle, me) {
   currentBottleId = bottle.id;
   currentBottle = bottle;
   currentMeId = me.id;
   document.getElementById('detail-overlay').classList.add('open');
   hideUndo();
+  resetNoteComposer();
   renderQuantity();
   renderHero(bottle);
   await Promise.all([loadNotes(currentBottleId), loadPhotos(currentBottleId)]);
@@ -219,6 +228,13 @@ function wireStaticControls() {
   wireTastingProfile(detailTaste);
 
   const noteSubmit = document.getElementById('note-submit');
+  resetNoteComposerFn = () => {
+    savedNoteId = null;
+    noteSubmit.textContent = 'Salva nota';
+    document.getElementById('note-text').value = '';
+    document.querySelectorAll('#detail-overlay .stars-input span').forEach((s) => { s.classList.remove('on'); s.setAttribute('aria-checked', 'false'); });
+    resetTastingProfile(detailTaste);
+  };
   noteSubmit?.addEventListener('click', async () => {
     if (currentBottleId == null || noteSubmit.disabled) return;
     const textEl = document.getElementById('note-text');
@@ -236,17 +252,22 @@ function wireStaticControls() {
     // tap looked like it did nothing, and repeated taps saved the same note
     // five times in production. A failure used to be silent too.
     noteSubmit.disabled = true;
+    const payload = {
+      rating,
+      text,
+      flavorTags: profile.flavorTags,
+      foodPairings: profile.foodPairings,
+      tasteAcidity: profile.tasteAcidity,
+      tasteSweetness: profile.tasteSweetness,
+      tasteTannin: profile.tasteTannin,
+      tasteBody: profile.tasteBody,
+    };
+    const updating = savedNoteId != null;
     try {
-      await api.post(`/api/bottles/${currentBottleId}/notes`, {
-        rating,
-        text,
-        flavorTags: profile.flavorTags,
-        foodPairings: profile.foodPairings,
-        tasteAcidity: profile.tasteAcidity,
-        tasteSweetness: profile.tasteSweetness,
-        tasteTannin: profile.tasteTannin,
-        tasteBody: profile.tasteBody,
-      });
+      const note = updating
+        ? await api.patch(`/api/bottles/${currentBottleId}/notes/${savedNoteId}`, payload)
+        : await api.post(`/api/bottles/${currentBottleId}/notes`, payload);
+      savedNoteId = note?.id ?? savedNoteId;
     } catch (err) {
       console.error(err);
       await alertModal('Non è stato possibile salvare la nota. Riprova.', { title: 'Nota non salvata' });
@@ -254,13 +275,10 @@ function wireStaticControls() {
     } finally {
       noteSubmit.disabled = false;
     }
-    showToast('Nota salvata');
-    textEl.value = '';
-    starsGroup.querySelectorAll('span').forEach((s) => {
-      s.classList.remove('on');
-      s.setAttribute('aria-checked', 'false');
-    });
-    resetTastingProfile(detailTaste);
+    // The composer keeps what was saved: tapping again (after a change or
+    // not) updates this same note rather than creating another.
+    showToast(updating ? 'Nota aggiornata' : 'Nota salvata');
+    noteSubmit.textContent = 'Aggiorna nota';
     await loadNotes(currentBottleId);
   });
 

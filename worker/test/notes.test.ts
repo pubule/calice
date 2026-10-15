@@ -139,4 +139,20 @@ describe('tasting notes visibility', () => {
     );
     expect(res.status).toBe(400);
   });
+
+  it('updates the author\'s own note in place (full overwrite), and refuses anyone else', async () => {
+    const json = { ...ownerAuth, 'content-type': 'application/json' };
+    const created = await (await app.request(`/api/bottles/${bottleId}/notes`, { method: 'POST', body: JSON.stringify({ rating: 3, text: 'Prima', flavorTags: ['Ciliegia'], tasteAcidity: 40 }), headers: json }, env)).json<{ id: number }>();
+    const res = await app.request(`/api/bottles/${bottleId}/notes/${created.id}`, { method: 'PATCH', body: JSON.stringify({ rating: 5, text: 'Dopo', tasteAcidity: 70 }), headers: json }, env);
+    expect(res.status).toBe(200);
+    const updated = await res.json<any>();
+    expect(updated).toMatchObject({ id: created.id, rating: 5, text: 'Dopo', taste_acidity: 70, flavor_tags: [] });
+    expect((await env.DB.prepare('select count(*) as n from tasting_notes').first<{ n: number }>())?.n).toBe(1);
+
+    const stranger = await signup('stranger@notes.com');
+    const denied = await app.request(`/api/bottles/${bottleId}/notes/${created.id}`, { method: 'PATCH', body: JSON.stringify({ rating: 1, text: 'x' }), headers: { ...stranger.auth, 'content-type': 'application/json' } }, env);
+    expect(denied.status).toBe(404);
+    const bad = await app.request(`/api/bottles/${bottleId}/notes/${created.id}`, { method: 'PATCH', body: JSON.stringify({ rating: 9, text: 'x' }), headers: json }, env);
+    expect(bad.status).toBe(400);
+  });
 });
