@@ -28,13 +28,23 @@ function resultRowHtml(w) {
     </div>`;
 }
 
-async function addWineToCellar(wineId) {
+// null = the user pressed Annulla: abort, don't default to adding 1.
+async function askQuantity() {
   const raw = await promptModal('Quante bottiglie?', { title: 'Aggiungi alla cantina', defaultValue: '1', inputType: 'number', confirmLabel: 'Aggiungi' });
-  if (raw === null) return null; // user pressed Annulla — abort, don't default to adding 1
-  const quantity = Number(raw) || 1;
+  if (raw === null) return null;
+  return Number(raw) || 1;
+}
+
+async function postBottle(wineId, quantity) {
   const bottle = await api.post(`/api/cellars/${currentCellarId}/bottles`, { wineId, quantity });
   await alertModal('Aggiunto alla cantina');
   return bottle;
+}
+
+async function addWineToCellar(wineId) {
+  const quantity = await askQuantity();
+  if (quantity === null) return null;
+  return postBottle(wineId, quantity);
 }
 
 async function uploadBottlePhoto(bottleId, file) {
@@ -588,10 +598,17 @@ async function saveRecognizedWine() {
   // worth blocking the save over).
   const imageUrl = pendingImageUrl && pendingImageUrl.length <= 200 ? pendingImageUrl : undefined;
 
+  // Quantity first, before anything is created: asking after POST /api/wines
+  // meant that Annulla left an orphan wine in the shared catalog (it then
+  // showed up in every search). On Annulla the sheet stays open with the
+  // form and the tasting note intact.
+  const quantity = await askQuantity();
+  if (quantity === null) return;
+
   try {
     const wine = await api.post('/api/wines', { name, producer, country, region, type, vintage, grapeVariety, denomination, imageUrl, barcode: pendingBarcode });
     closeRecognizeSheet();
-    const bottle = await addWineToCellar(wine.id);
+    const bottle = await postBottle(wine.id, quantity);
     if (bottle) {
       await maybeSaveNote(bottle.id);
       if (pendingPhotoFile) {
@@ -621,7 +638,18 @@ document.getElementById('scan-label-tile')?.addEventListener('click', runLabelSc
 document.getElementById('camera-close')?.addEventListener('click', closeCamera);
 document.getElementById('manual-add-link')?.addEventListener('click', () => openRecognizeSheet({}));
 document.getElementById('recognize-close')?.addEventListener('click', closeRecognizeSheet);
-document.getElementById('recognize-save')?.addEventListener('click', saveRecognizedWine);
+// Disabled for the whole save: a second tap while POST /api/wines is in
+// flight would create the wine (and the bottle, and the note) twice.
+const recognizeSave = document.getElementById('recognize-save');
+recognizeSave?.addEventListener('click', async () => {
+  if (recognizeSave.disabled) return;
+  recognizeSave.disabled = true;
+  try {
+    await saveRecognizedWine();
+  } finally {
+    recognizeSave.disabled = false;
+  }
+});
 document.getElementById('rec-photo-pick')?.addEventListener('click', () => document.getElementById('rec-photo-input')?.click());
 document.getElementById('rec-photo-input')?.addEventListener('change', async (e) => {
   const file = e.target.files?.[0];

@@ -815,6 +815,26 @@ questo file è il riassunto "dove eravamo rimasti".
     riparte vuoto per una nota nuova (prima non veniva mai azzerato fra una
     bottiglia e l'altra). Test: 141 verdi.
 
+26. **Nota scritta durante l'aggiunta di un vino: testata end-to-end**
+    (build 91). Test con il Worker vero in locale (`wrangler dev --local`
+    con D1 migrato) e la sola ricerca Vivino simulata: la nota del foglio
+    "Rivedi e conferma" si salva con testo, stelle, aromi, abbinamenti e
+    cursori, compare nella scheda del vino, e il compositore riparte vuoto.
+    Due difetti trovati e corretti in `add.js`:
+    - la quantità veniva chiesta **dopo** aver creato il vino: "Annulla"
+      lasciava un vino orfano nel catalogo condiviso (poi visibile in ogni
+      ricerca) e la nota spariva. Ora la quantità si chiede prima; con
+      "Annulla" il foglio resta aperto con modulo e nota intatti;
+    - "Salva" non si disattivava: un secondo tocco durante la creazione del
+      vino lo avrebbe creato due volte. Ora resta disattivato per tutto il
+      salvataggio (verificato rallentando la richiesta di proposito).
+    - **Aperto, non toccato**: ogni aggiunta da ricerca web crea un vino
+      nuovo nel catalogo anche se uno identico esiste già (due "Franciacorta
+      Batudè Brut" dopo due aggiunte). Proposta: riusare il vino esistente
+      con stesso nome + produttore + annata.
+    - Nota tecnica: `pkill -f "wrangler dev"` (e simili) uccide anche la
+      shell che lo lancia, perché il suo testo contiene lo stesso pattern.
+
 ## Cose note, non (ancora) da rifare
 
 - `status-bar-style` è `black-translucent` (non più `default`), `.screen`
