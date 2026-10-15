@@ -3,11 +3,22 @@
 // the bottle detail sheet's note composer (detail.js) and the add/edit-wine
 // sheet (add.js) — same markup, same wiring, so the two contexts never drift
 // into two different implementations of the same control.
+// Aroma families follow the tasting lexicons sommeliers use (WSET's
+// systematic approach, AIS): primary fruit/floral/vegetal/spice, secondary
+// oak and lees/yeast (the whole Franciacorta/Champagne vocabulary), tertiary
+// evolution, mineral. Tags are stored as their plain label (flavor_tags is a
+// JSON array of strings), so a label already used in saved notes must never
+// be renamed — moving it to another family is harmless. No label may appear
+// twice across families: readTastingProfile() would record it twice.
 const FLAVOR_CATEGORIES = [
   {
     id: 'frutta', label: 'Frutta', bg: '#f7e8e9', fg: '#8a3244',
     icon: '<svg viewBox="0 0 28 28" fill="currentColor"><circle cx="10" cy="16" r="5"/><circle cx="17" cy="12" r="5"/><circle cx="18" cy="20" r="4.5"/></svg>',
-    tags: ['Frutti di bosco', 'Ciliegia', 'Prugna', 'Agrumi', 'Mela verde'],
+    tags: [
+      'Fragola', 'Lampone', 'Ciliegia', 'Amarena', 'Ribes', 'Frutti di bosco', 'Mora', 'Mirtillo', 'Prugna',
+      'Mela verde', 'Mela', 'Pera', 'Pesca', 'Albicocca', 'Agrumi', 'Limone', 'Pompelmo', 'Arancia',
+      'Ananas', 'Mango', 'Frutto della passione', 'Banana', 'Melone', 'Fico', 'Uvetta', 'Frutta cotta', 'Confettura',
+    ],
   },
   {
     id: 'floreale', label: 'Floreale', bg: '#f5e9ef', fg: '#8a4a6a',
@@ -21,7 +32,15 @@ const FLAVOR_CATEGORIES = [
         <circle cx="0" cy="0" r="3" fill="#f5e9ef"/>
       </g>
     </svg>`,
-    tags: ['Rosa', 'Violetta', 'Fiori bianchi'],
+    tags: ['Rosa', 'Violetta', 'Fiori bianchi', 'Zagara', 'Acacia', 'Gelsomino', 'Sambuco', 'Camomilla', 'Lavanda', 'Fiori secchi'],
+  },
+  {
+    id: 'vegetale', label: 'Vegetale', bg: '#e8efe3', fg: '#3f6a3a',
+    icon: '<svg viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22C6 12 12 6 22 6c0 10-6 16-16 16z"/><path d="M6 22l9-9"/></svg>',
+    tags: [
+      'Erbaceo', 'Erba tagliata', 'Fieno', 'Peperone verde', 'Foglia di pomodoro', 'Bosso', 'Menta', 'Eucalipto',
+      'Salvia', 'Timo', 'Rosmarino', 'Finocchio', 'Tè', 'Macchia mediterranea',
+    ],
   },
   {
     id: 'spezie', label: 'Spezie', bg: '#f7f0e2', fg: '#8a6a24',
@@ -32,28 +51,51 @@ const FLAVOR_CATEGORIES = [
       <circle cx="15.5" cy="18.5" r="0.9" fill="currentColor" stroke="none"/>
       <circle cx="13.5" cy="20" r="0.9" fill="currentColor" stroke="none"/>
     </svg>`,
-    tags: ['Pepe nero', 'Vaniglia', 'Liquirizia', 'Chiodi di garofano'],
+    tags: ['Pepe nero', 'Pepe bianco', 'Vaniglia', 'Liquirizia', 'Chiodi di garofano', 'Cannella', 'Noce moscata', 'Anice', 'Zenzero', 'Zafferano'],
   },
   {
     id: 'legno', label: 'Legno', bg: '#efe6dc', fg: '#6a4a2a',
     icon: '<svg viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="14" cy="14" r="9"/><circle cx="14" cy="14" r="5.5"/><circle cx="14" cy="14" r="2"/></svg>',
-    tags: ['Legno', 'Tabacco', 'Affumicato', 'Cuoio'],
+    tags: ['Legno', 'Rovere tostato', 'Cedro', 'Cocco', 'Affumicato', 'Tostato', 'Caffè', 'Cacao', 'Cioccolato fondente', 'Resina'],
   },
   {
-    id: 'altro', label: 'Altro', bg: '#e9ece2', fg: '#4a5a3a',
+    id: 'lieviti', label: 'Lieviti', bg: '#f4ead8', fg: '#7a5a2a',
+    icon: '<svg viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13a5 5 0 0 1 3-6h12a5 5 0 0 1 3 6v9H5z"/><path d="M11 11l-2 3M16 11l-2 3M21 11l-2 3"/></svg>',
+    tags: ['Crosta di pane', 'Lievito', 'Brioche', 'Biscotto', 'Pasticceria', 'Burro', 'Panna', 'Yogurt'],
+  },
+  {
+    id: 'evoluto', label: 'Evoluto', bg: '#ece6e0', fg: '#5a4636',
+    icon: '<svg viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M4 14a10 8 0 0 1 20 0z"/><path d="M11 14v7a3 3 0 0 0 6 0v-7"/></svg>',
+    tags: [
+      'Cuoio', 'Tabacco', 'Sottobosco', 'Funghi', 'Tartufo', 'Terra', 'Selvatico', 'Foglie secche', 'Balsamico',
+      'Miele', 'Caramello', 'Mandorla', 'Nocciola', 'Noce', 'Marzapane',
+    ],
+  },
+  {
+    id: 'minerale', label: 'Minerale', bg: '#e6eaec', fg: '#4a5a66',
     icon: '<svg viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4l7.5 6.5L14 24l-7.5-13.5z"/><path d="M7.5 10.5h13"/></svg>',
-    tags: ['Minerale', 'Miele', 'Erbaceo', 'Burro'],
+    tags: ['Minerale', 'Pietra focaia', 'Gesso', 'Grafite', 'Salino', 'Iodato', 'Idrocarburi', 'Ferroso'],
   },
 ];
 
+// The palate structure of a tasting sheet. Column taste_<id> in
+// tasting_notes for each (migrations 0006 and 0007).
 const TASTE_AXES = [
-  { id: 'acidity', name: 'Acidità', left: 'Piatto', right: 'Acidulo' },
-  { id: 'sweetness', name: 'Dolcezza', left: 'Secco', right: 'Dolce' },
-  { id: 'tannin', name: 'Tannicità', left: 'Morbido', right: 'Tannico' },
-  { id: 'body', name: 'Corpo', left: 'Leggero', right: 'Strutturato' },
+  { id: 'acidity', key: 'tasteAcidity', name: 'Acidità', left: 'Piatto', right: 'Acidulo' },
+  { id: 'sweetness', key: 'tasteSweetness', name: 'Dolcezza', left: 'Secco', right: 'Dolce' },
+  { id: 'tannin', key: 'tasteTannin', name: 'Tannicità', left: 'Morbido', right: 'Tannico' },
+  { id: 'alcohol', key: 'tasteAlcohol', name: 'Alcol', left: 'Poco alcolico', right: 'Caldo' },
+  { id: 'body', key: 'tasteBody', name: 'Corpo', left: 'Leggero', right: 'Strutturato' },
+  { id: 'intensity', key: 'tasteIntensity', name: 'Intensità', left: 'Delicato', right: 'Intenso' },
+  { id: 'finish', key: 'tasteFinish', name: 'Persistenza', left: 'Corto', right: 'Persistente' },
 ];
 
-const FOOD_PAIRINGS = ['Manzo', 'Agnello', 'Selvaggina', 'Salumi', 'Formaggi stagionati', 'Pasta', 'Pesce', 'Pizza', 'Dolci', 'Cioccolato'];
+const FOOD_PAIRINGS = [
+  'Aperitivo', 'Antipasti', 'Crudi di mare', 'Frutti di mare', 'Crostacei', 'Sushi', 'Pesce', 'Pollame', 'Maiale',
+  'Manzo', 'Agnello', 'Selvaggina', 'Salumi', 'Formaggi freschi', 'Formaggi stagionati', 'Formaggi erborinati',
+  'Pasta', 'Risotto', 'Pizza', 'Funghi e tartufo', 'Verdure', 'Legumi e zuppe', 'Piatti speziati', 'Cucina asiatica',
+  'Grigliate', 'Fritti', 'Dolci', 'Pasticceria secca', 'Cioccolato', 'Frutta',
+];
 
 const THUMB_W = 46;
 const DEFAULT_VALUE = 50;
@@ -190,28 +232,19 @@ export function resetTastingProfile(root) {
 export function readTastingProfile(root) {
   const flavorTags = Array.from(root.querySelectorAll('.flavor-chip-panel .chip.active[data-toggle]')).map((c) => c.textContent);
   const foodPairings = Array.from(root.querySelectorAll('.chip-row .chip.active[data-toggle]')).map((c) => c.textContent);
-  const values = {};
+  const profile = { flavorTags, foodPairings };
   root.querySelectorAll('.taste-slider').forEach((slider) => {
-    values[slider.dataset.axis] = sliderValue(slider);
+    const axis = TASTE_AXES.find((x) => x.id === slider.dataset.axis);
+    if (axis) profile[axis.key] = sliderValue(slider);
   });
-  return {
-    flavorTags,
-    foodPairings,
-    tasteAcidity: values.acidity,
-    tasteSweetness: values.sweetness,
-    tasteTannin: values.tannin,
-    tasteBody: values.body,
-  };
+  return profile;
 }
 
 export function isTastingProfileEmpty(profile) {
   return (
     profile.flavorTags.length === 0 &&
     profile.foodPairings.length === 0 &&
-    profile.tasteAcidity === DEFAULT_VALUE &&
-    profile.tasteSweetness === DEFAULT_VALUE &&
-    profile.tasteTannin === DEFAULT_VALUE &&
-    profile.tasteBody === DEFAULT_VALUE
+    TASTE_AXES.every((axis) => profile[axis.key] === DEFAULT_VALUE)
   );
 }
 

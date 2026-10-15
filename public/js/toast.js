@@ -28,6 +28,9 @@ export function showToast(message, { actionLabel, onAction, duration = 5000 } = 
   t.querySelector('.toast-msg').textContent = message;
   btn.textContent = actionLabel ?? '';
   btn.classList.toggle('hidden', !actionLabel);
+  // Without an action the pill is text only and needs equal padding on both
+  // sides (the asymmetric default leaves room for the button's own padding).
+  t.classList.toggle('has-action', !!actionLabel);
   // Sit just above the highest point of the tab bar — the raised "+" circle
   // pokes above the bar itself, and the toast is centred right over it.
   // Measured each time: the keyboard can hide the bar (no layout box → 64px

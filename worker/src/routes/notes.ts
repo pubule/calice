@@ -6,8 +6,10 @@ import type { Env } from '../index';
 export const noteRoutes = new Hono<{ Bindings: Env; Variables: { userId: number } }>();
 noteRoutes.use('*', requireAuth);
 
-const TASTE_AXES = ['tasteAcidity', 'tasteSweetness', 'tasteTannin', 'tasteBody'] as const;
-const MAX_TAGS = 20;
+const TASTE_AXES = ['tasteAcidity', 'tasteSweetness', 'tasteTannin', 'tasteBody', 'tasteAlcohol', 'tasteIntensity', 'tasteFinish'] as const;
+// The aroma and pairing lists are long (tasting-profile.js), so a thorough
+// note can legitimately tick more than a handful.
+const MAX_TAGS = 40;
 const MAX_TAG_LEN = 40;
 
 // Flavour notes and food pairings are optional structured tags alongside the
@@ -35,6 +37,7 @@ function parseNote(row: Record<string, unknown> | null) {
 type NoteBody = {
   rating: number; text: string; flavorTags?: string[]; foodPairings?: string[];
   tasteAcidity?: number | null; tasteSweetness?: number | null; tasteTannin?: number | null; tasteBody?: number | null;
+  tasteAlcohol?: number | null; tasteIntensity?: number | null; tasteFinish?: number | null;
 };
 
 // Shared by create and update: same rules either way.
@@ -61,6 +64,7 @@ function noteValues(body: NoteBody) {
     body.flavorTags?.length ? JSON.stringify(body.flavorTags) : null,
     body.foodPairings?.length ? JSON.stringify(body.foodPairings) : null,
     body.tasteAcidity ?? null, body.tasteSweetness ?? null, body.tasteTannin ?? null, body.tasteBody ?? null,
+    body.tasteAlcohol ?? null, body.tasteIntensity ?? null, body.tasteFinish ?? null,
   ];
 }
 
@@ -74,8 +78,9 @@ noteRoutes.post('/:bottleId/notes', async (c) => {
   if (error) return c.json({ error }, 400);
   const note = await c.env.DB
     .prepare(
-      `insert into tasting_notes (bottle_id, user_id, rating, text, flavor_tags, food_pairings, taste_acidity, taste_sweetness, taste_tannin, taste_body)
-       values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) returning *`,
+      `insert into tasting_notes (bottle_id, user_id, rating, text, flavor_tags, food_pairings, taste_acidity, taste_sweetness, taste_tannin, taste_body,
+         taste_alcohol, taste_intensity, taste_finish)
+       values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) returning *`,
     )
     .bind(bottleId, userId, ...noteValues(body))
     .first();
@@ -96,7 +101,8 @@ noteRoutes.patch('/:bottleId/notes/:noteId', async (c) => {
   const note = await c.env.DB
     .prepare(
       `update tasting_notes
-       set rating = ?, text = ?, flavor_tags = ?, food_pairings = ?, taste_acidity = ?, taste_sweetness = ?, taste_tannin = ?, taste_body = ?
+       set rating = ?, text = ?, flavor_tags = ?, food_pairings = ?, taste_acidity = ?, taste_sweetness = ?, taste_tannin = ?, taste_body = ?,
+         taste_alcohol = ?, taste_intensity = ?, taste_finish = ?
        where id = ? and bottle_id = ? and user_id = ?
        returning *`,
     )

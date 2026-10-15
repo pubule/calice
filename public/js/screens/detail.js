@@ -262,6 +262,9 @@ function wireStaticControls() {
       tasteSweetness: profile.tasteSweetness,
       tasteTannin: profile.tasteTannin,
       tasteBody: profile.tasteBody,
+      tasteAlcohol: profile.tasteAlcohol,
+      tasteIntensity: profile.tasteIntensity,
+      tasteFinish: profile.tasteFinish,
     };
     const updating = savedNoteId != null;
     try {

@@ -96,6 +96,9 @@ describe('tasting notes visibility', () => {
           tasteSweetness: 20,
           tasteTannin: 50,
           tasteBody: 78,
+          tasteAlcohol: 65,
+          tasteIntensity: 80,
+          tasteFinish: 90,
         }),
         headers: { ...ownerAuth, 'content-type': 'application/json' },
       },
@@ -108,6 +111,7 @@ describe('tasting notes visibility', () => {
     expect(note.food_pairings).toEqual(['Manzo']);
     expect(note.taste_acidity).toBe(35);
     expect(note.taste_body).toBe(78);
+    expect(note).toMatchObject({ taste_alcohol: 65, taste_intensity: 80, taste_finish: 90 });
 
     const listed = await (await app.request(`/api/bottles/${bottleId}/notes`, { headers: ownerAuth }, env)).json<any[]>();
     expect(listed[0].flavor_tags).toEqual(['Frutti di bosco', 'Prugna']);

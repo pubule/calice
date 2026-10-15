@@ -854,6 +854,22 @@ questo file è il riassunto "dove eravamo rimasti".
       `product` e `object-fit:contain` (bottiglia intera), mentre le foto
       senza `product` restano `cover`.
 
+28. **Profilo di degustazione completo + popup simmetrico** (build 94).
+    - Aromi in 8 famiglie sul lessico WSET/AIS (Frutta, Floreale,
+      Vegetale, Spezie, Legno, Lieviti, Evoluto, Minerale; 102 voci, ex
+      "Altro" ripartito), abbinamenti da 10 a 30. Le etichette sono salvate
+      come testo nelle note: **mai rinominarne una già usata** (spostarla
+      di famiglia è innocuo), e nessuna etichetta ripetuta fra famiglie.
+      `MAX_TAGS` del server alzato a 40.
+    - Cursori da 4 a 7: aggiunti Alcol, Intensità, Persistenza (colonne
+      `taste_alcohol/intensity/finish`, migrazione 0007, applicata dal
+      deploy). `readTastingProfile`/`isTastingProfileEmpty` ora girano su
+      `TASTE_AXES`: un nuovo asse = una voce lì + colonna + `notes.ts` +
+      i due payload in `detail.js`/`add.js`.
+    - Toast senza azione (es. "Nota salvata"): padding uguale ai due lati
+      (classe `has-action` in `toast.js`); prima teneva 6px a destra per il
+      pulsante assente.
+
 ## Cose note, non (ancora) da rifare
 
 - `status-bar-style` è `black-translucent` (non più `default`), `.screen`
