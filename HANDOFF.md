@@ -1221,6 +1221,17 @@ questo file è il riassunto "dove eravamo rimasti".
     della 119 finché l'app non è stata chiusa davvero). Se ricapita: prima
     chiedere il numero di build in Profilo.
 
+52. **Prezzo a bottiglia modificabile** (build 121). `bottles.price_paid`
+    esisteva (valore della cantina, statistiche, CSV) ma nessuna schermata
+    permetteva di inserirlo. Nel foglio "Rivedi e conferma" / "Modifica
+    vino" nuova sezione "La tua bottiglia" con `#rec-price` (€ nel campo):
+    in creazione va nel `POST` della bottiglia, in modifica in un `PATCH
+    /api/bottles/:id` separato (il prezzo è della bottiglia, non del vino
+    condiviso). Il `PATCH` delle bottiglie resta parziale con `coalesce`,
+    tranne il prezzo: `"pricePaid": null` esplicito lo svuota (chiave
+    assente = invariato). Prezzo validato 0-100000 anche nel `POST`. Nella
+    lista Cantina il prezzo si legge "18,50 €" invece di "€18.5".
+
 ## Cose note, non (ancora) da rifare
 
 - `status-bar-style` è `black-translucent` (non più `default`), `.screen`

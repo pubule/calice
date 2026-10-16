@@ -104,6 +104,20 @@ describe('bottles', () => {
     expect(bottles).toHaveLength(0);
   });
 
+  it('sets, keeps and clears the price paid', async () => {
+    const auth = signup('price@b.com');
+    const cellarId = await myCellarId(auth);
+    const post = await app.request(`/api/cellars/${cellarId}/bottles`, { method: 'POST', body: JSON.stringify({ wineId, quantity: 1, pricePaid: 18.5 }), headers: { ...auth, 'content-type': 'application/json' } }, env);
+    const created = await post.json<any>();
+    expect(created.price_paid).toBe(18.5);
+    const patch = (body: object) => app.request(`/api/bottles/${created.id}`, { method: 'PATCH', body: JSON.stringify(body), headers: { ...auth, 'content-type': 'application/json' } }, env);
+    expect((await (await patch({ quantity: 2 })).json<any>()).price_paid).toBe(18.5);
+    expect((await (await patch({ pricePaid: 22 })).json<any>()).price_paid).toBe(22);
+    expect((await (await patch({ pricePaid: null })).json<any>()).price_paid).toBeNull();
+    expect((await patch({ pricePaid: -3 })).status).toBe(400);
+    expect((await patch({ pricePaid: 'tanto' })).status).toBe(400);
+  });
+
   it('deletes a bottle that has a tasting note and a photo without 500ing, and cleans up both', async () => {
     const auth = signup('b4@b.com');
     const cellarId = await myCellarId(auth);

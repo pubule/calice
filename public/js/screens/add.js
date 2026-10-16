@@ -137,9 +137,9 @@ async function askQuantity() {
 
 // `finish` runs before the sheet closes (tasting note, photo upload), so the
 // screen underneath redraws with everything already saved.
-async function postBottle(wineId, quantity, finish) {
+async function postBottle(wineId, quantity, finish, pricePaid) {
   if (!currentCellarId) await (cellarLoad ?? loadCellar());
-  const bottle = await api.post(`/api/cellars/${currentCellarId}/bottles`, { wineId, quantity });
+  const bottle = await api.post(`/api/cellars/${currentCellarId}/bottles`, { wineId, quantity, pricePaid: pricePaid ?? undefined });
   changed = true;
   await finish?.(bottle);
   closeAddSheet();
@@ -1018,6 +1018,7 @@ function openRecognizeSheet(suggestion, capturedPhotoDataUrl) {
   pendingImageUrl = suggestion.imageUrl;
   pendingBarcode = suggestion.barcode;
   pendingVivino = { rating: suggestion.rating, vintageRatings: suggestion.vintageRatings };
+  document.getElementById('rec-price').value = '';
   fillVivinoFields({ alcohol: suggestion.alcohol, producerUrl: suggestion.producerUrl, rating: ratingFor(pendingVivino, suggestion.vintage) });
   pendingPhotoFile = undefined;
   document.getElementById('rec-photo-input').value = '';
@@ -1075,6 +1076,10 @@ export function openEditWineSheet(bottle, onSaved) {
   document.getElementById('rec-vintage').value = bottle.vintage ?? '';
   document.getElementById('rec-grape').value = bottle.grape_variety ?? '';
   document.getElementById('rec-denomination').value = bottle.denomination ?? '';
+  const paid = Number(bottle.price_paid);
+  document.getElementById('rec-price').value = bottle.price_paid != null && Number.isFinite(paid)
+    ? paid.toLocaleString('it-IT', { minimumFractionDigits: Number.isInteger(paid) ? 0 : 2, maximumFractionDigits: 2, useGrouping: false })
+    : '';
   pendingVivino = bottle.vivino_rating != null ? { rating: { average: Number(bottle.vivino_rating), count: bottle.vivino_ratings_count ?? null } } : null;
   fillVivinoFields({ alcohol: bottle.alcohol, producerUrl: bottle.producer_url, rating: pendingVivino?.rating });
   resetNoteComposer();
@@ -1148,10 +1153,18 @@ async function saveRecognizedWine() {
   const denomination = document.getElementById('rec-denomination').value.trim() || undefined;
   const extras = await readVivinoFields(vintage);
   if (!extras) return;
+  // Price per bottle: belongs to the bottle, not to the shared wine.
+  const priceRead = readDecimal('rec-price');
+  if (priceRead.invalid || (priceRead.value != null && !(priceRead.value >= 0 && priceRead.value <= 100000))) {
+    await alertModal('Il prezzo deve essere un numero, per esempio 18 o 18,50.');
+    return;
+  }
+  const pricePaid = priceRead.value;
 
   if (sheetMode === 'edit') {
     try {
       await api.patch(`/api/wines/${editingWineId}`, { name, producer, country, region, type, vintage, grapeVariety, denomination, ...extras });
+      await api.patch(`/api/bottles/${editingBottleId}`, { pricePaid });
       closeRecognizeSheet();
       if (pendingPhotoFile) {
         try {
@@ -1199,7 +1212,7 @@ async function saveRecognizedWine() {
           await alertModal('Vino salvato, ma il caricamento della foto è fallito.');
         }
       }
-    });
+    }, pricePaid);
   } catch (err) {
     console.error(err);
     await alertModal('Impossibile aggiungere il vino: controlla i dati inseriti e riprova.');

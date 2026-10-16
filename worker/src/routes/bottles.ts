@@ -31,6 +31,7 @@ cellarBottleRoutes.post('/:cellarId/bottles', async (c) => {
   const userId = c.get('userId');
   if (!(await isCellarMember(c.env.DB, cellarId, userId))) return c.json({ error: 'not a member' }, 403);
   const body = await c.req.json<{ wineId: number; quantity: number; pricePaid?: number; shelfLocation?: string; drinkFrom?: string; drinkUntil?: string }>();
+  if (!isPrice(body.pricePaid)) return c.json({ error: 'pricePaid must be a number between 0 and 100000' }, 400);
   const bottle = await c.env.DB
     .prepare(
       `insert into bottles (cellar_id, wine_id, quantity, price_paid, shelf_location, drink_from, drink_until, added_by)
@@ -45,6 +46,10 @@ cellarBottleRoutes.post('/:cellarId/bottles', async (c) => {
   return c.json(bottle);
 });
 
+function isPrice(v: unknown): boolean {
+  return v == null || (typeof v === 'number' && Number.isFinite(v) && v >= 0 && v <= 100000);
+}
+
 export const bottleRoutes = new Hono<{ Bindings: Env; Variables: { userId: number } }>();
 bottleRoutes.use('*', requireAuth);
 
@@ -57,18 +62,23 @@ async function assertBottleAccess(env: Env, bottleId: number, userId: number): P
 bottleRoutes.patch('/:id', async (c) => {
   const id = Number(c.req.param('id'));
   if (!(await assertBottleAccess(c.env, id, c.get('userId')))) return c.json({ error: 'not found' }, 404);
-  const body = await c.req.json<Partial<{ quantity: number; pricePaid: number; shelfLocation: string; drinkFrom: string; drinkUntil: string }>>();
+  const body = await c.req.json<Partial<{ quantity: number; pricePaid: number | null; shelfLocation: string; drinkFrom: string; drinkUntil: string }>>();
+  if (!isPrice(body.pricePaid)) return c.json({ error: 'pricePaid must be a number between 0 and 100000' }, 400);
+  // Fields are partial (coalesce: omitted = unchanged), except the price:
+  // "pricePaid": null clears it (the edit sheet's field emptied), which
+  // coalesce could never do. Omitting it still leaves it as it is.
+  const priceGiven = 'pricePaid' in body ? 1 : 0;
   const bottle = await c.env.DB
     .prepare(
       `update bottles set
          quantity = coalesce(?, quantity),
-         price_paid = coalesce(?, price_paid),
+         price_paid = case when ? then ? else price_paid end,
          shelf_location = coalesce(?, shelf_location),
          drink_from = coalesce(?, drink_from),
          drink_until = coalesce(?, drink_until)
        where id = ? returning *`,
     )
-    .bind(body.quantity ?? null, body.pricePaid ?? null, body.shelfLocation ?? null, body.drinkFrom ?? null, body.drinkUntil ?? null, id)
+    .bind(body.quantity ?? null, priceGiven, body.pricePaid ?? null, body.shelfLocation ?? null, body.drinkFrom ?? null, body.drinkUntil ?? null, id)
     .first();
   return c.json(bottle);
 });

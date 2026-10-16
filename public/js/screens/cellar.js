@@ -72,7 +72,10 @@ function rowHtml(b) {
   const photo = photoClass(b.type);
   const name = escapeHtml(b.name);
   const sub = `${escapeHtml(b.producer)} · ${escapeHtml(b.region ?? b.country)}`;
-  const price = b.price_paid != null ? `€${escapeHtml(b.price_paid)}` : '—';
+  const pp = Number(b.price_paid);
+  const price = b.price_paid != null && Number.isFinite(pp)
+    ? `${pp.toLocaleString('it-IT', { minimumFractionDigits: Number.isInteger(pp) ? 0 : 2, maximumFractionDigits: 2 })} €`
+    : '—';
   const score = b.score != null ? b.score.toFixed(1) : '—';
   const loc = locationLabel(b);
   const quantity = escapeHtml(b.quantity);
