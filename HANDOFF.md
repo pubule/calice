@@ -1376,6 +1376,13 @@ questo file è il riassunto "dove eravamo rimasti".
     Build 135: il segnaposto restava visibile anche con la foto (due foto
     nel foglio), perché la classe `hidden` non aveva una regola: aggiunta
     per segnaposto, pulsanti foto e credito del paesaggio.
+    Build 136: su iPhone l'incolla nel riquadro non dava né file né link
+    ("Non è un'immagine" con la foto negli appunti): iOS inserisce l'immagine
+    nel riquadro come `<img>` (src `webkit-fake-url:`/`blob:`). Ora la paste
+    non viene bloccata in quel caso: si legge l'`<img>` inserito e lo si
+    ridisegna su canvas in un PNG; idem per il suggerimento "Incolla da
+    Foto" della tastiera (evento `input`). Da verificare su device: se il
+    canvas risultasse "tainted" il messaggio d'errore ricompare.
 
 61. **Voto personale nella lista, dato dalle stelle della scheda** (build
     131-132). Nella riga di Cantina, al posto della posizione: "★ 4,0" (voto
