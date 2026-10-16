@@ -52,7 +52,6 @@ function aromasByWine(tags) {
 }
 const ALL_TAGS = FLAVOR_CATEGORIES.flatMap((f) => f.tags);
 const WINE_AROMAS = aromasByWine(ALL_TAGS);
-const WINE_AROMAS_BY_NAME = (w) => WINE_AROMAS.get(w) ?? [];
 
 // A family's wines: those named for the most of its aromas first (ties keep
 // wheel order), each with the aromas of this family it shows.
@@ -85,15 +84,6 @@ function buildDial() {
       const [x, y] = pt(136, a0 + (STEP * (k + 0.5)) / 6);
       spin.appendChild(svgEl('circle', { cx: x, cy: y, r: 2.2, fill: f.fg, opacity: 0.5, 'pointer-events': 'none' }));
     }
-    // How many of the filtered wine's aromas sit in this family (hidden
-    // without a wine filter). Rotated with the slice like its label.
-    const [bx, by] = pt(132, i * STEP);
-    const badge = svgEl('g', { class: 'aroma-badge', 'pointer-events': 'none', transform: `rotate(${i * STEP} ${bx} ${by})` });
-    badge.dataset.idx = i;
-    badge.appendChild(svgEl('circle', { cx: bx, cy: by, r: 9.5, fill: f.fg }));
-    const bt = svgEl('text', { x: bx, y: by + 0.5, 'text-anchor': 'middle', 'dominant-baseline': 'middle', 'font-size': 11, 'font-weight': 700, fill: '#ffffff' });
-    badge.appendChild(bt);
-    spin.appendChild(badge);
     const [x, y] = pt(104, i * STEP);
     const label = svgEl('text', {
       x, y, 'text-anchor': 'middle', 'dominant-baseline': 'middle', 'font-size': 12, 'font-weight': 600,
@@ -140,7 +130,7 @@ function tagCardHtml(tag) {
   const wines = (TAG_WINES[tag] ?? []).map((w) => [w, [tag, ...(WINE_AROMAS.get(w) ?? []).filter((t) => t !== tag)].slice(0, 6)]);
   const body = TAG_NOTES[tag]
     ? `<p class="aroma-card-desc">${escapeHtml(TAG_NOTES[tag])}</p>`
-    : wines.length && !filterWine
+    : wines.length
       ? `<div class="field-label">Vini in cui si trova</div>${wineRowsHtml(wines)}`
       : `<p class="aroma-card-desc">${escapeHtml(guide.desc)}</p>`;
   return `
@@ -156,30 +146,18 @@ function renderWheelPane() {
   const f = FLAVOR_CATEGORIES[famIdx];
   const spin = document.querySelector('#aroma-dial .aroma-spin');
   if (spin) spin.style.transform = `rotate(${rotation}deg)`;
-  const wineTags = filterWine ? WINE_AROMAS_BY_NAME(filterWine) : [];
-  const countIn = (i) => wineTags.filter((t) => FLAVOR_CATEGORIES[i].tags.includes(t)).length;
   document.querySelectorAll('#aroma-dial path[data-idx]').forEach((p) => {
-    const i = Number(p.dataset.idx);
-    if (!filterWine) p.style.opacity = i === famIdx ? '1' : '0.55';
-    else p.style.opacity = countIn(i) ? (i === famIdx ? '1' : '0.8') : '0.2';
-  });
-  document.querySelectorAll('#aroma-dial .aroma-badge').forEach((g) => {
-    const n = filterWine ? countIn(Number(g.dataset.idx)) : 0;
-    g.style.display = n ? '' : 'none';
-    g.querySelector('text').textContent = String(n);
+    p.style.opacity = Number(p.dataset.idx) === famIdx ? '1' : '0.55';
   });
   const label = document.getElementById('aroma-dial-label');
   label.textContent = f.label;
   label.style.color = f.fg;
-  const n = countIn(famIdx);
-  document.querySelector('.aroma-hint').textContent = filterWine
-    ? (n ? `${n} ${n === 1 ? 'aroma tipico' : 'aromi tipici'} di ${filterWine} in questa famiglia` : `Nessun aroma tipico di ${filterWine} qui`)
-    : 'Trascina la ruota o usa le frecce';
-  // With a wine chosen, "Cosa aspettarti" already lists its aromas family by
-  // family, so the family card would only repeat them: the dial highlights
-  // the matching group there instead.
+  // With a wine chosen the dial has nothing left to add — "Cosa aspettarti"
+  // already lists its aromas family by family — so it steps aside and the
+  // card is the whole answer. Clearing the wine brings the dial back.
+  document.getElementById('aroma-pane-wheel').classList.toggle('filtered', !!filterWine);
   document.getElementById('aroma-card').innerHTML = filterWine
-    ? (selectedTag ? tagCardHtml(selectedTag) : '') + `<div class="aroma-card">${expectationHtml(filterWine, { selectedTag, currentFamily: f.id })}</div>`
+    ? `<div class="aroma-card">${expectationHtml(filterWine, { mine: palate.tags })}</div>`
     : (selectedTag ? tagCardHtml(selectedTag) : '') + familyCardHtml(f);
 }
 
@@ -285,27 +263,14 @@ function wireStaticControls() {
   document.getElementById('aroma-card').addEventListener('click', (e) => {
     const chip = e.target.closest('[data-tag]');
     if (!chip) return;
-    const tag = chip.dataset.tag;
-    selectedTag = selectedTag === tag ? null : tag;
-    // A tag picked from the expectation card may belong to another family:
-    // turn the dial there so the family card below shows it in context.
-    const fi = FLAVOR_CATEGORIES.indexOf(familyOf(tag));
-    if (selectedTag && fi !== famIdx) { const keep = selectedTag; goTo(fi); selectedTag = keep; }
+    selectedTag = selectedTag === chip.dataset.tag ? null : chip.dataset.tag;
     renderWheelPane();
     if (selectedTag) document.querySelector('#aroma-card .aroma-tag-card')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
   });
 }
 
-// With a wine chosen, turn the dial to the family holding most of its
-// aromas: the answer to "what should I expect" is on screen at once.
 function applyWineFilter() {
   selectedTag = null;
-  if (filterWine) {
-    const tags = WINE_AROMAS_BY_NAME(filterWine);
-    let best = famIdx, bestN = -1;
-    FLAVOR_CATEGORIES.forEach((f, i) => { const n = tags.filter((t) => f.tags.includes(t)).length; if (n > bestN) { bestN = n; best = i; } });
-    if (best !== famIdx) { goTo(best); return; }
-  }
   renderWheelPane();
 }
 
@@ -325,4 +290,5 @@ export async function mountAromas() {
     palate = { notes: 0, tags: {} };
   }
   if (pane === 'palate') renderPalatePane();
+  else if (filterWine) renderWheelPane(); // marks need the palate
 }

@@ -609,7 +609,14 @@
   .expect-group{display:flex; flex-direction:column; gap:6px;}
   .expect-fam{font-size:calc(12rem/17); font-weight:600;}
   .expect-group .chip-row{flex-wrap:wrap;}
-  .expect-group.current{background:#f7f5f0; border-radius:12px; padding:8px 10px; margin:0 -10px; box-shadow:inset 3px 0 0 var(--fam);}
+  .expect-head{display:flex; align-items:baseline; justify-content:space-between; gap:10px; flex-wrap:wrap;}
+  .expect-known{font-size:calc(12rem/17); color:#736a5d; display:inline-flex; align-items:center; gap:6px;}
+  .expect-chip{cursor:default;}
+  .expect-chip.mine{border-color:#5b2333; color:#241e1a;}
+  .mine-dot{display:inline-block; width:7px; height:7px; border-radius:50%; background:#5b2333; margin-left:6px; flex-shrink:0;}
+  .expect-known .mine-dot{margin-left:0;}
+  /* A chosen wine replaces the dial with its "Cosa aspettarti" card. */
+  #aroma-pane-wheel.filtered .aroma-dial-wrap, #aroma-pane-wheel.filtered .aroma-dial-nav, #aroma-pane-wheel.filtered .aroma-hint{display:none;}
 
   /* Assaggio guidato (#/assaggio) */
   .tasting-body{display:flex; flex-direction:column; gap:12px;}

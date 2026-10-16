@@ -943,6 +943,13 @@ questo file è il riassunto "dove eravamo rimasti".
       (ripeteva gli aromi già elencati in "Cosa aspettarti"); la ruota
       evidenzia invece il gruppo della famiglia puntata dentro "Cosa
       aspettarti" (`currentFamily` in `expectationHtml`).
+    - Build 100, deciso con l'utente: con un vino filtrato la **ruota
+      sparisce** (con le frecce e la riga d'aiuto; classe `.filtered` sul
+      pannello) e resta solo "Cosa aspettarti"; tolti i numeri sugli spicchi
+      e `currentFamily`. Gli aromi lì sono etichette non toccabili; quelli
+      già presenti nelle proprie note/assaggi hanno un puntino, con
+      "N su M già nelle tue note" accanto al titolo (`mine` da
+      `/api/me/palate`). Tornando a "Tutti i vini" la ruota ricompare.
 
 ## Cose note, non (ancora) da rifare
 

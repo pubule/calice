@@ -34,10 +34,9 @@ export function wineOptionsHtml(type, placeholder) {
 }
 
 // Expected palate as compact read-only bars plus the typical aromas grouped
-// by family (each a tappable [data-tag] chip).
-// `currentFamily` (a family id) highlights that family's group: the wheel's
-// dial points at it.
-export function expectationHtml(wine, { selectedTag = null, currentFamily = null } = {}) {
+// by family, as plain labels. `mine` (aroma → times, from /api/me/palate)
+// marks those already in the user's notes or tastings.
+export function expectationHtml(wine, { mine = {} } = {}) {
   const taste = expectedTaste(wine);
   const bars = TASTE_AXES.map((axis, i) => {
     const v = taste[i];
@@ -47,16 +46,17 @@ export function expectationHtml(wine, { selectedTag = null, currentFamily = null
       <span class="expect-side">${escapeHtml(side)}</span></div>`;
   }).join('');
   const tags = expectedTags(wine);
+  const known = tags.filter((t) => mine[t]).length;
   const groups = FLAVOR_CATEGORIES.map((f) => [f, tags.filter((t) => f.tags.includes(t))]).filter(([, ts]) => ts.length);
   return `
     <span class="aroma-pill" style="background:#f4e8eb;color:#5b2333">Cosa aspettarti</span>
     <div class="aroma-card-title">${escapeHtml(wine)}</div>
     <div class="field-label">Gusto</div>
     <div class="expect-bars">${bars}</div>
-    <div class="field-label">Aromi tipici</div>
+    <div class="expect-head"><span class="field-label">Aromi tipici</span><span class="expect-known">${known ? `<i class="mine-dot" aria-hidden="true"></i>${known} su ${tags.length} già nelle tue note` : 'Nessuno ancora nelle tue note'}</span></div>
     ${groups.map(([f, ts]) => `
-      <div class="expect-group${f.id === currentFamily ? ' current' : ''}" style="--fam:${f.fg}">
+      <div class="expect-group">
         <span class="expect-fam" style="color:${f.fg}">${escapeHtml(f.label)}</span>
-        <div class="chip-row">${ts.map((t) => `<div class="chip${t === selectedTag ? ' active' : ''}" data-tag="${escapeHtml(t)}" role="button" tabindex="0" aria-pressed="${t === selectedTag}">${escapeHtml(t)}</div>`).join('')}</div>
+        <div class="chip-row">${ts.map((t) => `<span class="chip expect-chip${mine[t] ? ' mine' : ''}">${escapeHtml(t)}${mine[t] ? '<i class="mine-dot" aria-label="già nelle tue note"></i>' : ''}</span>`).join('')}</div>
       </div>`).join('')}`;
 }
