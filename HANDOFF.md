@@ -1242,6 +1242,9 @@ questo file è il riassunto "dove eravamo rimasti".
     "Rivedi e conferma" sostituisce la finestra "Quante bottiglie?" (resta
     solo per l'aggiunta da codice a barre). Server: quantità intera 1-9999
     nel `POST`, 0-9999 nel `PATCH` (prima nessun controllo).
+    Build 124: il pulsante della scheda "Modifica vino" si chiama ora solo
+    "Modifica" (il foglio modifica anche bottiglie e prezzo; il titolo del
+    foglio resta "Modifica vino").
 
 ## Cose note, non (ancora) da rifare
 
