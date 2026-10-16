@@ -214,8 +214,9 @@
     </div>
     <div class="logout" role="button" tabindex="0">Esci</div>
     <div class="app-footer">
-      <div class="app-build">build 125</div>
+      <div class="app-build">build 126</div>
       <div class="app-credit"><a href="https://www.flaticon.com/free-icons/wine" target="_blank" rel="noopener">Wine icons created by iconixar - Flaticon</a></div>
+      <div class="app-credit">Foto dei paesaggi da <a href="https://commons.wikimedia.org/" target="_blank" rel="noopener">Wikimedia Commons</a>, autori e licenze nella scheda di ogni vino</div>
     </div>
   </div>
   <div class="view" id="view-tasting">
@@ -301,8 +302,16 @@
         <div class="close" id="detail-close" role="button" tabindex="0" aria-label="Chiudi"><svg aria-hidden="true" viewBox="0 0 24 24" style="width:15px;height:15px;" fill="none" stroke="#241e1a" stroke-width="1.8" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="6" y1="18" x2="18" y2="6"/></svg></div>
       </div>
       <div class="detail-hero">
+        <div class="hero-land" aria-hidden="true"><img class="hero-land-img" alt=""><svg class="hero-cut" viewBox="0 0 100 30" preserveAspectRatio="none"><path d="M0 0 Q50 58 100 0 L100 30 L0 30Z"/></svg></div>
         <div class="hero-art photo photo-rosso"><img class="hero-product" alt=""></div>
-        <div class="info"><h2 class="name">Barolo DOCG 2016</h2><div class="sub">Elio Altare · Piemonte</div><div class="hero-chips"></div></div>
+        <div class="info">
+          <span class="hero-type rosso">Rosso</span>
+          <div class="hero-origin">Piemonte, Italia</div>
+          <h2 class="name">Barolo DOCG 2016</h2>
+          <div class="sub">Elio Altare</div>
+          <div class="hero-chips"></div>
+          <div class="hero-stats"></div>
+        </div>
       </div>
       <div class="detail-body">
         <div>
@@ -348,6 +357,7 @@
           </div>
           <div id="notes-mine" style="display:flex; flex-direction:column; gap:10px;"></div>
         </div>
+        <div class="land-credit hidden" id="land-credit"></div>
       </div>
     </div>
   </div>

@@ -51,17 +51,22 @@ function renderHero(bottle) {
   art.style.backgroundImage = bottle.image_url ? 'none' : '';
   art.classList.toggle('has-product', !!bottle.image_url);
   product.onload = () => {
-    // Vivino's cut-out bottles are tall and narrow: shown whole (contain);
-    // a photo of the label fills the thumbnail (cover).
+    // Vivino's cut-out bottles are tall and narrow: they stand on the
+    // landscape without a frame; a photo of the label stays a thumbnail.
     art.classList.toggle('cutout', product.naturalWidth / product.naturalHeight < 0.5);
   };
   if (bottle.image_url) product.src = bottle.image_url;
   else product.removeAttribute('src');
-  document.querySelector('#detail-overlay .info .name').textContent = bottle.name;
+  const hero = document.querySelector('#detail-overlay .detail-hero');
+  const type = hero.querySelector('.hero-type');
+  type.className = 'hero-type ' + (TYPE_LABEL[bottle.type] ? bottle.type : 'rosso');
+  type.textContent = TYPE_LABEL[bottle.type] ?? 'Vino';
+  hero.querySelector('.hero-origin').textContent = [bottle.region, bottle.country].filter(Boolean).join(', ');
+  hero.querySelector('.name').textContent = bottle.name;
   document.getElementById('detail-bar-name').textContent = bottle.name;
-  // Producer · region, then the producer's website (from Vivino) as a link.
-  const sub = document.querySelector('#detail-overlay .info .sub');
-  sub.replaceChildren(`${bottle.producer} · ${bottle.region ?? bottle.country}`);
+  // Producer, then the producer's website (from Vivino) as a link.
+  const sub = hero.querySelector('.sub');
+  sub.replaceChildren(bottle.producer ?? '');
   let site = null;
   try {
     const u = bottle.producer_url ? new URL(bottle.producer_url) : null;
@@ -73,27 +78,68 @@ function renderHero(bottle) {
       textContent: site.hostname.replace(/^www\./, ''),
     });
     a.setAttribute('aria-label', `Sito del produttore: ${a.textContent}`);
-    sub.append(document.createElement('br'), a);
+    sub.append(' · ', a);
   }
-  const chips = document.querySelector('#detail-overlay .hero-chips');
-  const facts = [TYPE_LABEL[bottle.type], bottle.denomination, bottle.vintage ? String(bottle.vintage) : null,
-    bottle.alcohol ? `${String(bottle.alcohol).replace('.', ',')}% vol` : null,
-    priceText(bottle.price_paid) ? `${priceText(bottle.price_paid)} € a bottiglia` : null];
+  // What the wine is, as labels...
+  const chips = hero.querySelector('.hero-chips');
+  const facts = [bottle.denomination, bottle.vintage ? String(bottle.vintage) : null,
+    bottle.alcohol ? `${String(bottle.alcohol).replace('.', ',')}% vol` : null];
   chips.replaceChildren(...facts.filter(Boolean).map((t) => Object.assign(document.createElement('span'), { textContent: t })));
-  // Two ratings side by side: the notes' average and Vivino's community one.
+  // ...and what it is worth, as a row of numbers: price, the notes' average
+  // and Vivino's community rating.
   const one = (n) => Number(n).toFixed(1).replace('.', ',');
-  if (bottle.score != null) {
-    chips.append(Object.assign(document.createElement('span'), { textContent: `Note ★ ${one(bottle.score)}`, ariaLabel: `Voto medio delle note ${one(bottle.score)} su 5` }));
-  }
+  const stat = (value, label, aria) => {
+    const el = document.createElement('div');
+    el.className = 'hero-stat';
+    el.append(Object.assign(document.createElement('b'), { textContent: value }), Object.assign(document.createElement('span'), { textContent: label }));
+    if (aria) el.setAttribute('aria-label', aria);
+    return el;
+  };
+  const stats = [];
+  if (priceText(bottle.price_paid)) stats.push(stat(`${priceText(bottle.price_paid)} €`, 'a bottiglia'));
+  if (bottle.score != null) stats.push(stat(`★ ${one(bottle.score)}`, 'le tue note', `Voto medio delle note ${one(bottle.score)} su 5`));
   if (bottle.vivino_rating != null) {
     const n = Number(bottle.vivino_ratings_count) || 0;
-    chips.append(Object.assign(document.createElement('span'), {
-      textContent: `Vivino ★ ${one(bottle.vivino_rating)}`,
-      title: `${n.toLocaleString('it-IT')} ${n === 1 ? 'voto' : 'voti'} su Vivino`,
-      ariaLabel: `Voto medio su Vivino ${one(bottle.vivino_rating)} su 5, ${n.toLocaleString('it-IT')} ${n === 1 ? 'voto' : 'voti'}`,
-    }));
+    const votes = `${n.toLocaleString('it-IT')} ${n === 1 ? 'voto' : 'voti'}`;
+    stats.push(stat(`★ ${one(bottle.vivino_rating)}`, 'Vivino', `Voto medio su Vivino ${one(bottle.vivino_rating)} su 5, ${votes}`));
   }
+  hero.querySelector('.hero-stats').replaceChildren(...stats);
+  loadLandscape(bottle);
   document.getElementById('loc-value').textContent = locationLabel(bottle) || 'Non assegnata';
+}
+
+// The vineyard photo behind the bottle, for the wine's denomination, region
+// or country (found once per area by the server, see /api/landscape). Asked
+// per area, not per wine, and remembered for the session.
+const landscapeCache = new Map();
+async function loadLandscape(bottle) {
+  const land = document.querySelector('#detail-overlay .hero-land');
+  const img = land.querySelector('.hero-land-img');
+  const credit = document.getElementById('land-credit');
+  const id = bottle.id;
+  land.classList.remove('loaded');
+  img.removeAttribute('src');
+  credit.classList.add('hidden');
+  const params = new URLSearchParams();
+  for (const k of ['denomination', 'region', 'country']) if (bottle[k]) params.set(k, bottle[k]);
+  const key = params.toString();
+  if (!key) return;
+  let l = landscapeCache.get(key);
+  if (l === undefined) {
+    try {
+      l = (await api.get(`/api/landscape?${key}`)).landscape ?? null;
+      landscapeCache.set(key, l);
+    } catch {
+      return; // no photo this time: the plain background stays
+    }
+  }
+  // The user may have opened another wine while this was loading.
+  if (currentBottle?.id !== id || !l) return;
+  img.onload = () => { if (currentBottle?.id === id) land.classList.add('loaded'); };
+  img.src = l.url;
+  const a = Object.assign(document.createElement('a'), { href: l.pageUrl, target: '_blank', rel: 'noopener', textContent: l.author });
+  credit.replaceChildren('Foto del paesaggio: ', a, ` · ${l.license} · Wikimedia Commons`);
+  credit.classList.remove('hidden');
 }
 
 // The small name in the top bar appears once the big one has scrolled under it.

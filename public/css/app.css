@@ -259,26 +259,49 @@
   .detail-overlay.open{opacity:1; pointer-events:auto;}
   .detail-sheet{ background:#f7f5f0; border-radius:22px 22px 0 0; width:100%; max-height:92%; overflow-y:auto; transform:translateY(100%); transition:transform .32s cubic-bezier(.2,.8,.2,1); padding-bottom:26px; }
   .detail-overlay.open .detail-sheet{transform:translateY(0);}
-  /* min-height + the name in normal flow (not absolutely positioned): at large
-     Dynamic Type sizes a long name grows the hero instead of overflowing it. */
-  /* Intestazione della scheda vino, stile scheda prodotto dell'App Store
-     (scelta B sui mockup): niente fascia colorata, una miniatura arrotondata
-     con ombra e accanto nome grande, produttore e dati in etichette. Le foto
-     dell'etichetta riempiono la miniatura (cover); le bottiglie scontornate di
-     Vivino, alte e strette, ci stanno intere (.cutout, contain). */
-  .detail-hero{display:flex; align-items:flex-end; gap:16px; padding:52px 18px 4px;}
-  .hero-art{position:relative; width:104px; height:140px; flex-shrink:0; border-radius:14px; overflow:hidden; background-color:#ece7de; box-shadow:0 10px 24px -12px rgba(36,30,26,.45), 0 0 0 .5px rgba(36,30,26,.12);}
+  /* Intestazione della scheda vino, "cartolina bassa" (scelta A1 sui mockup):
+     in alto una foto di vigne della zona del vino (Wikimedia Commons, vedi
+     worker/src/lib/landscape.ts) che scende a punta; la bottiglia sta in
+     piedi a cavallo della curva e sotto, centrati, tipo, zona, nome e
+     produttore. Le bottiglie scontornate di Vivino (.cutout) stanno senza
+     cornice; le foto dell'etichetta e il segnaposto restano una miniatura
+     arrotondata. Senza foto del paesaggio resta un fondo tenue a tinta unita.
+     Il nome è in flusso normale: con Dynamic Type grande l'intestazione cresce. */
+  .detail-hero{position:relative; display:flex; flex-direction:column; align-items:center; padding:58px 20px 4px; text-align:center;}
+  .hero-land{position:absolute; top:0; left:0; right:0; height:196px; overflow:hidden; background:linear-gradient(180deg, #dcd6c6 0%, #e6dfcd 55%, #d3d2b6 100%);}
+  .hero-land-img{position:absolute; inset:0; width:100%; height:100%; object-fit:cover; opacity:0; transition:opacity .35s ease;}
+  .hero-land.loaded .hero-land-img{opacity:1;}
+  .hero-cut{position:absolute; left:0; right:0; bottom:-1px; width:100%; height:44px; fill:#f7f5f0;}
+  .hero-art{position:relative; z-index:1; width:104px; height:140px; margin-top:28px; flex-shrink:0; border-radius:14px; overflow:hidden; background-color:#ece7de; box-shadow:0 10px 24px -12px rgba(36,30,26,.45), 0 0 0 .5px rgba(36,30,26,.12);}
   .hero-product{display:none; width:100%; height:100%; object-fit:cover;}
   .hero-art.has-product .hero-product{display:block;}
-  .hero-art.cutout .hero-product{object-fit:contain; padding:8px 0; box-sizing:border-box;}
-  .detail-hero .info{flex:1; min-width:0; padding-bottom:4px; overflow-wrap:anywhere;}
-  .detail-hero .info .name{margin:0; font-family:'Newsreader',serif; font-weight:500; font-size:calc(26rem/17); line-height:1.12; color:#241e1a; text-wrap:balance;}
-  .detail-hero .info .sub{font-size:calc(13.5rem/17); color:#736a5d; margin-top:4px;}
-  .hero-chips{display:flex; flex-wrap:wrap; gap:6px; margin-top:10px;}
-  .hero-site{display:inline-block; margin-top:4px; color:#5b2333; font-weight:600; text-decoration:underline; text-underline-offset:3px; position:relative;}
+  .hero-art.cutout{width:auto; height:168px; margin-top:0; border-radius:0; overflow:visible; background:none!important; box-shadow:none;}
+  .hero-art.cutout .hero-product{width:auto; max-width:120px; height:100%; object-fit:contain; filter:drop-shadow(0 14px 12px rgba(36,30,26,.3));}
+  .detail-hero .info{width:100%; min-width:0; margin-top:10px; display:flex; flex-direction:column; align-items:center; gap:2px; overflow-wrap:anywhere;}
+  .hero-type{padding:3px 12px; border-radius:999px; font-size:calc(12rem/17); font-weight:600; color:#fff; background:#5b2333; margin-bottom:6px;}
+  .hero-type.bianco{background:#efe6b8; color:#5e5317;}
+  .hero-type.bollicine{background:#6b7a4f;}
+  .hero-type.rosato{background:#a24a5a;}
+  .hero-origin{font-size:calc(13rem/17); color:#736a5d;}
+  .hero-origin:empty{display:none;}
+  .detail-hero .info .name{margin:0; font-family:'Newsreader',serif; font-weight:500; font-size:calc(25rem/17); line-height:1.12; color:#241e1a; text-wrap:balance;}
+  .detail-hero .info .sub{font-size:calc(13.5rem/17); color:#736a5d; margin-top:2px;}
+  .hero-site{color:#5b2333; font-weight:600; text-decoration:underline; text-underline-offset:3px; position:relative;}
   .hero-site::after{content:''; position:absolute; inset:-12px -4px;}
+  /* Due gruppi: cosa è il vino (etichette: denominazione, annata, gradazione)
+     e quanto vale (riga di numeri: prezzo, voto delle note, voto Vivino), con
+     il numero grande e sotto cosa misura, come la riga d'informazioni dell'App Store. */
+  .hero-chips{display:flex; flex-wrap:wrap; justify-content:center; gap:6px; margin-top:10px;}
   .hero-chips:empty{display:none;}
   .hero-chips span{padding:4px 10px; border-radius:999px; background:#ece7de; color:#4a423a; font-size:calc(12rem/17);}
+  .hero-stats{display:flex; justify-content:center; margin-top:14px; width:100%;}
+  .hero-stats:empty{display:none;}
+  .hero-stat{flex:1 1 0; max-width:120px; min-width:0; display:flex; flex-direction:column; align-items:center; gap:1px; padding:0 8px;}
+  .hero-stat + .hero-stat{border-left:1px solid #e2e0d8;}
+  .hero-stat b{font-size:calc(16rem/17); font-weight:600; color:#241e1a; font-variant-numeric:tabular-nums; white-space:nowrap;}
+  .hero-stat span{font-size:calc(11rem/17); color:#736a5d;}
+  .land-credit{font-size:calc(11rem/17); line-height:1.5; color:#736a5d; text-align:center;}
+  .land-credit a{color:inherit; text-decoration:underline; text-underline-offset:2px;}
   /* Barra in alto, ferma mentre la scheda scorre: la X resta sempre a portata
      e, quando il nome grande esce di vista, compare il nome in piccolo su un
      fondo traslucido (come i titoli grandi di iOS). Alta 0: non sposta nulla. */

@@ -1276,6 +1276,34 @@ questo file è il riassunto "dove eravamo rimasti".
     l'utente chiede di aggiornare la foto di un vino preciso (scelta della
     foto con lui, poi `wines.image_url` aggiornato a mano in D1).
 
+56. **Scheda vino "cartolina bassa"** (build 126, migrazione 0014). Su
+    esempio dell'utente (app oeni), mockup con tre stili (cartolina,
+    acquerello, finestra), poi la cartolina in due versioni compatte: scelta
+    **A1 bassa** ("le info fondamentali a colpo d'occhio"). In alto una foto
+    di vigne della zona (196pt, taglio curvo crema), la bottiglia in piedi a
+    cavallo della curva (scontornata di Vivino senza cornice, altrimenti la
+    miniatura arrotondata di prima), sotto centrati: pillola del tipo (colore
+    del tipo), "regione, paese", nome, produttore · sito. Etichette
+    riorganizzate in due gruppi: cosa è il vino (denominazione, annata,
+    gradazione) e una riga di numeri stile App Store (prezzo "a bottiglia",
+    ★ "le tue note", ★ "Vivino"); il tipo non è più un'etichetta.
+    **Foto**: da qui non si possono scaricare (host bloccati), quindi le
+    cerca il Worker: `GET /api/landscape?denomination=&region=&country=`
+    (`lib/landscape.ts`) prova denominazione senza classificazione
+    ("Franciacorta DOCG" → "Franciacorta"), poi regione, poi paese in
+    inglese, con una ricerca Commons `"<termine> vineyard filetype:bitmap"`;
+    tiene solo JPEG larghi ≥1600px, rapporto 1,25-2,4, licenza CC0/CC BY/CC
+    BY-SA/pubblico dominio (mai NC/ND), che parlino di vigne e non siano
+    mappe/etichette/bottiglie; premia le "Quality images". Ricorda il
+    risultato per termine nella tabella `landscapes` (anche "niente": si
+    ricerca dopo 30 giorni; Commons irraggiungibile non si ricorda). Credito
+    autore + licenza in fondo alla scheda, nota generale in Profilo.
+    **Non verificato su foto reali**: le scelte di Commons si vedono solo in
+    produzione. Per controllarle: `select term, file from landscapes` su D1.
+    Una foto brutta si sostituisce a mano aggiornando la riga del termine
+    (file, url = thumb 1100px, page_url, author, license) — il server
+    restituisce sempre la riga salvata.
+
 ## Cose note, non (ancora) da rifare
 
 - `status-bar-style` è `black-translucent` (non più `default`), `.screen`
