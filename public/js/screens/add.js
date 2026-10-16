@@ -1,6 +1,6 @@
 import { api } from '../api-client.js';
 import { escapeHtml, photoClass, priceText } from '../util.js';
-import { alertModal, promptModal } from '../modal.js';
+import { alertModal, promptModal, pasteModal } from '../modal.js';
 import { showToast } from '../toast.js';
 import { tastingProfileHtml, wireTastingProfile, resetTastingProfile, readTastingProfile, isTastingProfileEmpty } from '../tasting-profile.js';
 import { COUNTRIES } from '../data/wine-atlas.js';
@@ -1197,6 +1197,9 @@ function showReviewPhoto(src) {
   if (src) photoImg.src = src;
   else photoImg.removeAttribute('src');
   wrap.style.display = src ? '' : 'none';
+  // No photo: the type's placeholder, so it is clear where the photo goes.
+  const placeholder = document.getElementById('recognize-photo-placeholder');
+  placeholder.className = `rec-photo-placeholder photo ${photoClass(document.getElementById('rec-type').value || 'rosso')}${src ? ' hidden' : ''}`;
   document.getElementById('rec-photo-remove').classList.toggle('hidden', !src);
 }
 
@@ -1289,7 +1292,15 @@ async function pastePhoto() {
   } catch (err) {
     console.error('clipboard read failed', err);
   }
-  await alertModal('Negli appunti non c\'è un\'immagine. In Safari tieni premuta la foto, scegli Copia, poi torna qui e premi Incolla dal web.', { title: 'Nessuna immagine copiata' });
+  // Reading the clipboard from a button is refused or comes back empty on
+  // some iPhones: a box to paste into with the system's own Incolla always
+  // works.
+  const pasted = await pasteModal();
+  if (pasted?.file) await choosePhotoBlob(pasted.file);
+  else if (pasted?.url) {
+    pendingPhoto = { url: pasted.url };
+    showReviewPhoto(pasted.url);
+  }
 }
 
 // Saved once the wine exists (and is in the user's cellar).

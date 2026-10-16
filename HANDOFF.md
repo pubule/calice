@@ -1366,6 +1366,13 @@ questo file è il riassunto "dove eravamo rimasti".
     la bottiglia sta in piedi sul paesaggio; altrimenti JPEG. Le foto di
     catalogo sono condivise: cambiare la foto di un vino la cambia per
     tutti quelli che lo hanno.
+    Build 134: su iPhone `navigator.clipboard.read()` dal pulsante può
+    essere rifiutato o tornare vuoto (segnalato col Barolo): se non trova
+    un'immagine apre `pasteModal()` (`modal.js`), un riquadro
+    `contenteditable` dove si incolla col menu di iOS e si legge l'evento
+    `paste` (file immagine, `<img src>` nell'HTML, o link). Senza foto il
+    foglio mostra il segnaposto del tipo (`#recognize-photo-placeholder`)
+    invece di niente.
 
 61. **Voto personale nella lista, dato dalle stelle della scheda** (build
     131-132). Nella riga di Cantina, al posto della posizione: "★ 4,0" (voto

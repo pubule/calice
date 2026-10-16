@@ -45,6 +45,8 @@ function showModal({ title, message, confirmLabel, cancelLabel, showInput, input
   msgEl.textContent = message ?? '';
   msgEl.style.display = message ? '' : 'none';
   input.style.display = showInput ? 'block' : 'none';
+  const pasteBox = document.getElementById('app-modal-paste');
+  if (pasteBox && !document.getElementById('app-modal').classList.contains('open')) pasteBox.style.display = 'none';
   input.type = inputType ?? 'text';
   input.inputMode = inputMode ?? '';
   input.value = inputValue ?? '';
@@ -97,4 +99,53 @@ export function promptModal(message, { title, defaultValue = '', placeholder = '
     inputType,
     inputMode,
   });
+}
+
+// A box to paste into with the system's own "Incolla" (long press): the one
+// way to paste that always works on iOS, where reading the clipboard from a
+// button can come back empty. Resolves { file } for an image, { url } for a
+// link to one, or null if cancelled.
+export function pasteModal({ title = 'Incolla la foto', message = 'Tieni premuto nel riquadro e scegli Incolla.' } = {}) {
+  ensureModal();
+  const sheet = document.querySelector('#app-modal .modal-sheet');
+  let box = document.getElementById('app-modal-paste');
+  if (!box) {
+    box = document.createElement('div');
+    box.id = 'app-modal-paste';
+    box.className = 'paste-box';
+    box.contentEditable = 'true';
+    box.setAttribute('role', 'textbox');
+    box.setAttribute('aria-label', 'Riquadro dove incollare la foto');
+    sheet.insertBefore(box, sheet.querySelector('.modal-actions'));
+  }
+  box.textContent = '';
+  const shown = showModal({ title, message, confirmLabel: 'Fatto', cancelLabel: 'Annulla' });
+  box.style.display = '';
+  const close = (value) => {
+    box.style.display = 'none';
+    resolvePaste(value);
+  };
+  let resolvePaste;
+  const result = new Promise((r) => { resolvePaste = r; });
+  box.onpaste = (e) => {
+    e.preventDefault();
+    const data = e.clipboardData;
+    const file = [...(data?.files ?? [])].find((f) => f.type.startsWith('image/'))
+      ?? [...(data?.items ?? [])].find((i) => i.kind === 'file' && i.type.startsWith('image/'))?.getAsFile();
+    let url = null;
+    if (!file) {
+      const html = data?.getData('text/html') ?? '';
+      const src = html.match(/<img[^>]+src="([^"]+)"/i)?.[1];
+      const text = (data?.getData('text/uri-list') || data?.getData('text/plain') || '').trim();
+      url = [src, text].find((u) => u && /^https?:\/\/\S+$/i.test(u)) ?? null;
+    }
+    if (!file && !url) {
+      box.textContent = 'Non è un\'immagine: copia la foto (tienila premuta, Copia) e riprova.';
+      return;
+    }
+    document.getElementById('app-modal-confirm').onclick();
+    close(file ? { file } : { url });
+  };
+  shown.then(() => close(null));
+  return result;
 }
