@@ -670,7 +670,7 @@ function renderElementCreateForm() {
 
   document.getElementById('create-element-btn').addEventListener('click', async () => {
     const kind = document.querySelector('#kind-grid .kind-opt.active').dataset.kind;
-    const name = document.getElementById('new-elem-name').value.trim() || kind;
+    const name = document.getElementById('new-elem-name').value.trim() || defaultElementName(kind);
     const body = { kind, name };
     if (kind !== 'Scatolone') {
       body.tiers = parseInt(document.getElementById('new-elem-tiers').value) || 3;
@@ -681,6 +681,35 @@ function renderElementCreateForm() {
     currentElements.push(created);
     renderElementsList();
   });
+}
+
+// Rename and delete, top right of an element's page.
+const ELEMENT_TOOLS = `<div class="elem-tools">
+  <div class="icon-btn" id="rename-element-btn" title="Rinomina elemento" role="button" tabindex="0" aria-label="Rinomina elemento"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></div>
+  <div class="icon-btn danger" id="delete-element-btn" title="Elimina elemento" role="button" tabindex="0" aria-label="Elimina elemento"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"/><path d="M6 7l1 13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-13"/><path d="M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3"/></svg></div>
+</div>`;
+
+async function renameCurrentElement() {
+  const el = currentElements.find((e) => e.id === currentElementId);
+  if (!el) return;
+  const name = await promptModal('', { title: 'Nome dell\'elemento', defaultValue: el.name, placeholder: 'es. Cella cucina', confirmLabel: 'Salva' });
+  if (name == null || !name.trim() || name.trim() === el.name) return;
+  const updated = await api.patch(`/api/elements/${el.id}`, { name: name.trim() });
+  el.name = updated.name;
+  // Positions shown in Cantina and in the wine sheets carry the name too.
+  currentBottles.forEach((b) => (b.places ?? []).forEach((p) => { if (p.element_id === el.id) p.element_name = el.name; }));
+  applyFilters();
+  renderElementDetail(el.id);
+}
+
+// A new element left unnamed gets its kind, numbered if that name is taken
+// ("Cella", "Cella 2"…), so two identical ones can be told apart.
+function defaultElementName(kind) {
+  const taken = new Set(currentElements.map((e) => e.name));
+  if (!taken.has(kind)) return kind;
+  let n = 2;
+  while (taken.has(`${kind} ${n}`)) n++;
+  return `${kind} ${n}`;
 }
 
 function renderElementDetail(id) {
@@ -698,7 +727,7 @@ function renderElementDetail(id) {
     for (const o of occupants()) if (o.place.element_id === id) counts.set(o.bottle, (counts.get(o.bottle) ?? 0) + 1);
     const items = [...counts];
     body.innerHTML = `
-      <div class="icon-btn danger" id="delete-element-btn" title="Elimina elemento" role="button" tabindex="0" aria-label="Elimina elemento" style="align-self:flex-end; margin-bottom:10px;"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"/><path d="M6 7l1 13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-13"/><path d="M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3"/></svg></div>
+      ${ELEMENT_TOOLS}
       <p class="box-note">Gli scatoloni non hanno slot: è solo un elenco di cosa c'è dentro.</p>
       <div class="box-contents">${
         items.length
@@ -707,6 +736,7 @@ function renderElementDetail(id) {
       }</div>
       <div class="primary-btn" id="assign-box-btn" style="margin-top:14px;" role="button" tabindex="0">${picker ? `Metti "${escapeHtml(picker.bottle.name)}" qui` : 'Aggiungi bottiglia'}</div>`;
     document.getElementById('delete-element-btn').addEventListener('click', () => deleteCurrentElement());
+  document.getElementById('rename-element-btn').addEventListener('click', () => renameCurrentElement());
     document.getElementById('assign-box-btn').addEventListener('click', () => placeBottle(id, null, null, null));
     return;
   }
@@ -720,7 +750,7 @@ function renderElementDetail(id) {
   if (movingPlace) elemView = 'grid';
 
   let html = `
-    <div class="icon-btn danger" id="delete-element-btn" title="Elimina elemento" role="button" tabindex="0" aria-label="Elimina elemento" style="align-self:flex-end; margin-bottom:10px;"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"/><path d="M6 7l1 13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-13"/><path d="M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3"/></svg></div>
+    ${ELEMENT_TOOLS}
     <div class="elements-view">
     <div class="elem-stats">
       <div class="stat"><b>${capacity}</b><span>Capacità</span></div>
@@ -767,6 +797,7 @@ function renderElementDetail(id) {
   body.innerHTML = html;
 
   document.getElementById('delete-element-btn').addEventListener('click', () => deleteCurrentElement());
+    document.getElementById('rename-element-btn').addEventListener('click', () => renameCurrentElement());
   body.querySelectorAll('.slot-view-toggle button').forEach((btn) => btn.addEventListener('click', () => {
     elemView = btn.dataset.view;
     renderElementDetail(id);

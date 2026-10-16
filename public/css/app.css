@@ -126,6 +126,7 @@
   .icon-btn svg{width:12px; height:12px; stroke:#756b60;}
   .icon-btn.danger svg{stroke:#8a3244;}
   .icon-btn.danger{background:#f7e9ec;}
+  .elem-tools{display:flex; justify-content:flex-end; gap:16px; margin-bottom:10px;}
 
   .diary-row{display:flex; gap:12px; align-items:center; padding:9px 0; border-bottom:1px solid #e2e0d8;}
   .diary-row:last-child{border-bottom:none;}

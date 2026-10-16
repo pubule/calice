@@ -97,6 +97,17 @@ describe('cellar elements', () => {
     expect(bottles[0].places).toEqual([]);
   });
 
+  it('renames an element, refusing an empty name and other people', async () => {
+    const auth = signup('e7@b.com');
+    const cellarId = await myCellarId(auth);
+    const el = await (await app.request(`/api/cellars/${cellarId}/elements`, { method: 'POST', body: JSON.stringify({ kind: 'Cella', name: 'Cella', tiers: 2, cols: 3, depth: 1 }), headers: { ...auth, 'content-type': 'application/json' } }, env)).json<{ id: number }>();
+    const patch = (who: Record<string, string>, name: unknown) => app.request(`/api/elements/${el.id}`, { method: 'PATCH', body: JSON.stringify({ name }), headers: { ...who, 'content-type': 'application/json' } }, env);
+    const ok = await patch(auth, '  Cella cucina ');
+    expect((await ok.json<any>()).name).toBe('Cella cucina');
+    expect((await patch(auth, '   ')).status).toBe(400);
+    expect((await patch(signup('e8@b.com'), 'Mia')).status).toBe(404);
+  });
+
   it('rejects an unknown kind and a non-integer dimension', async () => {
     const auth = signup('e6@b.com');
     const cellarId = await myCellarId(auth);

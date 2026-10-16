@@ -1342,6 +1342,13 @@ questo file è il riassunto "dove eravamo rimasti".
     bottiglia senza posto la mette lì; se il vino ha un solo posto lo
     sposta; con più posti chiede di usare Sposta sullo slot.
 
+59. **Nome degli elementi modificabile** (build 129). Matita accanto al
+    cestino nella pagina di un elemento: `promptModal` → `PATCH
+    /api/elements/:id {name}` (1-60 caratteri). Il nuovo nome si aggiorna
+    anche nelle posizioni mostrate in Cantina e nelle schede. Un elemento
+    creato senza nome prende il tipo numerato se già usato ("Cella",
+    "Cella 2"…), così due elementi uguali si distinguono da subito.
+
 ## Cose note, non (ancora) da rifare
 
 - `status-bar-style` è `black-translucent` (non più `default`), `.screen`

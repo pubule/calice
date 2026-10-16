@@ -40,6 +40,17 @@ async function assertElementAccess(env: Env, elementId: number, userId: number):
   return isCellarMember(env.DB, el.cellar_id, userId);
 }
 
+// Renames an element (e.g. two identical cells told apart by name).
+elementRoutes.patch('/:id', async (c) => {
+  const id = Number(c.req.param('id'));
+  if (!(await assertElementAccess(c.env, id, c.get('userId')))) return c.json({ error: 'not found' }, 404);
+  const body = await c.req.json<{ name?: unknown }>();
+  const name = typeof body.name === 'string' ? body.name.trim() : '';
+  if (!name || name.length > 60) return c.json({ error: 'name must be 1-60 characters' }, 400);
+  const el = await c.env.DB.prepare('update cellar_elements set name = ? where id = ? returning *').bind(name, id).first();
+  return c.json(el);
+});
+
 elementRoutes.delete('/:id', async (c) => {
   const id = Number(c.req.param('id'));
   if (!(await assertElementAccess(c.env, id, c.get('userId')))) return c.json({ error: 'not found' }, 404);
