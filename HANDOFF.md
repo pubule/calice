@@ -1452,6 +1452,12 @@ questo file è il riassunto "dove eravamo rimasti".
     `lib/wine-vintage.ts` (riusa nome+produttore+annata se esiste; copia
     anche la foto: `wine-image.ts` cancella il file da R2 solo se nessun
     altro vino lo usa).
+    Build 143: una riga di `bottles` può avere più bottiglie (Campofiorin ×2):
+    cambiando l'annata in Modifica si spostavano tutte. Ora se la riga ne ha
+    più di una l'app chiede quante sono dell'anno nuovo; `POST
+    /api/bottles/:id/vintage {vintage, quantity}` crea per quelle una riga a
+    parte (stessa cantina, prezzo e finestra) e scala l'originale, che tiene
+    note e posizioni.
 
 ## Cose note, non (ancora) da rifare
 

@@ -958,6 +958,7 @@ let pendingPhoto = null;
 let sheetMode = 'create'; // 'create' | 'edit'
 let editingWineId = null;
 let editingVintage = null; // the bottle's vintage when the edit sheet opened
+let editingQuantity = null; // its bottles in that row
 let editingBottleId = null;
 let editingDrinkBottle = null; // the bottle being edited, for the drink estimate
 
@@ -1073,6 +1074,7 @@ export function openEditWineSheet(bottle, onSaved) {
   sheetMode = 'edit';
   editingWineId = bottle.wine_id;
   editingVintage = bottle.vintage ?? null;
+  editingQuantity = bottle.quantity;
   editingBottleId = bottle.id;
   editSavedCallback = onSaved ?? null;
   document.getElementById('recognize-title').textContent = 'Modifica vino';
@@ -1197,12 +1199,36 @@ async function saveRecognizedWine() {
       // Another vintage is another wine, possibly shared with other bottles:
       // only this bottle moves to that vintage's wine (never rewrite the
       // year of the shared one), then the form's data goes on that wine.
+      // A row can hold several bottles: when it does, ask how many are of
+      // the new year; those become their own row, the others stay as they are.
       let wineId = editingWineId;
+      let bottleId = editingBottleId;
+      let split = false;
       if ((vintage ?? null) !== editingVintage) {
-        wineId = (await api.post(`/api/bottles/${editingBottleId}/vintage`, { vintage: vintage ?? null })).id;
+        const inRow = Number(editingQuantity) || 1;
+        let moving = inRow;
+        if (inRow > 1) {
+          const label = vintage ? `del ${vintage}` : 'senza annata';
+          const typed = await promptModal(`Hai ${inRow} bottiglie in questa riga. Le altre restano ${editingVintage ? `del ${editingVintage}` : 'senza annata'}.`, {
+            title: `Quante sono ${label}?`, defaultValue: '1', inputMode: 'numeric', confirmLabel: 'Continua',
+          });
+          if (typed == null) return;
+          moving = Number(typed.trim());
+          if (!(Number.isInteger(moving) && moving >= 1 && moving <= inRow)) {
+            await alertModal(`Scrivi un numero da 1 a ${inRow}.`);
+            return;
+          }
+        }
+        const res = await api.post(`/api/bottles/${editingBottleId}/vintage`, { vintage: vintage ?? null, quantity: moving });
+        wineId = res.wine.id;
+        bottleId = res.bottleId;
+        split = bottleId !== editingBottleId;
       }
       await api.patch(`/api/wines/${wineId}`, { name, producer, country, region, type, vintage, grapeVariety, denomination, ...extras });
-      await api.patch(`/api/bottles/${editingBottleId}`, { pricePaid, ...(quantity == null ? {} : { quantity }), ...drink });
+      // After a split the quantity field still describes the old row: only
+      // price and window go on the new one.
+      await api.patch(`/api/bottles/${bottleId}`, { pricePaid, ...(quantity == null || split ? {} : { quantity }), ...drink });
+      if (split) showToast(`Annata ${vintage ?? 'tolta'}: separata in una riga a parte`);
       closeRecognizeSheet();
       await savePendingPhoto(wineId, 'Vino modificato');
       editSavedCallback?.();

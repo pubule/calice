@@ -224,18 +224,37 @@ bottleRoutes.post('/:id/vintage', async (c) => {
   const id = Number(c.req.param('id'));
   const userId = c.get('userId');
   if (!(await assertBottleAccess(c.env, id, userId))) return c.json({ error: 'not found' }, 404);
-  const { vintage } = await c.req.json<{ vintage: number | null }>();
+  const { vintage, quantity } = await c.req.json<{ vintage: number | null; quantity?: number }>();
   if (vintage !== null && !(Number.isInteger(vintage) && vintage >= 1900 && vintage <= 2100)) {
     return c.json({ error: 'vintage must be an integer between 1900 and 2100, or null' }, 400);
+  }
+  const bottle = (await c.env.DB.prepare('select * from bottles where id = ?').bind(id).first<{ quantity: number; cellar_id: number; price_paid: number | null; drink_from: string | null; drink_until: string | null }>())!;
+  if (quantity != null && !(Number.isInteger(quantity) && quantity >= 1 && quantity <= bottle.quantity)) {
+    return c.json({ error: 'quantity must be between 1 and the bottles in this row' }, 400);
   }
   const wine = (await c.env.DB
     .prepare('select wines.* from wines join bottles on bottles.wine_id = wines.id where bottles.id = ?')
     .bind(id)
     .first<{ id: number; name: string; producer: string; vintage: number | null }>())!;
-  if ((wine.vintage ?? null) === vintage) return c.json(wine);
+  if ((wine.vintage ?? null) === vintage) return c.json({ wine, bottleId: id });
   const targetId = await wineOfVintage(c.env.DB, wine.id, vintage, userId);
+  // Only some of the row's bottles are of the other year: they become their
+  // own row (same cellar, price and window); the rest stay here, with their
+  // notes and places (trimmed to the bottles left).
+  if (quantity != null && quantity < bottle.quantity) {
+    const created = await c.env.DB
+      .prepare(
+        `insert into bottles (cellar_id, wine_id, quantity, price_paid, drink_from, drink_until, added_by)
+         values (?, ?, ?, ?, ?, ?, ?) returning id`,
+      )
+      .bind(bottle.cellar_id, targetId, quantity, bottle.price_paid, bottle.drink_from, bottle.drink_until, userId)
+      .first<{ id: number }>();
+    await c.env.DB.prepare('update bottles set quantity = quantity - ? where id = ?').bind(quantity, id).run();
+    await trimPlaces(c.env.DB, id);
+    return c.json({ wine: await c.env.DB.prepare('select * from wines where id = ?').bind(targetId).first(), bottleId: created!.id });
+  }
   await c.env.DB.prepare('update bottles set wine_id = ? where id = ?').bind(targetId, id).run();
-  return c.json(await c.env.DB.prepare('select * from wines where id = ?').bind(targetId).first());
+  return c.json({ wine: await c.env.DB.prepare('select * from wines where id = ?').bind(targetId).first(), bottleId: id });
 });
 
 bottleRoutes.delete('/:id', async (c) => {

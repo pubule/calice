@@ -211,16 +211,27 @@ describe('bottles', () => {
   it('moves one bottle to another vintage without touching the shared wine', async () => {
     const { auth, cellarId, bottleId } = await setup('b12@b.com', 1);
     const other = await (await app.request(`/api/cellars/${cellarId}/bottles`, json(auth, 'POST', { wineId, quantity: 1 }), env)).json<{ id: number }>();
-    const moved = await (await app.request(`/api/bottles/${bottleId}/vintage`, json(auth, 'POST', { vintage: 2019 }), env)).json<any>();
+    const moved = (await (await app.request(`/api/bottles/${bottleId}/vintage`, json(auth, 'POST', { vintage: 2019 }), env)).json<any>()).wine;
     expect(moved.id).not.toBe(wineId);
     expect(moved).toMatchObject({ name: 'Barolo DOCG', producer: 'Elio Altare', vintage: 2019, denomination: 'Barolo DOCG', image_url: 'https://x/barolo.jpg' });
     const rows = await (await app.request(`/api/cellars/${cellarId}/bottles`, { headers: auth }, env)).json<any[]>();
     expect(rows.find((r) => r.id === other.id).vintage).toBeNull();
     expect(rows.find((r) => r.id === bottleId).vintage).toBe(2019);
     // The same vintage again reuses that wine instead of copying it twice.
-    const again = await (await app.request(`/api/bottles/${other.id}/vintage`, json(auth, 'POST', { vintage: 2019 }), env)).json<any>();
+    const again = (await (await app.request(`/api/bottles/${other.id}/vintage`, json(auth, 'POST', { vintage: 2019 }), env)).json<any>()).wine;
     expect(again.id).toBe(moved.id);
     expect((await app.request(`/api/bottles/${bottleId}/vintage`, json(auth, 'POST', { vintage: 1500 }), env)).status).toBe(400);
+  });
+
+  it('splits a row when only some of its bottles are of the other vintage', async () => {
+    const { auth, cellarId, bottleId } = await setup('b13@b.com', 2);
+    await app.request(`/api/bottles/${bottleId}`, json(auth, 'PATCH', { pricePaid: 15 }), env);
+    const res = await (await app.request(`/api/bottles/${bottleId}/vintage`, json(auth, 'POST', { vintage: 2019, quantity: 1 }), env)).json<any>();
+    expect(res.bottleId).not.toBe(bottleId);
+    const rows = await (await app.request(`/api/cellars/${cellarId}/bottles`, { headers: auth }, env)).json<any[]>();
+    expect(rows.find((r) => r.id === bottleId)).toMatchObject({ quantity: 1, vintage: null });
+    expect(rows.find((r) => r.id === res.bottleId)).toMatchObject({ quantity: 1, vintage: 2019, price_paid: 15 });
+    expect((await app.request(`/api/bottles/${bottleId}/vintage`, json(auth, 'POST', { vintage: 2018, quantity: 5 }), env)).status).toBe(400);
   });
 
   it('frees the latest places when the number of bottles goes down', async () => {
