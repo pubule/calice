@@ -400,6 +400,8 @@
 
   /* ---- notifica finestra di consumo ---- */
   .alert-banner{display:flex; align-items:center; gap:10px; background:#faf3e6; border:1px solid #ecdcb8; border-radius:12px; padding:11px 12px;}
+  /* Più avvisi uno sotto l'altro: un po' d'aria fra loro (#home-alerts non è flex). */
+  #home-alerts{display:flex; flex-direction:column; gap:10px;}
   .alert-banner svg{stroke:#8a6a1a; flex-shrink:0;}
   .alert-banner .txt{flex:1; font-size:calc(11.5rem/17); color:#5a4a1e; line-height:1.4;}
   .alert-banner .txt b{display:block; font-size:calc(11.5rem/17); color:#4a3a12;}
