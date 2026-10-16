@@ -1,5 +1,5 @@
 import { api } from '../api-client.js';
-import { escapeHtml, photoClass, skeletonBar } from '../util.js';
+import { escapeHtml, photoClass, skeletonBar, priceText } from '../util.js';
 import { openDetail } from './detail.js';
 import { openEditWineSheet } from './add.js';
 import { me } from '../auth.js';
@@ -72,10 +72,7 @@ function rowHtml(b) {
   const photo = photoClass(b.type);
   const name = escapeHtml(b.name);
   const sub = `${escapeHtml(b.producer)} · ${escapeHtml(b.region ?? b.country)}`;
-  const pp = Number(b.price_paid);
-  const price = b.price_paid != null && Number.isFinite(pp)
-    ? `${pp.toLocaleString('it-IT', { minimumFractionDigits: Number.isInteger(pp) ? 0 : 2, maximumFractionDigits: 2 })} €`
-    : '—';
+  const price = priceText(b.price_paid) ? `${priceText(b.price_paid)} €` : '—';
   const score = b.score != null ? b.score.toFixed(1) : '—';
   const loc = locationLabel(b);
   const quantity = escapeHtml(b.quantity);
@@ -100,10 +97,7 @@ function rowHtml(b) {
 function wishRowHtml(w) {
   const photo = photoClass(w.type);
   const name = escapeHtml(w.name) + (w.vintage ? ' ' + escapeHtml(w.vintage) : '');
-  const p = Number(w.target_price);
-  const price = w.target_price != null && Number.isFinite(p)
-    ? ` · Obiettivo ${p.toLocaleString('it-IT', { minimumFractionDigits: Number.isInteger(p) ? 0 : 2, maximumFractionDigits: 2 })} €`
-    : '';
+  const price = priceText(w.target_price) ? ` · Obiettivo ${priceText(w.target_price)} €` : '';
   const sub = `${escapeHtml(w.producer)} · ${escapeHtml(w.region ?? w.country)}${price}`;
   return `
     <div class="wish-row" data-id="${w.id}">

@@ -1,5 +1,5 @@
 import { api } from '../api-client.js';
-import { escapeHtml, photoClass } from '../util.js';
+import { escapeHtml, photoClass, priceText } from '../util.js';
 import { openLocationPicker, locationLabel, refreshCellarList, editBottle, deleteBottle } from './cellar.js';
 import { confirmModal, alertModal } from '../modal.js';
 import { showToast } from '../toast.js';
@@ -77,7 +77,8 @@ function renderHero(bottle) {
   }
   const chips = document.querySelector('#detail-overlay .hero-chips');
   const facts = [TYPE_LABEL[bottle.type], bottle.denomination, bottle.vintage ? String(bottle.vintage) : null,
-    bottle.alcohol ? `${String(bottle.alcohol).replace('.', ',')}% vol` : null];
+    bottle.alcohol ? `${String(bottle.alcohol).replace('.', ',')}% vol` : null,
+    priceText(bottle.price_paid) ? `${priceText(bottle.price_paid)} € a bottiglia` : null];
   chips.replaceChildren(...facts.filter(Boolean).map((t) => Object.assign(document.createElement('span'), { textContent: t })));
   // Two ratings side by side: the notes' average and Vivino's community one.
   const one = (n) => Number(n).toFixed(1).replace('.', ',');

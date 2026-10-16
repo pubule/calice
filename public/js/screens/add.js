@@ -1,5 +1,5 @@
 import { api } from '../api-client.js';
-import { escapeHtml, photoClass } from '../util.js';
+import { escapeHtml, photoClass, priceText } from '../util.js';
 import { alertModal, promptModal } from '../modal.js';
 import { showToast } from '../toast.js';
 import { tastingProfileHtml, wireTastingProfile, resetTastingProfile, readTastingProfile, isTastingProfileEmpty } from '../tasting-profile.js';
@@ -447,7 +447,7 @@ async function confirmWish(w, button) {
     rememberSearch(currentQuery());
     expanded = null;
     renderResults(currentQuery());
-    const euro = price != null ? price.toLocaleString('it-IT', { minimumFractionDigits: Number.isInteger(price) ? 0 : 2, maximumFractionDigits: 2 }) : null;
+    const euro = price != null ? priceText(price) : null;
     showToast(euro ? `Nei desideri, obiettivo ${euro} €` : 'Aggiunto ai desideri');
   } catch (err) {
     console.error(err);
@@ -1076,10 +1076,7 @@ export function openEditWineSheet(bottle, onSaved) {
   document.getElementById('rec-vintage').value = bottle.vintage ?? '';
   document.getElementById('rec-grape').value = bottle.grape_variety ?? '';
   document.getElementById('rec-denomination').value = bottle.denomination ?? '';
-  const paid = Number(bottle.price_paid);
-  document.getElementById('rec-price').value = bottle.price_paid != null && Number.isFinite(paid)
-    ? paid.toLocaleString('it-IT', { minimumFractionDigits: Number.isInteger(paid) ? 0 : 2, maximumFractionDigits: 2, useGrouping: false })
-    : '';
+  document.getElementById('rec-price').value = priceText(bottle.price_paid, { grouping: false });
   pendingVivino = bottle.vivino_rating != null ? { rating: { average: Number(bottle.vivino_rating), count: bottle.vivino_ratings_count ?? null } } : null;
   fillVivinoFields({ alcohol: bottle.alcohol, producerUrl: bottle.producer_url, rating: pendingVivino?.rating });
   resetNoteComposer();

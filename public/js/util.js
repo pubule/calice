@@ -14,3 +14,12 @@ export function photoClass(type) {
 export function skeletonBar(width = '100%', height = 12) {
   return `<div class="skeleton" style="width:${width}; height:${height}px; border-radius:6px;"></div>`;
 }
+
+// Prices always with two decimals, Italian style: "26,00". `grouping:false`
+// for a value put back into an input field (readDecimal() would read the
+// thousands dot "1.200" as 1.2). null/invalid → ''.
+export function priceText(n, { grouping = true } = {}) {
+  const v = Number(n);
+  if (n == null || n === '' || !Number.isFinite(v)) return '';
+  return v.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2, useGrouping: grouping });
+}

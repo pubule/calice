@@ -1229,8 +1229,11 @@ questo file è il riassunto "dove eravamo rimasti".
     /api/bottles/:id` separato (il prezzo è della bottiglia, non del vino
     condiviso). Il `PATCH` delle bottiglie resta parziale con `coalesce`,
     tranne il prezzo: `"pricePaid": null` esplicito lo svuota (chiave
-    assente = invariato). Prezzo validato 0-100000 anche nel `POST`. Nella
-    lista Cantina il prezzo si legge "18,50 €" invece di "€18.5".
+    assente = invariato). Prezzo validato 0-100000 anche nel `POST`.
+    Build 122: prezzi **sempre con due decimali** ("26,00") tramite un solo
+    `priceText()` in `util.js` (campo, lista Cantina, desideri, messaggi; nel
+    campo senza separatore delle migliaia, che `readDecimal()` leggerebbe
+    male), e nella scheda del vino un'etichetta "26,00 € a bottiglia".
 
 ## Cose note, non (ancora) da rifare
 
