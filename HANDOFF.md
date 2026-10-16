@@ -1378,6 +1378,11 @@ questo file è il riassunto "dove eravamo rimasti".
     un'altra). La lista bottiglie ha `my_rating` (ultima nota propria, 0 =
     null); nella scheda la riga di numeri mostra "il tuo voto"
     (`renderStats()`, ridisegnata da sola senza ricaricare il paesaggio).
+    Build 133: accanto alle stelle c'è il numero del voto (`#note-rating-value`,
+    "–" se manca); toccandolo si scrive il voto con la virgola (1-5, un
+    decimale) in un `promptModal` con tastiera decimale (`inputMode`, nuova
+    opzione). Le stelle si riempiono in proporzione (`setMyStars()`,
+    variabile CSS `--fill` con gradiente ritagliato sul testo).
 
 ## Cose note, non (ancora) da rifare
 

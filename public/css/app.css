@@ -352,6 +352,13 @@
      indistinguishable on the phone). */
   .add-note .stars-input span{font-size:24px; display:inline-block; padding:10px 5px; line-height:1; color:transparent; -webkit-text-stroke:1.3px #8e8779; cursor:pointer; transition:color .12s ease, -webkit-text-stroke-color .12s ease;}
   .add-note .stars-input span.on{color:#d4a017; -webkit-text-stroke-color:#a37a0c;}
+  /* Il tuo voto nella scheda: stelle riempite in proporzione (4,5 = mezza
+     quinta stella) e accanto il numero, che si tocca per scriverlo con la
+     virgola. Stelle un po' più strette per far stare tutto in una riga. */
+  #detail-overlay .my-stars{display:flex; align-items:center; gap:2px; min-width:0;}
+  #detail-overlay .add-note .stars-input span{padding:10px 2px; background:linear-gradient(90deg, #d4a017 var(--fill, 0%), transparent var(--fill, 0%)); background-origin:content-box; -webkit-background-clip:text; background-clip:text;}
+  .rating-value{min-width:44px; min-height:44px; padding:0 8px; display:flex; align-items:center; justify-content:center; border-radius:10px; background:#f2f0e9; color:#241e1a; font-size:calc(14rem/17); font-weight:600; font-variant-numeric:tabular-nums; cursor:pointer;}
+  .rating-value:active{opacity:.55;}
   .add-note button{background:#5b2333; color:#f7f5f0; border:none; border-radius:9999px; padding:10px 16px; min-height:36px; font-size:calc(11rem/17); font-weight:600; font-family:'Archivo',sans-serif; cursor:pointer;}
 
   /* ---- profilo di gusto: card di sapore, slider, abbinamenti (tasting-profile.js) ---- */

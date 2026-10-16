@@ -1,7 +1,7 @@
 import { api } from '../api-client.js';
 import { escapeHtml, photoClass, priceText } from '../util.js';
 import { openLocationPicker, locationLabel, refreshCellarList, editBottle, deleteBottle } from './cellar.js';
-import { confirmModal, alertModal } from '../modal.js';
+import { confirmModal, alertModal, promptModal } from '../modal.js';
 import { showToast } from '../toast.js';
 import { landscapeFor, knownLandscape } from '../landscape.js';
 import { tastingProfileHtml, wireTastingProfile, resetTastingProfile, readTastingProfile, setTastingProfile, isTastingProfileEmpty, tasteSummary } from '../tasting-profile.js';
@@ -13,6 +13,24 @@ let currentMeId = null;
 // filled with it (one note per bottle and person) and saving updates it.
 // Null when there is none yet — the first save creates it.
 let savedNoteId = null;
+let myRatingValue = 0; // the composer's score, 0 = none (1-5, tenths allowed)
+
+const ratingText = (r) => String(Math.round(r * 10) / 10).replace('.', ',');
+const myStars = Array.from(document.querySelectorAll('#detail-overlay .add-note .stars-input span'));
+
+// Stars filled in proportion to the score (4,5 = four and a half) and the
+// number shown next to them.
+function setMyStars(r) {
+  myRatingValue = r || 0;
+  myStars.forEach((star, i) => {
+    const fill = Math.max(0, Math.min(1, myRatingValue - i));
+    star.classList.toggle('on', fill >= 1);
+    star.style.setProperty('--fill', `${fill * 100}%`);
+    star.setAttribute('aria-checked', String(i + 1 === Math.round(myRatingValue)));
+  });
+  const value = document.getElementById('note-rating-value');
+  if (value) value.textContent = myRatingValue ? ratingText(myRatingValue) : '–';
+}
 
 function noteHtml(n) {
   // rating/text/author_name all come from the API as unvalidated JSON (no
@@ -356,12 +374,12 @@ function wireStaticControls() {
   // it at once (it is the rating of their latest note, created empty if
   // there is none), and Cantina's list and the numbers above follow.
   // "Salva nota" then updates that same note.
-  const myStars = Array.from(document.querySelectorAll('#detail-overlay .add-note .stars-input span'));
-  myStars.forEach((star, i) => star.addEventListener('click', async () => {
+  async function saveMyRating(value) {
     const bottle = currentBottle;
     if (!bottle) return;
+    setMyStars(value);
     try {
-      const res = await api.put(`/api/bottles/${bottle.id}/my-rating`, { rating: i + 1 });
+      const res = await api.put(`/api/bottles/${bottle.id}/my-rating`, { rating: value });
       if (res.note_id && currentBottle === bottle && savedNoteId == null) {
         savedNoteId = res.note_id;
         document.getElementById('note-submit').textContent = 'Aggiorna nota';
@@ -369,12 +387,27 @@ function wireStaticControls() {
       bottle.my_rating = res.my_rating;
       if (currentBottle === bottle) renderStats(bottle);
       refreshCellarList();
-      showToast(`Voto salvato · ★ ${i + 1}`);
+      showToast(`Voto salvato · ★ ${ratingText(res.my_rating)}`);
     } catch (err) {
       console.error(err);
       await alertModal('Non è stato possibile salvare il voto. Riprova.', { title: 'Voto non salvato' });
     }
-  }));
+  }
+  myStars.forEach((star, i) => star.addEventListener('click', () => saveMyRating(i + 1)));
+  // The number next to the stars: tapped, it asks for the score with a
+  // comma (4,5), for what whole stars cannot say.
+  document.getElementById('note-rating-value')?.addEventListener('click', async () => {
+    const typed = await promptModal('Da 1 a 5, anche con la virgola: per esempio 4,5.', {
+      title: 'Il tuo voto', defaultValue: myRatingValue ? ratingText(myRatingValue) : '', placeholder: 'es. 4,5', inputMode: 'decimal',
+    });
+    if (typed == null || !typed.trim()) return;
+    const v = Number(typed.trim().replace(',', '.'));
+    if (!(v >= 1 && v <= 5)) {
+      await alertModal('Il voto va da 1 a 5, per esempio 4 o 4,5.');
+      return;
+    }
+    await saveMyRating(Math.round(v * 10) / 10);
+  });
 
   const detailTaste = document.getElementById('detail-taste');
   detailTaste.innerHTML = tastingProfileHtml();
@@ -385,26 +418,21 @@ function wireStaticControls() {
     savedNoteId = null;
     noteSubmit.textContent = 'Salva nota';
     document.getElementById('note-text').value = '';
-    document.querySelectorAll('#detail-overlay .stars-input span').forEach((s) => { s.classList.remove('on'); s.setAttribute('aria-checked', 'false'); });
+    setMyStars(0);
     resetTastingProfile(detailTaste);
   };
   fillNoteComposerFn = (note) => {
     savedNoteId = note.id;
     noteSubmit.textContent = 'Aggiorna nota';
     document.getElementById('note-text').value = note.text ?? '';
-    const rating = Math.min(5, Math.max(0, Math.round(Number(note.rating)) || 0));
-    document.querySelectorAll('#detail-overlay .add-note .stars-input span').forEach((s, i) => {
-      s.classList.toggle('on', i < rating);
-      s.setAttribute('aria-checked', String(i < rating));
-    });
+    setMyStars(Number(note.rating) || 0);
     setTastingProfile(detailTaste, note);
   };
   noteSubmit?.addEventListener('click', async () => {
     if (currentBottleId == null || noteSubmit.disabled) return;
     const textEl = document.getElementById('note-text');
     const text = textEl.value.trim();
-    const starsGroup = document.querySelector('#detail-overlay .stars-input');
-    const starsOn = starsGroup.querySelectorAll('span.on').length;
+    const starsOn = myRatingValue;
     const profile = readTastingProfile(detailTaste);
     if (!text && starsOn === 0 && isTastingProfileEmpty(profile)) return;
     // 0 stars defaults to 3 only when there's free text to go with it (the

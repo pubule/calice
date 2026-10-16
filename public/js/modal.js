@@ -31,7 +31,7 @@ function ensureModal() {
   });
 }
 
-function showModal({ title, message, confirmLabel, cancelLabel, showInput, inputValue, inputPlaceholder, inputType, danger }) {
+function showModal({ title, message, confirmLabel, cancelLabel, showInput, inputValue, inputPlaceholder, inputType, inputMode, danger }) {
   ensureModal();
   const overlay = document.getElementById('app-modal');
   const titleEl = document.getElementById('app-modal-title');
@@ -46,6 +46,7 @@ function showModal({ title, message, confirmLabel, cancelLabel, showInput, input
   msgEl.style.display = message ? '' : 'none';
   input.style.display = showInput ? 'block' : 'none';
   input.type = inputType ?? 'text';
+  input.inputMode = inputMode ?? '';
   input.value = inputValue ?? '';
   input.placeholder = inputPlaceholder ?? '';
   input.setAttribute('aria-label', message || title || inputPlaceholder || '');
@@ -84,7 +85,7 @@ export function confirmModal(message, { title, confirmLabel = 'Conferma', cancel
   return showModal({ title, message, confirmLabel, cancelLabel, danger });
 }
 
-export function promptModal(message, { title, defaultValue = '', placeholder = '', confirmLabel = 'Salva', cancelLabel = 'Annulla', inputType = 'text' } = {}) {
+export function promptModal(message, { title, defaultValue = '', placeholder = '', confirmLabel = 'Salva', cancelLabel = 'Annulla', inputType = 'text', inputMode } = {}) {
   return showModal({
     title,
     message,
@@ -94,5 +95,6 @@ export function promptModal(message, { title, defaultValue = '', placeholder = '
     inputValue: defaultValue,
     inputPlaceholder: placeholder,
     inputType,
+    inputMode,
   });
 }
