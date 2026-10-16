@@ -95,5 +95,7 @@ export function drinkSummary(w) {
   if (s === 'past') return { status: s, title: 'Da bere subito', text: `la finestra si è chiusa nel ${w.until}` };
   if (s === 'soon') return { status: s, title: 'Bevi presto', text: `meglio entro il ${w.until}` };
   if (s === 'peak') return { status: s, title: 'Al meglio', text: `fino al ${w.until}` };
-  return { status: s, title: 'Pronto', text: `al meglio ${best}, fino al ${w.until}` };
+  // Ready but before its best years: say plainly it can be opened now.
+  if (new Date().getFullYear() < w.peakFrom) return { status: s, title: 'Pronto', text: `si beve già; darà il meglio ${w.peakFrom === w.peakUntil ? `nel ${w.peakFrom}` : `dal ${w.peakFrom} al ${w.peakUntil}`}` };
+  return { status: s, title: 'Pronto', text: `fino al ${w.until}` };
 }
