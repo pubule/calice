@@ -1235,6 +1235,14 @@ questo file è il riassunto "dove eravamo rimasti".
     campo senza separatore delle migliaia, che `readDecimal()` leggerebbe
     male), e nella scheda del vino un'etichetta "26,00 € a bottiglia".
 
+53. **Numero di bottiglie modificabile** (build 123). Prima si poteva solo
+    togliere una bottiglia ("Stappa") o aggiungerne dalla ricerca. Nel
+    modulo, sezione "La tua bottiglia", campo `#rec-qty` accanto al prezzo:
+    in "Modifica vino" imposta il numero esatto (0 ammesso: vino finito), in
+    "Rivedi e conferma" sostituisce la finestra "Quante bottiglie?" (resta
+    solo per l'aggiunta da codice a barre). Server: quantità intera 1-9999
+    nel `POST`, 0-9999 nel `PATCH` (prima nessun controllo).
+
 ## Cose note, non (ancora) da rifare
 
 - `status-bar-style` è `black-translucent` (non più `default`), `.screen`

@@ -132,7 +132,7 @@ const MANUAL_HTML = '<button type="button" class="add-manual" data-manual>Non lo
 async function askQuantity() {
   const raw = await promptModal('Quante bottiglie?', { title: 'Aggiungi alla cantina', defaultValue: '1', inputType: 'number', confirmLabel: 'Aggiungi' });
   if (raw === null) return null;
-  return Number(raw) || 1;
+  return Math.min(9999, Math.max(1, Math.round(Number(raw)) || 1));
 }
 
 // `finish` runs before the sheet closes (tasting note, photo upload), so the
@@ -1019,6 +1019,7 @@ function openRecognizeSheet(suggestion, capturedPhotoDataUrl) {
   pendingBarcode = suggestion.barcode;
   pendingVivino = { rating: suggestion.rating, vintageRatings: suggestion.vintageRatings };
   document.getElementById('rec-price').value = '';
+  document.getElementById('rec-qty').value = '1';
   fillVivinoFields({ alcohol: suggestion.alcohol, producerUrl: suggestion.producerUrl, rating: ratingFor(pendingVivino, suggestion.vintage) });
   pendingPhotoFile = undefined;
   document.getElementById('rec-photo-input').value = '';
@@ -1077,6 +1078,7 @@ export function openEditWineSheet(bottle, onSaved) {
   document.getElementById('rec-grape').value = bottle.grape_variety ?? '';
   document.getElementById('rec-denomination').value = bottle.denomination ?? '';
   document.getElementById('rec-price').value = priceText(bottle.price_paid, { grouping: false });
+  document.getElementById('rec-qty').value = String(Number(bottle.quantity) || 0);
   pendingVivino = bottle.vivino_rating != null ? { rating: { average: Number(bottle.vivino_rating), count: bottle.vivino_ratings_count ?? null } } : null;
   fillVivinoFields({ alcohol: bottle.alcohol, producerUrl: bottle.producer_url, rating: pendingVivino?.rating });
   resetNoteComposer();
@@ -1157,11 +1159,20 @@ async function saveRecognizedWine() {
     return;
   }
   const pricePaid = priceRead.value;
+  // How many bottles: a new wine needs at least one; editing can set any
+  // count, 0 included (all drunk, the wine stays listed as finished).
+  const qtyRaw = document.getElementById('rec-qty').value.trim();
+  const quantity = qtyRaw === '' ? (sheetMode === 'edit' ? null : 1) : Number(qtyRaw);
+  const minQty = sheetMode === 'edit' ? 0 : 1;
+  if (quantity != null && !(Number.isInteger(quantity) && quantity >= minQty && quantity <= 9999)) {
+    await alertModal(sheetMode === 'edit' ? 'Le bottiglie devono essere un numero intero, da 0 in su.' : 'Le bottiglie devono essere un numero intero, almeno 1.');
+    return;
+  }
 
   if (sheetMode === 'edit') {
     try {
       await api.patch(`/api/wines/${editingWineId}`, { name, producer, country, region, type, vintage, grapeVariety, denomination, ...extras });
-      await api.patch(`/api/bottles/${editingBottleId}`, { pricePaid });
+      await api.patch(`/api/bottles/${editingBottleId}`, quantity == null ? { pricePaid } : { pricePaid, quantity });
       closeRecognizeSheet();
       if (pendingPhotoFile) {
         try {
@@ -1185,12 +1196,8 @@ async function saveRecognizedWine() {
   // worth blocking the save over).
   const imageUrl = pendingImageUrl && pendingImageUrl.length <= 200 ? pendingImageUrl : undefined;
 
-  // Quantity first, before anything is created: asking after POST /api/wines
-  // meant that Annulla left an orphan wine in the shared catalog (it then
-  // showed up in every search). On Annulla the sheet stays open with the
-  // form and the tasting note intact.
-  const quantity = await askQuantity();
-  if (quantity === null) return;
+  // The number of bottles is a field of the form (checked above, before
+  // anything is created): no separate "Quante bottiglie?" dialog any more.
 
   try {
     const wine = await api.post('/api/wines', {

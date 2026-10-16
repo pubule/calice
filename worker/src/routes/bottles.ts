@@ -32,6 +32,7 @@ cellarBottleRoutes.post('/:cellarId/bottles', async (c) => {
   if (!(await isCellarMember(c.env.DB, cellarId, userId))) return c.json({ error: 'not a member' }, 403);
   const body = await c.req.json<{ wineId: number; quantity: number; pricePaid?: number; shelfLocation?: string; drinkFrom?: string; drinkUntil?: string }>();
   if (!isPrice(body.pricePaid)) return c.json({ error: 'pricePaid must be a number between 0 and 100000' }, 400);
+  if (!Number.isInteger(body.quantity) || body.quantity < 1 || body.quantity > 9999) return c.json({ error: 'quantity must be an integer between 1 and 9999' }, 400);
   const bottle = await c.env.DB
     .prepare(
       `insert into bottles (cellar_id, wine_id, quantity, price_paid, shelf_location, drink_from, drink_until, added_by)
@@ -68,6 +69,9 @@ bottleRoutes.patch('/:id', async (c) => {
   // "pricePaid": null clears it (the edit sheet's field emptied), which
   // coalesce could never do. Omitting it still leaves it as it is.
   const priceGiven = 'pricePaid' in body ? 1 : 0;
+  if (body.quantity != null && !(Number.isInteger(body.quantity) && body.quantity >= 0 && body.quantity <= 9999)) {
+    return c.json({ error: 'quantity must be an integer between 0 and 9999' }, 400);
+  }
   const bottle = await c.env.DB
     .prepare(
       `update bottles set

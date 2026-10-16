@@ -116,6 +116,11 @@ describe('bottles', () => {
     expect((await (await patch({ pricePaid: null })).json<any>()).price_paid).toBeNull();
     expect((await patch({ pricePaid: -3 })).status).toBe(400);
     expect((await patch({ pricePaid: 'tanto' })).status).toBe(400);
+    expect((await (await patch({ quantity: 0 })).json<any>()).quantity).toBe(0);
+    expect((await (await patch({ quantity: 6 })).json<any>()).quantity).toBe(6);
+    for (const bad of [-1, 1.5, 'tre']) expect((await patch({ quantity: bad })).status, String(bad)).toBe(400);
+    const badPost = await app.request(`/api/cellars/${cellarId}/bottles`, { method: 'POST', body: JSON.stringify({ wineId, quantity: 0 }), headers: { ...auth, 'content-type': 'application/json' } }, env);
+    expect(badPost.status).toBe(400);
   });
 
   it('deletes a bottle that has a tasting note and a photo without 500ing, and cleans up both', async () => {
