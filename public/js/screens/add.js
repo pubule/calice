@@ -189,35 +189,6 @@ async function plusOne(bottleId) {
   });
 }
 
-async function uploadBottlePhoto(bottleId, file) {
-  const form = new FormData();
-  form.append('file', file);
-  await api.post(`/api/bottles/${bottleId}/photos`, form);
-}
-
-// Phone camera photos land at several MB (12+ MP, HEIC/JPEG) — re-encode to a
-// capped resolution JPEG before it ever reaches R2, where storage and class-A
-// writes both count against the free tier. 1600px longest side and quality
-// 0.82 keep a bottle label readable while cutting most photos to a few
-// hundred KB. Falls back to the original file if the browser can't decode it
-// (e.g. an exotic format createImageBitmap rejects).
-async function compressForUpload(file, maxDim = 1600, quality = 0.82) {
-  try {
-    const bitmap = await createImageBitmap(file);
-    const scale = Math.min(1, maxDim / Math.max(bitmap.width, bitmap.height));
-    const canvas = document.createElement('canvas');
-    canvas.width = Math.round(bitmap.width * scale);
-    canvas.height = Math.round(bitmap.height * scale);
-    canvas.getContext('2d').drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-    bitmap.close();
-    const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', quality));
-    return blob ?? file;
-  } catch (err) {
-    console.error('photo compression failed, uploading original', err);
-    return file;
-  }
-}
-
 // ---- recent searches (this device only: a convenience, never data) ----
 const RECENT_KEY = 'calice-recent-searches';
 function recentSearches() {
@@ -961,7 +932,10 @@ function fillVivinoFields({ alcohol, producerUrl, rating }) {
   vivinoFieldStart = rating?.average ? decimalText(rating.average) : '';
   document.getElementById('rec-vivino').value = vivinoFieldStart;
 }
-let pendingPhotoFile;
+// The wine's main photo as chosen in the sheet, saved with the wine:
+// { file } a photo or a copied image, { url } a copied image link,
+// { remove: true } back to the type's placeholder; null = unchanged.
+let pendingPhoto = null;
 
 // The sheet is shared by three entry points that all end up at the same
 // fields: a recognized/found wine under review, a fully manual add, and
@@ -1021,19 +995,10 @@ function openRecognizeSheet(suggestion, capturedPhotoDataUrl) {
   document.getElementById('rec-price').value = '';
   document.getElementById('rec-qty').value = '1';
   fillVivinoFields({ alcohol: suggestion.alcohol, producerUrl: suggestion.producerUrl, rating: ratingFor(pendingVivino, suggestion.vintage) });
-  pendingPhotoFile = undefined;
+  pendingPhoto = null;
   document.getElementById('rec-photo-input').value = '';
 
-  const photoWrap = document.getElementById('recognize-photo-wrap');
-  const photoImg = document.getElementById('recognize-photo');
-  sizeReviewPhoto(photoImg);
-  const shownPhoto = capturedPhotoDataUrl ?? suggestion.imageUrl;
-  if (shownPhoto) {
-    photoImg.src = shownPhoto;
-    photoWrap.style.display = '';
-  } else {
-    photoWrap.style.display = 'none';
-  }
+  showReviewPhoto(capturedPhotoDataUrl ?? suggestion.imageUrl ?? null);
 
   const rawTextEl = document.getElementById('recognize-rawtext');
   if (suggestion.rawText) {
@@ -1084,18 +1049,10 @@ export function openEditWineSheet(bottle, onSaved) {
   resetNoteComposer();
   pendingImageUrl = undefined;
   pendingBarcode = undefined;
-  pendingPhotoFile = undefined;
+  pendingPhoto = null;
   document.getElementById('rec-photo-input').value = '';
 
-  const photoWrap = document.getElementById('recognize-photo-wrap');
-  const photoImg = document.getElementById('recognize-photo');
-  sizeReviewPhoto(photoImg);
-  if (bottle.image_url) {
-    photoImg.src = bottle.image_url;
-    photoWrap.style.display = '';
-  } else {
-    photoWrap.style.display = 'none';
-  }
+  showReviewPhoto(bottle.image_url ?? null);
   document.getElementById('recognize-rawtext').style.display = 'none';
 
   document.getElementById('recognize-overlay').classList.add('open');
@@ -1174,14 +1131,7 @@ async function saveRecognizedWine() {
       await api.patch(`/api/wines/${editingWineId}`, { name, producer, country, region, type, vintage, grapeVariety, denomination, ...extras });
       await api.patch(`/api/bottles/${editingBottleId}`, quantity == null ? { pricePaid } : { pricePaid, quantity });
       closeRecognizeSheet();
-      if (pendingPhotoFile) {
-        try {
-          await uploadBottlePhoto(editingBottleId, pendingPhotoFile);
-        } catch (err) {
-          console.error(err);
-          await alertModal('Vino modificato, ma il caricamento della foto è fallito.');
-        }
-      }
+      await savePendingPhoto(editingWineId, 'Vino modificato');
       editSavedCallback?.();
     } catch (err) {
       console.error(err);
@@ -1208,14 +1158,7 @@ async function saveRecognizedWine() {
     closeRecognizeSheet();
     await postBottle(wine.id, quantity, async (bottle) => {
       await maybeSaveNote(bottle.id);
-      if (pendingPhotoFile) {
-        try {
-          await uploadBottlePhoto(bottle.id, pendingPhotoFile);
-        } catch (err) {
-          console.error(err);
-          await alertModal('Vino salvato, ma il caricamento della foto è fallito.');
-        }
-      }
+      await savePendingPhoto(wine.id, 'Vino salvato');
     }, pricePaid);
   } catch (err) {
     console.error(err);
@@ -1245,13 +1188,138 @@ recognizeSave?.addEventListener('click', async () => {
     recognizeSave.disabled = false;
   }
 });
-document.getElementById('rec-photo-pick')?.addEventListener('click', () => document.getElementById('rec-photo-input')?.click());
-document.getElementById('rec-photo-input')?.addEventListener('change', async (e) => {
-  const file = e.target.files?.[0];
-  if (!file) return;
-  pendingPhotoFile = await compressForUpload(file);
+// ---- the wine's main photo, chosen in the sheet ----
+
+function showReviewPhoto(src) {
   const photoImg = document.getElementById('recognize-photo');
   sizeReviewPhoto(photoImg);
-  photoImg.src = URL.createObjectURL(pendingPhotoFile);
-  document.getElementById('recognize-photo-wrap').style.display = '';
+  const wrap = document.getElementById('recognize-photo-wrap');
+  if (src) photoImg.src = src;
+  else photoImg.removeAttribute('src');
+  wrap.style.display = src ? '' : 'none';
+  document.getElementById('rec-photo-remove').classList.toggle('hidden', !src);
+}
+
+// Smaller before upload. A cut-out (transparent background, as product
+// shots often are) stays PNG so it can stand on the landscape; anything
+// else becomes JPEG.
+async function compressWineImage(blob) {
+  try {
+    const bitmap = await createImageBitmap(blob);
+    const scale = Math.min(1, 1200 / Math.max(bitmap.width, bitmap.height));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+    canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    bitmap.close();
+    const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    let transparent = false;
+    for (let i = 3; i < img.data.length; i += 4 * 97) if (img.data[i] < 250) { transparent = true; break; }
+    // Shop photos of a bottle usually sit on plain white: clear the white
+    // that touches the edges, and the bottle stands on the landscape.
+    if (!transparent && clearWhiteBackground(img)) {
+      ctx.putImageData(img, 0, 0);
+      transparent = true;
+    }
+    const out = await new Promise((resolve) => canvas.toBlob(resolve, transparent ? 'image/png' : 'image/jpeg', 0.86));
+    return out ?? blob;
+  } catch (err) {
+    console.error('wine image compression failed, sending original', err);
+    return blob;
+  }
+}
+
+// Flood fill from the borders over near-white pixels, making them
+// transparent. Only when all four corners are white (a white backdrop, not
+// a photo that happens to have a bright patch). Returns whether it did.
+function clearWhiteBackground(img) {
+  const { width: w, height: h, data } = img;
+  const white = (p) => data[p * 4] > 236 && data[p * 4 + 1] > 236 && data[p * 4 + 2] > 236;
+  if (![0, w - 1, (h - 1) * w, h * w - 1].every(white)) return false;
+  const seen = new Uint8Array(w * h);
+  const stack = [];
+  for (let x = 0; x < w; x++) stack.push(x, (h - 1) * w + x);
+  for (let y = 0; y < h; y++) stack.push(y * w, y * w + w - 1);
+  let cleared = 0;
+  while (stack.length) {
+    const p = stack.pop();
+    if (seen[p] || !white(p)) continue;
+    seen[p] = 1;
+    data[p * 4 + 3] = 0;
+    cleared++;
+    const x = p % w;
+    if (x > 0) stack.push(p - 1);
+    if (x < w - 1) stack.push(p + 1);
+    if (p >= w) stack.push(p - w);
+    if (p < w * (h - 1)) stack.push(p + w);
+  }
+  // Nearly everything white: not a bottle on a backdrop, leave it alone.
+  if (cleared > w * h * 0.95) {
+    for (let p = 0; p < w * h; p++) data[p * 4 + 3] = 255;
+    return false;
+  }
+  return cleared > 0;
+}
+
+async function choosePhotoBlob(blob) {
+  const file = await compressWineImage(blob);
+  pendingPhoto = { file };
+  showReviewPhoto(URL.createObjectURL(file));
+}
+
+// What was copied in Safari: an image (long press → Copia) or a link to one.
+// iOS shows its own "Incolla" bubble to allow reading it.
+async function pastePhoto() {
+  try {
+    const items = navigator.clipboard?.read ? await navigator.clipboard.read() : [];
+    for (const item of items) {
+      const type = item.types.find((t) => t.startsWith('image/'));
+      if (type) return choosePhotoBlob(await item.getType(type));
+    }
+    let text = '';
+    for (const item of items) if (item.types.includes('text/plain')) text = await (await item.getType('text/plain')).text();
+    if (!text && navigator.clipboard?.readText) text = await navigator.clipboard.readText();
+    text = text.trim();
+    if (/^https?:\/\/\S+$/i.test(text)) {
+      pendingPhoto = { url: text };
+      showReviewPhoto(text);
+      return;
+    }
+  } catch (err) {
+    console.error('clipboard read failed', err);
+  }
+  await alertModal('Negli appunti non c\'è un\'immagine. In Safari tieni premuta la foto, scegli Copia, poi torna qui e premi Incolla dal web.', { title: 'Nessuna immagine copiata' });
+}
+
+// Saved once the wine exists (and is in the user's cellar).
+async function savePendingPhoto(wineId, doneLabel) {
+  if (!pendingPhoto || !wineId) return;
+  const photo = pendingPhoto;
+  pendingPhoto = null;
+  try {
+    if (photo.remove) await api.del(`/api/wines/${wineId}/image`);
+    else if (photo.url) await api.put(`/api/wines/${wineId}/image`, { url: photo.url });
+    else {
+      const form = new FormData();
+      form.append('file', photo.file, 'foto');
+      await api.put(`/api/wines/${wineId}/image`, form);
+    }
+  } catch (err) {
+    console.error(err);
+    await alertModal(photo.url
+      ? `${doneLabel}, ma la foto non si è potuta scaricare dal link: prova a copiare l'immagine stessa invece del link.`
+      : `${doneLabel}, ma il caricamento della foto è fallito.`);
+  }
+}
+
+document.getElementById('rec-photo-pick')?.addEventListener('click', () => document.getElementById('rec-photo-input')?.click());
+document.getElementById('rec-photo-paste')?.addEventListener('click', pastePhoto);
+document.getElementById('rec-photo-remove')?.addEventListener('click', () => {
+  pendingPhoto = { remove: true };
+  showReviewPhoto(null);
+});
+document.getElementById('rec-photo-input')?.addEventListener('change', async (e) => {
+  const file = e.target.files?.[0];
+  if (file) await choosePhotoBlob(file);
 });

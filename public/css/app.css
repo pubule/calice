@@ -126,6 +126,13 @@
   .icon-btn svg{width:12px; height:12px; stroke:#756b60;}
   .icon-btn.danger svg{stroke:#8a3244;}
   .icon-btn.danger{background:#f7e9ec;}
+  /* Foto principale del vino nel foglio Rivedi/Modifica: tre azioni secondarie
+     (bianche con bordo) sotto l'anteprima, e come copiare una foto dal web. */
+  .rec-photo-actions{display:flex; flex-wrap:wrap; justify-content:center; gap:8px; margin-top:10px;}
+  .photo-act{min-height:44px; padding:0 16px; border-radius:999px; border:1px solid #e2e0d8; background:#fff; color:#241e1a; font:inherit; font-size:calc(13rem/17); font-weight:600; cursor:pointer;}
+  .photo-act.danger{color:#8a3244;}
+  .photo-act:active{opacity:.55;}
+  .rec-photo-hint{margin:6px 0 0; text-align:center; font-size:calc(12rem/17); line-height:1.4; color:#736a5d;}
   .elem-tools{display:flex; justify-content:flex-end; gap:16px; margin-bottom:10px;}
 
   .diary-row{display:flex; gap:12px; align-items:center; padding:9px 0; border-bottom:1px solid #e2e0d8;}

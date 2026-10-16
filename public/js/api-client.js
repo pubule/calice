@@ -57,5 +57,6 @@ export const api = {
   get,
   post: (path, body) => write('POST', path, body),
   patch: (path, body) => write('PATCH', path, body),
+  put: (path, body) => write('PUT', path, body),
   del: (path) => write('DELETE', path),
 };

@@ -1349,6 +1349,24 @@ questo file è il riassunto "dove eravamo rimasti".
     creato senza nome prende il tipo numerato se già usato ("Cella",
     "Cella 2"…), così due elementi uguali si distinguono da subito.
 
+60. **Foto del vino scelta dall'utente** (build 130). Caso: Vivino dà il
+    segnaposto generico (grappolo grigio). Nel foglio Rivedi/Modifica, sotto
+    l'anteprima: "Scegli foto" (input senza `capture`, così iOS offre anche
+    la libreria), "Incolla dal web" (`navigator.clipboard.read()`: immagine
+    copiata in Safari, o un link a un'immagine), "Rimuovi". La foto scelta è
+    la **foto principale del vino** (`wines.image_url`), non più una foto
+    della galleria "Le tue foto" come faceva il vecchio "Aggiungi foto
+    bottiglia". Server: `PUT /api/wines/:id/image` (multipart `file` o JSON
+    `{url}` che il Worker scarica; max 5 MB, tipo verificato dai magic
+    byte) e `DELETE`, file in R2 `wines/<id>/<uuid>` serviti da
+    `/api/wine-images/<key>` (cache immutabile, chiave mai riusata; la
+    vecchia foto propria viene cancellata). Nel client
+    `compressWineImage()`: max 1200px; se lo sfondo è bianco ai quattro
+    angoli lo rende trasparente (riempimento dai bordi) e salva PNG, così
+    la bottiglia sta in piedi sul paesaggio; altrimenti JPEG. Le foto di
+    catalogo sono condivise: cambiare la foto di un vino la cambia per
+    tutti quelli che lo hanno.
+
 ## Cose note, non (ancora) da rifare
 
 - `status-bar-style` è `black-translucent` (non più `default`), `.screen`

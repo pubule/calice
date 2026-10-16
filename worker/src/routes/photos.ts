@@ -21,7 +21,7 @@ const IMAGE_SIGNATURES: { type: string; magic: number[]; offset?: number }[] = [
   { type: 'image/webp', magic: [0x57, 0x45, 0x42, 0x50], offset: 8 }, // RIFF....WEBP
 ];
 
-function detectImageType(bytes: ArrayBuffer): string | null {
+export function detectImageType(bytes: ArrayBuffer): string | null {
   const view = new Uint8Array(bytes);
   for (const { type, magic, offset = 0 } of IMAGE_SIGNATURES) {
     if (view.length >= offset + magic.length && magic.every((b, i) => view[offset + i] === b)) return type;

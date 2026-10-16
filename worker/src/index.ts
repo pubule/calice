@@ -12,6 +12,7 @@ import { followRoutes, activityRoutes } from './routes/follows';
 import { pushRoutes } from './routes/push';
 import { tastingRoutes } from './routes/tastings';
 import { landscapeRoutes } from './routes/landscape';
+import { wineImageRoutes, wineImageFileRoutes } from './routes/wine-image';
 import { runNotificationScan, checkPhotoStorageUsage } from './cron';
 
 export type Env = {
@@ -33,6 +34,8 @@ app.route('/api/cellars', cellarRoutes);
 app.route('/api/invites', inviteRoutes);
 app.route('/api/wines', wineRoutes);
 app.route('/api/wines/recognize', recognizeRoutes);
+app.route('/api/wines', wineImageRoutes);
+app.route('/api/wine-images', wineImageFileRoutes);
 app.route('/api/landscape', landscapeRoutes);
 app.route('/api/cellars', cellarBottleRoutes);
 app.route('/api/bottles', bottleRoutes);
