@@ -962,6 +962,17 @@ questo file è il riassunto "dove eravamo rimasti".
     viene arrotondato agli scatti, così segno atteso, etichette e
     riepilogo parlano dello stesso valore che si può scegliere.
 
+34. **Icone dei momenti nell'Assaggio guidato** (build 102). Scelte
+    dall'utente su mockup (6 famiglie): **naso = profilo di viso con i
+    profumi** (famiglia C), **bocca = labbra** (famiglia A), giudizio =
+    stella. La barra sottile dei passi è diventata tre riquadri con icona
+    (`STEP_UI` + `stepperHtml()` in `tasting.js`): quello attuale in
+    evidenza, quelli già fatti colorati e toccabili per tornarci; in cima a
+    ogni passo un riquadro con l'icona e cosa fare (`stepIntroHtml()`).
+    Scartata la "zona della lingua": la mappa dei gusti sulla lingua è un
+    mito; proposta una mappa delle sensazioni tattili, ma l'utente ha
+    chiesto di toglierla — non riproporla.
+
 ## Cose note, non (ancora) da rifare
 
 - `status-bar-style` è `black-translucent` (non più `default`), `.screen`

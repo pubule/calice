@@ -623,9 +623,17 @@
   #view-tasting .tasting-top{justify-content:flex-start; gap:12px; flex-wrap:nowrap;}
   #view-tasting .tasting-top .screen-title{margin-top:0; flex:1; min-width:0; font-size:calc(16rem/17);}
   .tasting-stepn{font-family:'JetBrains Mono',monospace; font-size:calc(11rem/17); letter-spacing:.06em; color:#736a5d; white-space:nowrap;}
-  .tasting-bar{display:flex; gap:4px;}
-  .tasting-bar span{flex:1; height:3px; border-radius:2px; background:#e7e2d8;}
-  .tasting-bar span.on{background:#5b2333;}
+  .tasting-stepper{display:grid; grid-template-columns:repeat(3,1fr); gap:6px;}
+  .tasting-st{display:flex; flex-direction:column; align-items:center; gap:4px; padding:8px 4px 7px; border-radius:12px; font-size:calc(11.5rem/17); color:#736a5d; min-height:44px;}
+  .tasting-st[data-step]{cursor:pointer;}
+  .tasting-st-badge{width:36px; height:36px; border-radius:10px; background:#efece5; color:#a69c8c; display:flex; align-items:center; justify-content:center;}
+  .tasting-st-badge svg{width:21px; height:21px;}
+  .tasting-st.done .tasting-st-badge, .tasting-st.on .tasting-st-badge{background:var(--st-bg); color:var(--st-fg);}
+  .tasting-st.on{background:#ffffff; box-shadow:0 1px 3px rgba(0,0,0,.06); color:#241e1a; font-weight:600;}
+  .tasting-intro{display:flex; gap:12px; align-items:center; border-radius:14px; padding:12px;}
+  .tasting-intro-badge{width:40px; height:40px; border-radius:11px; background:#ffffff; display:flex; align-items:center; justify-content:center; flex-shrink:0;}
+  .tasting-intro-badge svg{width:24px; height:24px;}
+  .tasting-intro p{margin:0; font-size:calc(13rem/17); line-height:1.4; color:#4a4239;}
   .tasting-wine{background:#f4e8eb; color:#5b2333;}
   .tasting-lede{margin:0; font-size:calc(13rem/17); line-height:1.45; color:#4a4239;}
   .tasting-body select.search, .tasting-body input.search{width:100%;}
@@ -746,7 +754,7 @@
   button:not(:disabled):active, .navbtn:active, .chip:active, .icon-btn:active, .primary-btn:active, .alert-dismiss:active, .slot-circle:active, .follow-btn:active, .wish-add:active, .invite-btn:active, .filter-btn:active, .close:active, .back-btn:active, .rev-tab:active, .add-btn:active, .shuffle-btn:active, .add-row-btn:active, .camera-close:active, .camera-shutter:active, .flavor-card:active, .gallery-add:active{transform:scale(.97);}
   .cantina-switch, .compare-btn, .elements-link, .loc-edit, .search-clear, .home-tab-toggle, #find-friends-btn, .section-head a, .manual-link, .rev-translate, .bottle-popup .bgo, .app-credit a{transition:opacity 100ms ease-out;}
   .cantina-switch:active, .compare-btn:active, .elements-link:active, .loc-edit:active, .search-clear:active, .home-tab-toggle:active, #find-friends-btn:active, .section-head a:active, .manual-link:active, .rev-translate:active, .bottle-popup .bgo:active, .app-credit a:active{opacity:.55;}
-  .list-row:active, .cellar-row:active, .wish-row:active, .elem-row:active, .result-row:active, .diary-row:active, .explore-entry:active, .settings-row:active, .kind-opt:active, .explore-dd-head:active, .explore-dd-list .opt:active, .logout:active{background:rgba(36,30,26,.07); transition:none;}
+  .tasting-st[data-step]:active, .list-row:active, .cellar-row:active, .wish-row:active, .elem-row:active, .result-row:active, .diary-row:active, .explore-entry:active, .settings-row:active, .kind-opt:active, .explore-dd-head:active, .explore-dd-list .opt:active, .logout:active{background:rgba(36,30,26,.07); transition:none;}
   @media (prefers-reduced-motion: reduce){
     button:not(:disabled):active, .navbtn:active, .chip:active, .icon-btn:active, .primary-btn:active, .alert-dismiss:active, .slot-circle:active, .follow-btn:active, .wish-add:active, .invite-btn:active, .filter-btn:active, .close:active, .back-btn:active, .rev-tab:active, .add-btn:active, .shuffle-btn:active, .add-row-btn:active, .camera-close:active, .camera-shutter:active, .flavor-card:active, .gallery-add:active{transform:none; opacity:.55;}
     /* Sheet senza scorrimento: solo dissolvenza. */

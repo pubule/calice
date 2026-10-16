@@ -60,8 +60,49 @@ function headerHtml() {
       <h2 class="screen-title">${escapeHtml(title)}</h2>
       ${stepIdx >= 0 ? `<span class="tasting-stepn">${stepIdx + 1} di 3</span>` : ''}
     </div>
-    ${stepIdx >= 0 ? `<div class="tasting-bar" aria-hidden="true">${STEPS.map((_, i) => `<span class="${i <= stepIdx ? 'on' : ''}"></span>`).join('')}</div>` : ''}
-    ${state.step !== 'start' && state.step !== 'past' ? `<span class="aroma-pill tasting-wine">${escapeHtml(state.label ? `${state.wine} · ${state.label}` : state.wine)}</span>` : ''}`;
+    ${stepIdx >= 0 ? stepperHtml(stepIdx) : ''}
+    ${state.step !== 'start' && state.step !== 'past' ? `<span class="aroma-pill tasting-wine">${escapeHtml(state.label ? `${state.wine} · ${state.label}` : state.wine)}</span>` : ''}
+    ${stepIdx >= 0 ? stepIntroHtml(STEPS[stepIdx]) : ''}`;
+}
+
+// The three moments, each with its icon (chosen by the user on a mockup:
+// nose = face profile with scents, mouth = lips, verdict = star) and colour,
+// in the style of the Home and wheel badges.
+const STEP_UI = {
+  nose: {
+    label: 'Naso', bg: '#f5e9ef', fg: '#8a4a6a',
+    what: 'Annusa il bicchiere fermo, poi fallo ruotare e annusa di nuovo: tocca gli aromi che riconosci.',
+    icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M16.5 2.5c-.3 1.6-.7 2.8-1.2 3.8l-3.6 5c-.3.4 0 .9.5.9h2.6"/><path d="M14.6 14.4h-1.1"/><path d="M14.8 16.4c-.7 0-1.1.3-1.1.8 0 1.5 1.1 2.6 2.8 2.9"/><path d="M8.6 7.6c-1 .9-1 2.1 0 3"/><path d="M5.8 6c-2 1.8-2 4.4 0 6.2"/></svg>',
+  },
+  mouth: {
+    label: 'Bocca', bg: '#f4e8eb', fg: '#5b2333',
+    what: 'Un piccolo sorso, fallo girare in bocca: valuta struttura e sensazioni, poi gli aromi che tornano.',
+    icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12c2.3-2.6 4.7-3.6 6.6-2.8.9.4 1.6.6 2.4.6s1.5-.2 2.4-.6C16.3 8.4 18.7 9.4 21 12c-2.6 3.7-5.6 5.5-9 5.5S5.6 15.7 3 12z"/><path d="M3 12c3 1.3 6 1.8 9 1.8s6-.5 9-1.8"/></svg>',
+  },
+  verdict: {
+    label: 'Giudizio', bg: '#f7f0e2', fg: '#8a6a24',
+    what: "Com'era nell'insieme? Dai un voto e scrivi due righe.",
+    icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M12 3.8l2.4 5 5.4.7-4 3.7 1 5.4-4.8-2.6-4.8 2.6 1-5.4-4-3.7 5.4-.7z"/></svg>',
+  },
+};
+
+// Steps already reached can be revisited by tapping them; later ones can't
+// be skipped to.
+function stepperHtml(current) {
+  return `<div class="tasting-stepper">${STEPS.map((id, i) => {
+    const ui = STEP_UI[id];
+    const cls = i === current ? ' on' : i < current ? ' done' : '';
+    const attrs = i < current ? `data-step="${id}" role="button" tabindex="0"` : `aria-disabled="true"`;
+    return `<div class="tasting-st${cls}" style="--st-bg:${ui.bg};--st-fg:${ui.fg}" ${attrs}${i === current ? ' aria-current="step"' : ''}>
+      <span class="tasting-st-badge" aria-hidden="true">${ui.icon}</span>${escapeHtml(ui.label)}</div>`;
+  }).join('')}</div>`;
+}
+
+function stepIntroHtml(id) {
+  const ui = STEP_UI[id];
+  return `<div class="tasting-intro" style="background:${ui.bg}">
+    <span class="tasting-intro-badge" style="color:${ui.fg}" aria-hidden="true">${ui.icon}</span>
+    <p>${escapeHtml(ui.what)}</p></div>`;
 }
 
 // ---- start ----
@@ -110,7 +151,7 @@ function noseHtml() {
   return `
     <div class="aroma-card">
       <div class="field-label">Aromi attesi in un ${escapeHtml(state.wine)}</div>
-      <p class="aroma-card-desc">Annusa e tocca quelli che senti davvero: non devi trovarli tutti.</p>
+      <p class="aroma-card-desc">Non devi trovarli tutti.</p>
       ${groups.map(([f, ts]) => `<div class="expect-group"><span class="expect-fam" style="color:${f.fg}">${escapeHtml(f.label)}</span><div class="chip-row">${ts.map((t) => chipHtml(t, true)).join('')}</div></div>`).join('')}
     </div>
     <div class="aroma-card">
