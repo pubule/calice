@@ -63,9 +63,18 @@ function renderHero(bottle) {
   const chips = document.querySelector('#detail-overlay .hero-chips');
   const facts = [TYPE_LABEL[bottle.type], bottle.denomination, bottle.vintage ? String(bottle.vintage) : null];
   chips.replaceChildren(...facts.filter(Boolean).map((t) => Object.assign(document.createElement('span'), { textContent: t })));
+  // Two ratings side by side: the notes' average and Vivino's community one.
+  const one = (n) => Number(n).toFixed(1).replace('.', ',');
   if (bottle.score != null) {
-    const score = Number(bottle.score).toFixed(1).replace('.', ',');
-    chips.append(Object.assign(document.createElement('span'), { textContent: `★ ${score}`, ariaLabel: `Valutazione media ${score}` }));
+    chips.append(Object.assign(document.createElement('span'), { textContent: `Note ★ ${one(bottle.score)}`, ariaLabel: `Voto medio delle note ${one(bottle.score)} su 5` }));
+  }
+  if (bottle.vivino_rating != null) {
+    const n = Number(bottle.vivino_ratings_count) || 0;
+    chips.append(Object.assign(document.createElement('span'), {
+      textContent: `Vivino ★ ${one(bottle.vivino_rating)}`,
+      title: `${n.toLocaleString('it-IT')} ${n === 1 ? 'voto' : 'voti'} su Vivino`,
+      ariaLabel: `Voto medio su Vivino ${one(bottle.vivino_rating)} su 5, ${n.toLocaleString('it-IT')} ${n === 1 ? 'voto' : 'voti'}`,
+    }));
   }
   document.getElementById('loc-value').textContent = locationLabel(bottle) || 'Non assegnata';
 }

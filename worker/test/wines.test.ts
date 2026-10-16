@@ -91,6 +91,19 @@ describe('POST /api/wines', () => {
     expect(body.source).toBe('custom');
   });
 
+  it("stores Vivino's rating as a pair, and refuses half or out-of-range values", async () => {
+    const auth = signup('viv@b.com');
+    const post = (body: object) =>
+      app.request('/api/wines', { method: 'POST', body: JSON.stringify(body), headers: { ...auth, 'content-type': 'application/json' } }, env);
+    const base = { name: 'Franciacorta Batudè Brut', producer: 'Ambrosini', country: 'Italia', type: 'bollicine' };
+    const ok = await post({ ...base, vivinoRating: 3.84, vivinoRatingsCount: 475 });
+    expect(ok.status).toBe(200);
+    expect(await ok.json<any>()).toMatchObject({ vivino_rating: 3.8, vivino_ratings_count: 475 });
+    for (const bad of [{ vivinoRating: 3.8 }, { vivinoRatingsCount: 10 }, { vivinoRating: 0, vivinoRatingsCount: 10 }, { vivinoRating: 6, vivinoRatingsCount: 10 }, { vivinoRating: 4, vivinoRatingsCount: 1.5 }]) {
+      expect((await post({ ...base, name: 'Altro', ...bad })).status, JSON.stringify(bad)).toBe(400);
+    }
+  });
+
   it('reuses an existing wine with the same name, producer and vintage, filling only its blanks', async () => {
     const auth = signup('dup@b.com');
     const post = (body: object) =>

@@ -59,7 +59,7 @@ function webPick(c, i) {
   return {
     key: `w${i}`, wineId: null, name: pre.name ?? c.title ?? '', title: c.title, producer: pre.producer,
     type: pre.type, country: pre.country, region: pre.region, denomination: pre.denomination, grape: pre.grapeVariety,
-    image: c.imageUrl, sourceUrl: c.sourceUrl, snippet: c.snippet,
+    image: c.imageUrl, sourceUrl: c.sourceUrl, snippet: c.snippet, rating: c.rating,
   };
 }
 
@@ -85,8 +85,14 @@ function pickRowHtml(w) {
     </div>`;
 }
 
+// Vivino's community rating, e.g. "Vivino ★ 3,8 · 475 voti".
+function vivinoLabel(r) {
+  if (!r?.average) return null;
+  return `Vivino ★ ${r.average.toFixed(1).replace('.', ',')} · ${r.count.toLocaleString('it-IT')} ${r.count === 1 ? 'voto' : 'voti'}`;
+}
+
 function pickPanelHtml(w) {
-  const facts = [TYPE_LABEL[w.type], w.denomination && w.region ? w.region : null, w.grape, w.vintage ? `Annata ${w.vintage}` : null].filter(Boolean);
+  const facts = [TYPE_LABEL[w.type], w.denomination && w.region ? w.region : null, w.grape, w.vintage ? `Annata ${w.vintage}` : null, vivinoLabel(w.rating)].filter(Boolean);
   const vintageField = w.vintage ? '' : `
       <div class="exp-row"><label for="exp-vintage">Annata</label><input id="exp-vintage" class="num-input exp-vintage" type="number" inputmode="numeric" placeholder="Nessuna" value="${escapeHtml(expanded.vintage ?? '')}"></div>`;
   return `
@@ -357,6 +363,7 @@ async function confirmPick(w, button) {
         name: w.name, producer: w.producer || 'Produttore sconosciuto', country: w.country || 'Italia',
         region: w.region || undefined, type: SHEET_TYPES.has(w.type) ? w.type : 'rosso', vintage,
         grapeVariety: w.grape || undefined, denomination: w.denomination || undefined, imageUrl,
+        vivinoRating: w.rating?.average, vivinoRatingsCount: w.rating?.count,
       });
       wineId = wine.id;
     }
@@ -377,6 +384,7 @@ function editPick(w) {
   openRecognizeSheet({
     name: w.name, producer: w.producer, country: w.country, region: w.region, type: SHEET_TYPES.has(w.type) ? w.type : undefined,
     vintage, grapeVariety: w.grape, denomination: w.denomination, imageUrl: w.image, sourceUrl: w.sourceUrl, rawText: w.snippet,
+    rating: w.rating,
   });
 }
 
@@ -740,6 +748,7 @@ document.getElementById('camera-ok')?.addEventListener('click', () => foundActio
 
 let pendingImageUrl;
 let pendingBarcode;
+let pendingRating; // Vivino's rating of the result the sheet was opened from
 let pendingPhotoFile;
 
 // The sheet is shared by three entry points that all end up at the same
@@ -796,6 +805,7 @@ function openRecognizeSheet(suggestion, capturedPhotoDataUrl) {
   resetNoteComposer();
   pendingImageUrl = suggestion.imageUrl;
   pendingBarcode = suggestion.barcode;
+  pendingRating = suggestion.rating;
   pendingPhotoFile = undefined;
   document.getElementById('rec-photo-input').value = '';
 
@@ -956,7 +966,10 @@ async function saveRecognizedWine() {
   if (quantity === null) return;
 
   try {
-    const wine = await api.post('/api/wines', { name, producer, country, region, type, vintage, grapeVariety, denomination, imageUrl, barcode: pendingBarcode });
+    const wine = await api.post('/api/wines', {
+      name, producer, country, region, type, vintage, grapeVariety, denomination, imageUrl, barcode: pendingBarcode,
+      vivinoRating: pendingRating?.average, vivinoRatingsCount: pendingRating?.count,
+    });
     closeRecognizeSheet();
     await postBottle(wine.id, quantity, async (bottle) => {
       await maybeSaveNote(bottle.id);

@@ -1,6 +1,7 @@
 import { fetchWithTimeout } from './fetch-timeout';
 export type WinePrefill = { name?: string; producer?: string; country?: string; type?: string; denomination?: string; grapeVariety?: string };
-export type WineCandidate = { title?: string; snippet?: string; sourceUrl?: string; imageUrl?: string; prefill?: WinePrefill };
+export type VivinoRating = { average: number; count: number };
+export type WineCandidate = { title?: string; snippet?: string; sourceUrl?: string; imageUrl?: string; prefill?: WinePrefill; rating?: VivinoRating };
 
 // Vivino's own wine search — the index behind the search box on
 // vivino.com (Algolia, queried by the site's frontend with a public,
@@ -90,7 +91,19 @@ export function hitToCandidate(hit: any): WineCandidate | null {
   const candidate: WineCandidate = { title, sourceUrl, prefill };
   if (snippet) candidate.snippet = snippet;
   if (imageUrl) candidate.imageUrl = imageUrl;
+  const rating = ratingOf(hit?.statistics);
+  if (rating) candidate.rating = rating;
   return candidate;
+}
+
+// The wine's community rating across all vintages (hit.statistics). Vivino
+// reports 0 when there are too few ratings to show one: that is "no rating",
+// not a zero.
+function ratingOf(stats: any): VivinoRating | undefined {
+  const average = Number(stats?.ratings_average);
+  const count = Number(stats?.ratings_count);
+  if (!Number.isFinite(average) || average <= 0 || average > 5 || !Number.isInteger(count) || count <= 0) return undefined;
+  return { average: Math.round(average * 10) / 10, count };
 }
 
 export type VivinoDiagnostics = { ok: boolean; status?: number; hitCount?: number; firstHitKeys?: string[]; firstHit?: unknown; error?: string; candidates: WineCandidate[] };

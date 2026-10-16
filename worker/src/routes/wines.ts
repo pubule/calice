@@ -60,12 +60,20 @@ wineRoutes.get('/search', async (c) => {
 wineRoutes.post('/', async (c) => {
   const body = await c.req.json<{
     name: string; producer: string; region?: string; country: string; type: string; vintage?: number; barcode?: string;
-    grapeVariety?: string; denomination?: string; imageUrl?: string;
+    grapeVariety?: string; denomination?: string; imageUrl?: string; vivinoRating?: number; vivinoRatingsCount?: number;
   }>();
 
   if (!isNonEmptyShortString(body.name)) return c.json({ error: 'name is required (1-200 chars)' }, 400);
   if (!isNonEmptyShortString(body.producer)) return c.json({ error: 'producer is required (1-200 chars)' }, 400);
   if (!isNonEmptyShortString(body.country)) return c.json({ error: 'country is required (1-200 chars)' }, 400);
+  // Vivino's rating comes as a pair (average 1-5, number of ratings) or not at all.
+  const hasRating = body.vivinoRating != null || body.vivinoRatingsCount != null;
+  if (hasRating && !(typeof body.vivinoRating === 'number' && body.vivinoRating >= 1 && body.vivinoRating <= 5
+    && Number.isInteger(body.vivinoRatingsCount) && (body.vivinoRatingsCount as number) > 0)) {
+    return c.json({ error: 'vivinoRating must be 1-5 with a positive integer vivinoRatingsCount' }, 400);
+  }
+  const vivinoRating = hasRating ? Math.round((body.vivinoRating as number) * 10) / 10 : null;
+  const vivinoCount = hasRating ? body.vivinoRatingsCount as number : null;
   if (body.grapeVariety != null && !isNonEmptyShortString(body.grapeVariety)) {
     return c.json({ error: 'grapeVariety must be 1-200 chars' }, 400);
   }
@@ -109,22 +117,25 @@ wineRoutes.post('/', async (c) => {
     const wine = await c.env.DB
       .prepare(
         `update wines set region = coalesce(region, ?), barcode = coalesce(barcode, ?), grape_variety = coalesce(grape_variety, ?),
-           denomination = coalesce(denomination, ?), image_url = coalesce(image_url, ?), search_text = null
+           denomination = coalesce(denomination, ?), image_url = coalesce(image_url, ?), search_text = null,
+           vivino_rating = coalesce(?, vivino_rating), vivino_ratings_count = coalesce(?, vivino_ratings_count)
          where id = ? returning *`,
       )
-      .bind(body.region ?? null, body.barcode ?? null, body.grapeVariety ?? null, body.denomination ?? null, body.imageUrl ?? null, existing.id)
+      .bind(body.region ?? null, body.barcode ?? null, body.grapeVariety ?? null, body.denomination ?? null, body.imageUrl ?? null,
+        vivinoRating, vivinoCount, existing.id)
       .first();
     return c.json(wine);
   }
 
   const wine = await c.env.DB
     .prepare(
-      `insert into wines (name, producer, region, country, type, vintage, barcode, grape_variety, denomination, image_url, source, created_by)
-       values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'custom', ?) returning *`,
+      `insert into wines (name, producer, region, country, type, vintage, barcode, grape_variety, denomination, image_url,
+         vivino_rating, vivino_ratings_count, source, created_by)
+       values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'custom', ?) returning *`,
     )
     .bind(
       body.name, body.producer, body.region ?? null, body.country, type, body.vintage ?? null, body.barcode ?? null,
-      body.grapeVariety ?? null, body.denomination ?? null, body.imageUrl ?? null, c.get('userId'),
+      body.grapeVariety ?? null, body.denomination ?? null, body.imageUrl ?? null, vivinoRating, vivinoCount, c.get('userId'),
     )
     .first();
   return c.json(wine);

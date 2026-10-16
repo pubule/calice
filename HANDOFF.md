@@ -1134,6 +1134,20 @@ questo file è il riassunto "dove eravamo rimasti".
     (`.cutout`). La X sta in `.detail-bar`, barra sticky alta 0: quando il nome
     grande esce di vista compare il nome in piccolo su fondo traslucido.
 
+46. **Voto medio di Vivino** (build 115, migrazione 0012). Il prezzo non
+    c'è nella risposta dell'indice di Vivino (verificato sul Batudè con
+    `/api/wines/recognize/debug`): servirebbe un'altra interfaccia non
+    ufficiale, non tentata. C'è invece `statistics` (media su tutte le annate
+    e numero di voti; 0 = troppo pochi voti, trattato come assente). Letto in
+    `hitToCandidate()` (`rating`), mostrato nella riga che si apre in "Aggiungi
+    un vino" ("Vivino ★ 3,8 · 475 voti") e salvato su `wines.vivino_rating` /
+    `vivino_ratings_count` (fotografia del momento dell'aggiunta; la coppia è
+    validata in `POST /api/wines`). Nella scheda del vino due etichette: "Note
+    ★" (media delle note, prima era solo "★") e "Vivino ★". Il Batudè di
+    produzione è stato aggiornato a mano con i valori letti (3,8 / 475).
+    Altri dati disponibili nella stessa risposta, non usati: voto per annata,
+    gradazione, annate esistenti, voto e sito del produttore.
+
 ## Cose note, non (ancora) da rifare
 
 - `status-bar-style` è `black-translucent` (non più `default`), `.screen`

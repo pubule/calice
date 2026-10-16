@@ -35,6 +35,12 @@ describe('hitToCandidate', () => {
     expect(c?.snippet).toBe('Rosso · Barolo, Italia');
   });
 
+  it('reads the community rating, and treats a 0 average (too few ratings) as none', () => {
+    expect(hitToCandidate({ ...batude, statistics: { ratings_average: 3.84, ratings_count: 475 } })?.rating).toEqual({ average: 3.8, count: 475 });
+    expect(hitToCandidate({ ...batude, statistics: { ratings_average: 0, ratings_count: 3 } })?.rating).toBeUndefined();
+    expect(hitToCandidate(batude)?.rating).toBeUndefined();
+  });
+
   it('leaves the type out when Vivino\'s type has no match in the app (dessert, fortified)', () => {
     expect(hitToCandidate({ id: 9, name: 'Recioto', type_id: 7 })?.prefill?.type).toBeUndefined();
   });
