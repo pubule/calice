@@ -1373,6 +1373,9 @@ questo file è il riassunto "dove eravamo rimasti".
     `paste` (file immagine, `<img src>` nell'HTML, o link). Senza foto il
     foglio mostra il segnaposto del tipo (`#recognize-photo-placeholder`)
     invece di niente.
+    Build 135: il segnaposto restava visibile anche con la foto (due foto
+    nel foglio), perché la classe `hidden` non aveva una regola: aggiunta
+    per segnaposto, pulsanti foto e credito del paesaggio.
 
 61. **Voto personale nella lista, dato dalle stelle della scheda** (build
     131-132). Nella riga di Cantina, al posto della posizione: "★ 4,0" (voto

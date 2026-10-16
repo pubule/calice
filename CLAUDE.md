@@ -358,6 +358,12 @@ si nascondono con `classList.toggle('hidden', ...)`, non con la proprietà
 l'elemento (o una sua classe) ha già un `display` impostato altrove —
 usare sempre la classe `.hidden`.
 
+**Attenzione: non esiste una regola `.hidden` globale** in `app.css`: ogni
+componente ha la sua (`.home-tab-panel.hidden{display:none}`, ecc.).
+Usando la classe `hidden` su un elemento nuovo va aggiunta anche la sua
+regola, altrimenti non nasconde niente (build 134: foto segnaposto e
+pulsante "Rimuovi" sempre visibili nel foglio Modifica).
+
 ## Dati di `wine-atlas.js`: verificati via web una volta, non riverificare da zero
 
 I dati vini/uve per regione sono stati scritti a mano da conoscenza

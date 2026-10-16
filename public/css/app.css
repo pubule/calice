@@ -135,6 +135,8 @@
   .paste-box{min-height:120px; margin:4px 0 14px; padding:14px; border:1.5px dashed #d2c9b8; border-radius:12px; background:#fff; color:#736a5d; font-size:max(16px, calc(14rem/17)); line-height:1.4; outline:none; -webkit-user-select:text; user-select:text;}
   .paste-box:focus{border-color:#5b2333;}
   .rec-photo-placeholder{width:96px; height:128px; margin:0 auto; border-radius:12px;}
+  /* Non c'è una regola .hidden globale: ogni componente ha la sua. */
+  .rec-photo-placeholder.hidden, .photo-act.hidden, .land-credit.hidden{display:none;}
   .rec-photo-hint{margin:6px 0 0; text-align:center; font-size:calc(12rem/17); line-height:1.4; color:#736a5d;}
   .elem-tools{display:flex; justify-content:flex-end; gap:16px; margin-bottom:10px;}
 
