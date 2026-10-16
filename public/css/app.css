@@ -94,7 +94,6 @@
   .status-tag.wait{background:#f7f0dc; color:#8a6a1a;}
 
   .actions{display:flex; gap:8px;}
-  .action{ flex:1; background:#ffffff; border:1px solid #e2e0d8; border-radius:10px; padding:13px 6px; text-align:center; font-size:calc(11rem/17); display:flex; flex-direction:column; align-items:center; gap:8px; }
 
   .card{background:#ffffff; border:1px solid #e2e0d8; border-radius:12px; padding:16px;}
   .region-row{display:grid; grid-template-columns:min(calc(74rem/17), 40%) 1fr minmax(22px, auto); align-items:center; gap:10px; padding:6px 0;}
@@ -450,7 +449,7 @@
   .cf-title{font-family:'Newsreader',serif; font-weight:500; font-size:calc(18rem/17); line-height:1.25; overflow-wrap:anywhere;}
   .cf-sub{font-size:calc(12rem/17); color:#736a5d; margin-top:2px;}
   .cf-btns{display:flex; gap:8px;}
-  .cf-btns button{flex:1; min-height:44px; border-radius:999px; font-family:inherit; font-weight:600; font-size:calc(14rem/17); cursor:pointer;}
+  .cf-btns button{flex:1; min-height:46px; border-radius:999px; font-family:inherit; font-weight:600; font-size:calc(14rem/17); cursor:pointer;}
   .cf-retry{border:1px solid #e2e0d8; background:#ffffff; color:#241e1a;}
   .cf-ok{border:0; background:#5b2333; color:#ffffff;}
   .camera-bar{flex:none; display:flex; flex-direction:column; align-items:center; gap:12px; padding:12px 14px calc(18px + env(safe-area-inset-bottom, 0px)); background:#141210;}
@@ -508,7 +507,7 @@
   .list-row .lsub{font-size:calc(12rem/17); color:#736a5d; margin-top:2px;}
   .add-row-btn{display:flex; align-items:center; justify-content:center; gap:7px; padding:12px; min-height:44px; border-radius:12px; border:1.5px dashed #d8ceb8; color:#5b2333; font-weight:600; font-size:calc(12.5rem/17); cursor:pointer;}
   .add-row-btn svg{width:13px; height:13px; stroke:#5b2333;}
-  .primary-btn{width:100%; background:#5b2333; color:#f7f5f0; border:none; border-radius:9999px; padding:11px; min-height:44px; display:flex; align-items:center; justify-content:center; text-align:center; font-size:calc(12.5rem/17); font-weight:600; cursor:pointer; font-family:'Archivo',sans-serif;}
+  .primary-btn{width:100%; background:#5b2333; color:#f7f5f0; border:none; border-radius:9999px; padding:11px; min-height:46px; display:flex; align-items:center; justify-content:center; text-align:center; font-size:calc(14rem/17); font-weight:600; cursor:pointer; font-family:'Archivo',sans-serif;}
 
   /* ---- elementi cantina: lista ---- */
   .elem-row{display:flex; gap:12px; align-items:center; background:#ffffff; border:1px solid #e2e0d8; border-radius:12px; padding:12px; cursor:pointer;}
@@ -604,7 +603,7 @@
   .modal-message{font-size:calc(13rem/17); color:#5a5044; line-height:1.5; margin:0;}
   .modal-input{display:none;}
   .modal-actions{display:flex; gap:10px; margin-top:4px;}
-  .modal-actions .modal-btn-cancel{flex:1; background:none; border:1px solid #e2e0d8; border-radius:9999px; padding:11px; min-height:44px; font-size:calc(12.5rem/17); font-weight:600; color:#756b60; cursor:pointer; font-family:'Archivo',sans-serif;}
+  .modal-actions .modal-btn-cancel{flex:1; background:none; border:1px solid #e2e0d8; border-radius:9999px; padding:11px; min-height:46px; font-size:calc(14rem/17); font-weight:600; color:#756b60; cursor:pointer; font-family:'Archivo',sans-serif;}
   .modal-actions .primary-btn{flex:1; margin-top:0;}
   .modal-actions .primary-btn.danger{background:#8a3244;}
 
@@ -1018,3 +1017,11 @@ input.search:focus, select.search:focus, .text-input:focus, .num-input:focus, te
 .exp-price{width:140px; min-height:40px;}
 .exp-hint{margin:-6px 0 0; font-size:calc(12rem/17); color:#736a5d; text-align:right;}
 .exp-links{display:flex; flex-wrap:wrap; justify-content:center; gap:4px 16px;}
+
+/* Pulsanti principali: UNA sola forma in tutta l'app — bordeaux pieno, pillola,
+   testo 14, alta almeno 46 (.primary-btn, .exp-add, .cf-ok; nelle finestre
+   anche "Annulla" ha la stessa misura). Eccezioni volute, per l'uso: "Salva
+   nota" compatto sulla riga delle stelle, "Stappa una bottiglia" dentro la sua
+   scheda. Un nuovo pulsante di conferma usa .primary-btn, mai uno stile suo. */
+#recognize-save{flex-shrink:0;}
+.primary-btn:disabled{opacity:.55; cursor:default;}

@@ -810,6 +810,11 @@ già corretto:
   `cellar.js`), mai icone sempre visibili; e sempre un secondo accesso
   non gestuale (le stesse azioni nella scheda di dettaglio, e azioni
   raggiungibili da tastiera che aprono la riga al focus).
+- **Pulsanti principali** (salva, conferma, aggiungi): sempre `.primary-btn`
+  (bordeaux pieno, pillola, testo 14, alto ≥46), mai uno stile proprio né la
+  vecchia `.action` bianca (era finita su "Salva modifiche"). Secondari:
+  bianchi con bordo. Eccezioni volute: "Salva nota" compatto accanto alle
+  stelle, "Stappa una bottiglia" dentro la sua scheda.
 - **Campi di testo e menu**: un solo stile (blocco "Campi" in fondo ad
   `app.css`). Un nuovo campo usa `input.search`, `select.search`,
   `.text-input`, `.num-input` o è una `textarea`, e non ridefinisce bordo,

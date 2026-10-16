@@ -1246,6 +1246,16 @@ questo file è il riassunto "dove eravamo rimasti".
     "Modifica" (il foglio modifica anche bottiglie e prezzo; il titolo del
     foglio resta "Modifica vino").
 
+54. **Pulsanti principali coerenti** (build 125). "Salva" / "Salva
+    modifiche" del modulo del vino usava `.action` (scheda bianca con icona,
+    usata solo lì): ora è un `<button class="primary-btn">` e `.action` è stata
+    tolta come CSS morto. Audit dei pulsanti di conferma: `.primary-btn` ("Crea
+    elemento", assaggio guidato, finestre) aveva testo 12,5 e altezza 44
+    contro 14/46 di `.exp-add` e `.cf-ok`: allineati a 14/46, anche "Annulla"
+    delle finestre. Aggiunto `.primary-btn:disabled`. Eccezioni volute:
+    "Salva nota" compatto, "Stappa una bottiglia" nella sua scheda. Regola in
+    CLAUDE.md (minimi HIG).
+
 ## Cose note, non (ancora) da rifare
 
 - `status-bar-style` è `black-translucent` (non più `default`), `.screen`
