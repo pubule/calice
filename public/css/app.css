@@ -48,13 +48,6 @@
   /* Children of a scrolling .view never shrink to fit it: a child with overflow:hidden (.settings-list) has min-height 0 and would otherwise be squashed and clipped instead of letting the view scroll — only visible once text is large enough to overflow the screen. */
   .view > *{flex-shrink:0;}
 
-  /* #view-add only: header (scan tiles + search) stays put, only the
-     results list scrolls under it — .view's own overflow-y:auto would
-     otherwise scroll the whole screen (header included) as one list. */
-  #view-add{overflow:hidden; padding:0;}
-  #view-add .add-header{flex:none; display:flex; flex-direction:column; gap:20px; padding:14px 20px 0;}
-  #view-add .add-body{flex:1; overflow-y:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; display:flex; flex-direction:column; gap:20px; padding:20px 20px 20px;}
-
   .topbar{display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:4px 12px; padding-top:8px;}
   .greet .eyebrow{ font-family:'JetBrains Mono',monospace; font-size:calc(11rem/17); letter-spacing:.12em; text-transform:uppercase; color:#736a5d; }
   .greet h2{font-family:'Newsreader',serif; font-weight:500; font-size:calc(21rem/17); letter-spacing:-0.02em; margin:2px 0 0;}
@@ -158,12 +151,6 @@
   .chip-label{font-family:'JetBrains Mono',monospace; font-size:calc(11rem/17); letter-spacing:.08em; text-transform:uppercase; color:#736a5d; margin:2px 0 -4px;}
 
   /* ---- aggiungi ---- */
-  .scan-tiles{display:flex; gap:8px;}
-  .scan-tile{ flex:1; background:#ffffff; border:1px solid #e2e0d8; border-radius:12px; padding:8px 10px; display:flex; flex-direction:row; align-items:center; gap:8px; text-align:left; }
-  .scan-tile .ic-wrap{flex:none; width:28px; height:28px; border-radius:50%; background:#f3e6ea; display:flex; align-items:center; justify-content:center;}
-  .scan-tile .ic-wrap svg{width:16px; height:16px; stroke:#5b2333;}
-  .scan-tile .t{font-weight:600; font-size:calc(12rem/17);}
-  .scan-tile .s{font-size:calc(12rem/17); color:#736a5d;}
   .manual-link{ text-align:center; font-size:calc(12rem/17); color:#5b2333; border-bottom:1px solid #e0c7cd; align-self:center; padding-bottom:2px; }
   .loading-dots{display:inline-flex; gap:4px; vertical-align:middle;}
   .loading-dots span{width:5px; height:5px; border-radius:50%; background:#8f8474; animation:loading-dots-bounce 1.1s infinite ease-in-out both;}
@@ -415,20 +402,56 @@
   .compare-head h3{font-family:'Newsreader',serif; font-weight:500; font-size:1rem; margin:0;}
   .compare-head .close{width:28px; height:28px; border-radius:50%; background:#efece3; display:flex; align-items:center; justify-content:center; cursor:pointer;}
 
-  /* ---- anteprima fotocamera (scansiona etichetta / codice a barre) ---- */
-  .camera-overlay{position:absolute; inset:0; background:#000; z-index:30; display:none; align-items:center; justify-content:center;}
+  /* ---- mirino (etichetta / codice a barre / torna a scrivere) ----
+     A tutto schermo sopra ogni foglio. Il video riempie .camera-view; la
+     cornice ad angoli indica cosa inquadrare (più bassa e larga per il
+     codice); dopo lo scatto l'immagine si ferma (.frozen), gli angoli
+     diventano oro (.locked) e la linea scorre finché la lettura è in corso;
+     il risultato compare nella scheda .camera-found con Riprova/Conferma. */
+  .camera-overlay{position:absolute; inset:0; background:#141210; z-index:30; display:none; flex-direction:column; color:#fff;}
   .camera-overlay.open{display:flex;}
-  .camera-overlay video{width:100%; height:100%; object-fit:cover;}
-  .camera-close{position:absolute; top:calc(env(safe-area-inset-top) + 14px); left:14px; width:34px; height:34px; border-radius:50%; background:rgba(20,15,12,.5); display:flex; align-items:center; justify-content:center; cursor:pointer;}
-  .camera-hint{position:absolute; top:calc(env(safe-area-inset-top) + 20px); left:0; right:0; text-align:center; color:#fff; font-size:calc(12.5rem/17); font-weight:600; text-shadow:0 1px 3px rgba(0,0,0,.5);}
-  .camera-shutter-wrap{position:absolute; bottom:calc(env(safe-area-inset-bottom, 0px) + 28px); left:0; right:0; display:flex; justify-content:center;}
-  .camera-shutter{width:64px; height:64px; border-radius:50%; background:#fff; border:4px solid rgba(255,255,255,.4); cursor:pointer;}
-  .camera-shutter-wrap.hidden{display:none;}
-  .camera-spinner{display:none; width:42px; height:42px; border-radius:50%; border:4px solid rgba(255,255,255,.25); border-top-color:#fff; animation:camera-spin .8s linear infinite;}
-  @keyframes camera-spin{to{transform:rotate(360deg);}}
-  /* While loading: hide the (now-stopped) video feed and controls, show only the spinner. */
-  .camera-overlay.loading video, .camera-overlay.loading .camera-hint, .camera-overlay.loading .camera-shutter-wrap{display:none;}
-  .camera-overlay.loading .camera-spinner{display:block;}
+  .camera-view{flex:1; position:relative; overflow:hidden; background:radial-gradient(120% 80% at 50% 40%, #3a2f2a 0%, #141210 70%);}
+  .camera-view video, .camera-still{position:absolute; inset:0; width:100%; height:100%; object-fit:cover;}
+  .camera-still{display:none;}
+  .camera-overlay.frozen .camera-still{display:block;}
+  .camera-frame{position:absolute; left:50%; top:46%; width:66%; max-width:300px; aspect-ratio:1/1.12; transform:translate(-50%,-50%); transition:width .3s ease, aspect-ratio .3s ease; pointer-events:none;}
+  .camera-overlay[data-mode="barcode"] .camera-frame{width:78%; max-width:340px; aspect-ratio:2.6/1;}
+  .camera-frame i{position:absolute; width:24px; height:24px; border:0 solid #fff; transition:border-color .2s ease;}
+  .camera-frame i:nth-child(1){left:0; top:0; border-left-width:3px; border-top-width:3px; border-radius:9px 0 0 0;}
+  .camera-frame i:nth-child(2){right:0; top:0; border-right-width:3px; border-top-width:3px; border-radius:0 9px 0 0;}
+  .camera-frame i:nth-child(3){left:0; bottom:0; border-left-width:3px; border-bottom-width:3px; border-radius:0 0 0 9px;}
+  .camera-frame i:nth-child(4){right:0; bottom:0; border-right-width:3px; border-bottom-width:3px; border-radius:0 0 9px 0;}
+  .camera-frame.locked i{border-color:#e7c46a;}
+  .camera-scanline{display:none; position:absolute; left:8%; right:8%; top:10%; height:2px; background:linear-gradient(90deg, transparent, #e7c46a, transparent); animation:camera-scan 1.4s ease-in-out infinite alternate;}
+  .camera-overlay[data-mode="barcode"]:not(.frozen) .camera-scanline, .camera-overlay.busy .camera-scanline{display:block;}
+  @keyframes camera-scan{to{top:88%;}}
+  .camera-top{position:absolute; top:calc(env(safe-area-inset-top) + 10px); left:14px; right:14px; display:flex; align-items:center; justify-content:space-between; gap:12px;}
+  .camera-title{font-size:calc(13rem/17); font-weight:600; opacity:.9; text-shadow:0 1px 3px rgba(0,0,0,.5);}
+  .camera-top-spacer{width:34px;}
+  .camera-close{width:34px; height:34px; border-radius:50%; background:rgba(255,255,255,.16); display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0;}
+  .camera-hint{position:absolute; top:calc(env(safe-area-inset-top) + 60px); left:16px; right:16px; text-align:center; font-size:calc(13rem/17); font-weight:600; color:rgba(255,255,255,.92); text-shadow:0 1px 3px rgba(0,0,0,.6);}
+  .camera-found{position:absolute; left:12px; right:12px; bottom:12px; background:#f7f5f0; color:#241e1a; border-radius:16px; padding:12px; display:flex; flex-direction:column; gap:12px; box-shadow:0 10px 30px -12px rgba(0,0,0,.6); opacity:0; transform:translateY(16px); visibility:hidden; transition:opacity .25s ease, transform .25s ease, visibility 0s linear .25s;}
+  .camera-found.show{opacity:1; transform:none; visibility:visible; transition:opacity .25s ease, transform .25s ease, visibility 0s;}
+  .cf-row{display:flex; align-items:center; gap:12px;}
+  .cf-thumb{width:40px; height:56px; border-radius:6px; flex-shrink:0;}
+  .cf-thumb.has-photo{background-size:cover; background-position:center;}
+  .cf-body{flex:1; min-width:0;}
+  .cf-title{font-family:'Newsreader',serif; font-weight:500; font-size:calc(18rem/17); line-height:1.25; overflow-wrap:anywhere;}
+  .cf-sub{font-size:calc(12rem/17); color:#736a5d; margin-top:2px;}
+  .cf-btns{display:flex; gap:8px;}
+  .cf-btns button{flex:1; min-height:44px; border-radius:999px; font-family:inherit; font-weight:600; font-size:calc(14rem/17); cursor:pointer;}
+  .cf-retry{border:1px solid #e2e0d8; background:#ffffff; color:#241e1a;}
+  .cf-ok{border:0; background:#5b2333; color:#ffffff;}
+  .camera-bar{flex:none; display:flex; flex-direction:column; align-items:center; gap:12px; padding:12px 14px calc(18px + env(safe-area-inset-bottom, 0px)); background:#141210;}
+  @media (display-mode: standalone){ .camera-bar{padding-bottom:18px;} }
+  /* Come il menu in basso: le tre etichette restano su una riga anche con il testo grande. */
+  .camera-modes{display:flex; justify-content:center; gap:2px; max-width:100%;}
+  .camera-modes button{min-height:44px; padding:0 10px; border:0; background:none; color:rgba(255,255,255,.62); font-family:inherit; font-size:min(calc(12rem/17), 15px); white-space:nowrap; font-weight:600; letter-spacing:.06em; text-transform:uppercase; cursor:pointer;}
+  .camera-modes button.on{color:#e7c46a;}
+  .camera-shutter{width:64px; height:64px; box-sizing:border-box; border-radius:50%; background:rgba(255,255,255,.18); border:4px solid #fff; cursor:pointer;}
+  /* Il codice si legge da solo: niente otturatore, ma lo spazio resta (la barra non salta). */
+  .camera-overlay[data-mode="barcode"] .camera-shutter{visibility:hidden;}
+  .camera-overlay.frozen .camera-shutter{opacity:.35; pointer-events:none;}
   .compare-cols{display:flex; gap:12px;}
   .compare-col{flex:1; background:#ffffff; border:1px solid #e2e0d8; border-radius:12px; overflow:hidden;}
   .compare-photo{height:80px;}
@@ -438,7 +461,7 @@
   .compare-col .stat-line:first-of-type{margin-top:10px;}
   .compare-col .stat-line b{font-family:'JetBrains Mono',monospace; font-weight:600; color:#241e1a; font-size:calc(11rem/17);}
 
-  /* ---- cantina: header fisso + solo lista scrolla, stesso fix di #view-add ---- */
+  /* ---- cantina: header fisso + solo lista scrolla, stesso schema del foglio Aggiungi ---- */
   #view-cellar{overflow:hidden; padding:0;}
   #view-cellar .cellar-header{flex:none; display:flex; flex-direction:column; gap:16px; padding:10px 20px 0;}
   #view-cellar .cellar-body{flex:1; overflow-y:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; display:flex; flex-direction:column; gap:16px; padding:16px 20px 20px;}
@@ -828,9 +851,6 @@
   .topbar-actions{display:flex; align-items:center; gap:14px; min-width:0; margin-left:auto;}
   .topbar-actions .cantina-switch{min-width:0;}
   .topbar-actions .cantina-switch span{max-width:calc(120rem/17); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
-  /* Aggiungi: freccia indietro + titolo, allineati a sinistra. */
-  #view-add .add-header .topbar{justify-content:flex-start; gap:12px;}
-  #view-add .add-header .topbar .screen-title{margin-top:0;}
   /* Cinque schede: le etichette non vanno mai a capo. */
   .navbtn{white-space:nowrap; padding-left:2px; padding-right:2px;}
 
@@ -898,3 +918,39 @@ input.search:focus, select.search:focus, .text-input:focus, .num-input:focus, te
 .rec-note-section.hidden{display:none;}
 .add-note textarea:focus{border-color:#5b2333; box-shadow:0 0 0 3px rgba(91,35,51,.12);}
 
+/* ---- Aggiungi un vino: foglio dal "+" ----
+   Il campo resta fermo in alto, scorrono solo i risultati sotto. Prima di
+   scrivere: fotocamera, ricerche recenti, i propri vini con +1. Poi tre
+   gruppi: Nella tua cantina, Catalogo, Da Vivino (scheletro mentre carica). */
+.add-sheet{height:92%; max-height:92%; overflow:hidden; padding-bottom:0; gap:12px;}
+.add-results{flex:1 1 auto; min-height:0; overflow-y:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; display:flex; flex-direction:column; gap:10px; margin:0 -18px; padding:2px 18px 24px;}
+.add-results > *{flex-shrink:0;}
+.search-field{display:flex; align-items:center; gap:8px; background:#ffffff; border:1px solid #e2e0d8; border-radius:12px; min-height:48px; padding:0 6px 0 12px; box-sizing:border-box; transition:border-color .15s ease, box-shadow .15s ease;}
+.search-field:focus-within{border-color:#5b2333; box-shadow:0 0 0 3px rgba(91,35,51,.12);}
+.search-field-ic{width:18px; height:18px; color:#736a5d; flex-shrink:0;}
+.search-field input{flex:1; min-width:0; border:0; outline:none; background:transparent; padding:11px 0; font-family:'Archivo',sans-serif; font-size:max(calc(16rem/17), 16px); color:#241e1a; -webkit-appearance:none; appearance:none;}
+.search-field input::placeholder{color:#736a5d; opacity:1;}
+.search-field-btn{width:44px; height:38px; border:0; border-radius:10px; background:#f4e8eb; color:#5b2333; display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0;}
+.search-field-btn svg{width:20px; height:20px;}
+.add-quick{display:grid; grid-template-columns:1fr 1fr; gap:8px;}
+.add-quick-btn{display:flex; align-items:center; gap:10px; min-height:58px; padding:10px 12px; border:1px solid #e2e0d8; border-radius:14px; background:#ffffff; color:#241e1a; font-family:inherit; font-size:calc(13rem/17); font-weight:600; text-align:left; cursor:pointer;}
+.add-quick-btn i{width:34px; height:34px; border-radius:10px; background:#f4e8eb; color:#5b2333; display:flex; align-items:center; justify-content:center; flex-shrink:0;}
+.add-quick-btn i svg{width:18px; height:18px;}
+.add-group-lbl{display:flex; justify-content:space-between; align-items:baseline; margin-top:6px; font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:#736a5d;}
+.add-group{display:flex; flex-direction:column; gap:8px;}
+.add-recent{display:flex; flex-wrap:wrap; gap:6px;}
+.recent-chip{display:inline-flex; align-items:center; gap:6px; min-height:36px; padding:0 13px; border:1px solid #e2e0d8; border-radius:999px; background:#ffffff; color:#241e1a; font-family:inherit; font-size:calc(13rem/17); cursor:pointer; position:relative;}
+.recent-chip::after{content:''; position:absolute; inset:-4px 0;}
+.recent-chip svg{width:13px; height:13px; color:#736a5d;}
+.result-row{animation:add-row-in .22s ease both;}
+@keyframes add-row-in{from{opacity:0; transform:translateY(4px);}}
+.result-row.mine{cursor:default;}
+.plus1-btn{min-width:44px; height:44px; margin:-4px -2px -4px 0; border-radius:50%; border:1px solid #e2e0d8; background:#faf9f6; color:#5b2333; font-family:'JetBrains Mono',monospace; font-size:calc(13rem/17); font-weight:600; cursor:pointer; flex-shrink:0;}
+.add-skel{height:70px; border-radius:12px; background:linear-gradient(90deg, #efece5 25%, #f7f5f0 50%, #efece5 75%); background-size:200% 100%; animation:add-skel 1.1s linear infinite;}
+@keyframes add-skel{to{background-position:-200% 0;}}
+.add-empty{margin:0; font-size:calc(13rem/17); color:#736a5d; text-align:center;}
+.add-manual{margin-top:6px; min-height:46px; border:1px dashed #cfc6b6; border-radius:12px; background:transparent; color:#5b2333; font-family:inherit; font-size:calc(13rem/17); font-weight:600; cursor:pointer;}
+@media (prefers-reduced-motion: reduce){
+  .result-row, .add-skel, .camera-scanline{animation:none;}
+  .camera-found, .camera-found.show{transform:none;}
+}

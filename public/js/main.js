@@ -2,7 +2,7 @@ import { registerRoute, startRouter, navigate } from './router.js';
 import { me } from './auth.js';
 import { mountHome } from './screens/home.js';
 import { mountCellar } from './screens/cellar.js';
-import { mountAdd } from './screens/add.js';
+import { openAddSheet } from './screens/add.js';
 import { mountStats } from './screens/stats.js';
 import { mountProfile } from './screens/profile.js';
 import { mountInviteAccept } from './screens/invite.js';
@@ -12,8 +12,9 @@ import { mountTasting } from './screens/tasting.js';
 import './sheet-gestures.js';
 
 // Views without a tab of their own light the tab they are reached from.
-// Esplora is a sub-section opened from Home, so it keeps Home lit. Add has its
-// own slot in the bar (the raised "+"), which lights itself.
+// Esplora is a sub-section opened from Home, so it keeps Home lit. The raised
+// "+" is not a tab: it opens the "Aggiungi un vino" sheet over the current
+// screen (screens/add.js).
 const TAB_FOR_VIEW = { 'view-explore': 'view-home', 'view-aromas': 'view-home', 'view-tasting': 'view-home', 'view-invite': 'view-home' };
 
 // Tab → route, explicit rather than derived from the view id (routes are not
@@ -21,7 +22,6 @@ const TAB_FOR_VIEW = { 'view-explore': 'view-home', 'view-aromas': 'view-home', 
 const HASH_FOR_VIEW = {
   'view-home': '#/home',
   'view-cellar': '#/cellar',
-  'view-add': '#/add',
   'view-stats': '#/stats',
   'view-profile': '#/profile',
 };
@@ -143,7 +143,13 @@ if (vv) {
 
 registerRoute('#/home', async () => { showView('view-home'); await mountHome(); });
 registerRoute('#/cellar', async () => { showView('view-cellar'); await mountCellar(); });
-registerRoute('#/add', async () => { showView('view-add'); await mountAdd(); });
+// Old links to the Add screen: Home with the sheet open on top.
+registerRoute('#/add', async () => {
+  history.replaceState(history.state, '', '#/home');
+  showView('view-home');
+  openAddSheet({ focus: false });
+  await mountHome();
+});
 registerRoute('#/stats', async () => { showView('view-stats'); await mountStats(); });
 registerRoute('#/profile', async () => { showView('view-profile'); await mountProfile(); });
 registerRoute('#/invite/:code', async (search, params) => { showView('view-invite'); await mountInviteAccept(search, params); });
@@ -160,34 +166,7 @@ document.querySelector('.logout')?.addEventListener('click', () => {
 document.querySelectorAll('.navbtn[data-view]').forEach((btn) => {
   btn.addEventListener('click', () => navigate(HASH_FOR_VIEW[btn.dataset.view]));
 });
-
-// Back from Add. Each history entry is stamped with its depth inside the app
-// (history.state.calDepth): a cold start, including a deep link to #/add, is
-// depth 0, every in-app hash navigation is one deeper, and traversing history
-// keeps the stamps already stored. So depth > 0 means the previous entry is
-// ours and history.back() is safe; at depth 0 it would leave the app (or do
-// nothing in a standalone PWA), so go to Cantina instead.
-let calDepth = 0;
-function stampHistoryDepth() {
-  try {
-    const stored = history.state?.calDepth;
-    calDepth = Number.isInteger(stored) ? stored : calDepth + 1;
-    if (stored !== calDepth) history.replaceState({ ...(history.state || {}), calDepth }, '');
-  } catch {
-    calDepth = 0; // history API unavailable: always take the safe branch
-  }
-}
-try {
-  const initial = history.state?.calDepth;
-  calDepth = Number.isInteger(initial) ? initial : 0;
-  if (initial !== calDepth) history.replaceState({ ...(history.state || {}), calDepth }, '');
-} catch { /* see above */ }
-window.addEventListener('hashchange', stampHistoryDepth);
-
-document.getElementById('add-back-btn')?.addEventListener('click', () => {
-  if (calDepth > 0) history.back();
-  else navigate('#/cellar');
-});
+document.querySelector('.nav-add')?.addEventListener('click', () => openAddSheet());
 
 // Cloudflare Access already gated this request before it reached us, so
 // /api/auth/me should always succeed (it also creates the user + their

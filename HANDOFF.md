@@ -1042,6 +1042,38 @@ questo file è il riassunto "dove eravamo rimasti".
       compilare a mano.
     - La sezione di CLAUDE.md sui filtri Tavily è stata sostituita da
       "Costo zero".
+41. **Aggiungi: foglio dal "+" con mirino** (build 109). L'utente trovava
+    piatta l'interazione del "+"; su tre mockup dinamici ha scelto "B con
+    mirino C".
+    - **Non è più una schermata**: `#view-add` è sparita, il "+" apre il
+      foglio `#add-overlay` sopra la schermata corrente (`openAddSheet()` in
+      `add.js`), col campo già a fuoco (focus sincrono dentro il tocco, se no
+      iOS non alza la tastiera). `#/add` resta come deep link: porta in Home
+      col foglio aperto. Tolti il tasto indietro e il conteggio della
+      cronologia (`calDepth`) che servivano solo lì.
+    - **A campo vuoto**: Etichetta / Codice a barre, "Cercati di recente"
+      (`localStorage`, solo su questo telefono, salvati quando una ricerca
+      porta a un'aggiunta), "Dalla tua cantina" con **+1** (PATCH quantità,
+      messaggio con Annulla), "Aggiungilo a mano".
+    - **Risultati in tre gruppi**: Nella tua cantina (filtrata in locale,
+      parole in qualsiasi ordine, accenti ignorati, con +1), Catalogo (esclusi
+      i vini già mostrati sopra), Da Vivino (scheletro, poi risultati dopo
+      600 ms). Guardia di staleness dopo ogni `await`.
+    - **Aggiunta**: niente più alert "Aggiunto alla cantina": il foglio si
+      chiude, messaggio breve, e la schermata sotto si ridisegna (si rilancia
+      la sua rotta). Nota e foto del "Rivedi e conferma" vengono salvate
+      prima della chiusura.
+    - **Mirino** (`#camera-overlay`, sopra tutto): cornice ad angoli (larga e
+      bassa per il codice), modalità Etichetta / Codice / Scrivi ("Scrivi"
+      torna al foglio con la tastiera). Dopo lo scatto l'immagine si ferma,
+      gli angoli diventano oro e la linea scorre durante la lettura; poi una
+      scheda con Riprova / Conferma (o "Aggiungi alla cantina" se il codice è
+      già in catalogo, "Compila a mano" se non si trova niente o il tetto
+      OCR è raggiunto). Il flusso video resta acceso fino alla chiusura, così
+      Riprova è immediato; `camSession` scarta risposte di scatti vecchi.
+    - Provato in locale con worker vero, Vivino/OCR simulati e fotocamera
+      finta di Chromium; da verificare su iPhone: tastiera all'apertura,
+      permesso fotocamera, lettura dei codici col polyfill.
 
 ## Cose note, non (ancora) da rifare
 

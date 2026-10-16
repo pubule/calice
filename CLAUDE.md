@@ -762,9 +762,11 @@ già corretto:
   `main.js`: una nuova vista senza scheda propria va aggiunta a
   `TAB_FOR_VIEW`; una nuova scheda va aggiunta a `HASH_FOR_VIEW` (le
   rotte non sono tutte `#/<nome-vista>`: Esplora è `#/esplora`). Il menu
-  ha quattro sezioni più, al centro, il "+" in rilievo di Aggiungi (scelto
+  ha quattro sezioni più, al centro, il "+" in rilievo (scelto
   dall'utente su mockup, al posto della scheda Esplora che resta una
-  sotto-sezione della Home): nessun'altra azione nel menu. Qualunque cosa
+  sotto-sezione della Home): nessun'altra azione nel menu. Il "+" **non è
+  una scheda**: apre il foglio "Aggiungi un vino" sopra la schermata
+  corrente (`openAddSheet()`), non c'è più una vista Aggiungi. Qualunque cosa
   si appoggi sopra il menu (toast, pannelli) va posizionata sopra il punto
   **più alto** del menu, cioè il cerchio che sporge di 21px (vedi
   `toast.js`), non sopra `.navbar.offsetHeight`.

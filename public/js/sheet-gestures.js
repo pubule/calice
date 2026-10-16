@@ -14,6 +14,7 @@
 const SHEETS = [
   ['detail-overlay', 'detail-close'],
   ['compare-overlay', 'compare-close'],
+  ['add-overlay', 'add-close'],
   ['recognize-overlay', 'recognize-close'],
   ['filter-sheet', 'filter-sheet-close'],
   ['cellar-sheet', 'cellar-sheet-close'],

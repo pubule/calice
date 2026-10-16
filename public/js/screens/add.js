@@ -1,10 +1,33 @@
 import { api } from '../api-client.js';
 import { escapeHtml, photoClass } from '../util.js';
 import { alertModal, promptModal } from '../modal.js';
+import { showToast } from '../toast.js';
 import { tastingProfileHtml, wireTastingProfile, resetTastingProfile, readTastingProfile, isTastingProfileEmpty } from '../tasting-profile.js';
 import { COUNTRIES } from '../data/wine-atlas.js';
 
+// "Aggiungi un vino" is a sheet over whatever screen the "+" was tapped on,
+// not a screen of its own: the search field is focused at once, and before a
+// word is typed it offers the camera, recent searches and the user's own
+// wines (+1). Results come in three groups — the user's cellar (filtered
+// here, no request), the shared catalog, then Vivino (debounced, skeleton
+// while it loads). The camera is a full-screen viewfinder with three modes:
+// label photo, barcode, or back to typing.
+
 let currentCellarId = null;
+let cellarBottles = []; // the user's bottles, newest first — "Dalla tua cantina"
+let cellarLoad = null;
+let changed = false; // something was added: the screen below re-renders on close
+
+const ICON_PLUS = '<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>';
+const ICON_CAM = '<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7l1.8-2.5h4.4L16 7"/><circle cx="12" cy="13.5" r="3.2"/></svg>';
+const ICON_BAR = '<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 6v12M7 6v12M10 6v12M14 6v12M17 6v12M20 6v12"/></svg>';
+const ICON_CLOCK = '<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg>';
+
+function photoTag(imageUrl, type) {
+  return imageUrl
+    ? `<img class="result-photo photo product" src="${escapeHtml(imageUrl)}" alt="">`
+    : `<div class="result-photo photo ${photoClass(type)}"></div>`;
+}
 
 // Every field here comes straight from the wines table via /api/wines/search
 // (or a barcode lookup on the same table) — including rows other users
@@ -17,16 +40,51 @@ function resultRowHtml(w) {
   const producer = escapeHtml(w.producer);
   const sub = `${producer} · ${escapeHtml(w.region ?? w.country)}`;
   const id = escapeHtml(w.id);
-  const photo = w.image_url
-    ? `<img class="result-photo photo product" src="${escapeHtml(w.image_url)}" alt="">`
-    : `<div class="result-photo photo ${photoClass(w.type)}"></div>`;
   return `
-    <div class="result-row" data-wine-id="${id}">
-      ${photo}
+    <div class="result-row" data-wine-id="${id}" role="button" tabindex="0" aria-label="Aggiungi ${name}${vintage} alla cantina">
+      ${photoTag(w.image_url, w.type)}
       <div class="result-body"><div class="name">${name}${vintage}</div><div class="sub">${sub}</div></div>
-      <div class="add-btn" data-wine-id="${id}" role="button" tabindex="0" aria-label="Aggiungi ${name} alla cantina"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
+      <div class="add-btn" aria-hidden="true">${ICON_PLUS}</div>
     </div>`;
 }
+
+// A bottle already in the user's cellar: one tap on +1 adds a bottle of it.
+function mineRowHtml(b) {
+  const name = escapeHtml(b.name);
+  const vintage = b.vintage ? ' ' + escapeHtml(b.vintage) : '';
+  const qty = Number(b.quantity) || 0;
+  const count = qty > 0 ? `×${qty} in cantina` : 'finita';
+  return `
+    <div class="result-row mine">
+      ${photoTag(b.image_url, b.type)}
+      <div class="result-body"><div class="name">${name}${vintage}</div><div class="sub">${escapeHtml(b.producer)} · ${count}</div></div>
+      <button type="button" class="plus1-btn" data-plus1="${escapeHtml(b.id)}" aria-label="Aggiungi una bottiglia di ${name}${vintage}">+1</button>
+    </div>`;
+}
+
+// A specific product query often ranks several near-identical wines, so
+// this never auto-picks one candidate: the user taps the right one, same
+// review-before-save principle as the rest of this feature.
+function webCandidateRowHtml(candidate, i) {
+  const name = escapeHtml(candidate.title ?? '');
+  let source = 'Trovato sul web';
+  if (candidate.sourceUrl) {
+    try {
+      source = new URL(candidate.sourceUrl).hostname.replace(/^www\./, '');
+    } catch {
+      // malformed sourceUrl from an external source — keep the generic label
+    }
+  }
+  return `
+    <div class="result-row" data-candidate="${i}" role="button" tabindex="0">
+      ${photoTag(candidate.imageUrl, candidate.prefill?.type ?? 'rosso')}
+      <div class="result-body"><div class="name">${name}</div><div class="sub">${escapeHtml(source)}</div></div>
+      <div class="add-btn" aria-hidden="true">${ICON_PLUS}</div>
+    </div>`;
+}
+
+const groupLabel = (title, count) => `<div class="add-group-lbl">${title}${count == null ? '' : ` <span>${count}</span>`}</div>`;
+const MANUAL_HTML = '<button type="button" class="add-manual" data-manual>Non lo trovi? Aggiungilo a mano</button>';
 
 // null = the user pressed Annulla: abort, don't default to adding 1.
 async function askQuantity() {
@@ -35,16 +93,58 @@ async function askQuantity() {
   return Number(raw) || 1;
 }
 
-async function postBottle(wineId, quantity) {
+// `finish` runs before the sheet closes (tasting note, photo upload), so the
+// screen underneath redraws with everything already saved.
+async function postBottle(wineId, quantity, finish) {
+  if (!currentCellarId) await (cellarLoad ?? loadCellar());
   const bottle = await api.post(`/api/cellars/${currentCellarId}/bottles`, { wineId, quantity });
-  await alertModal('Aggiunto alla cantina');
+  changed = true;
+  await finish?.(bottle);
+  closeAddSheet();
+  showToast(quantity > 1 ? `Aggiunte ${quantity} bottiglie alla cantina` : 'Aggiunto alla cantina');
   return bottle;
 }
 
 async function addWineToCellar(wineId) {
   const quantity = await askQuantity();
   if (quantity === null) return null;
-  return postBottle(wineId, quantity);
+  try {
+    return await postBottle(wineId, quantity);
+  } catch (err) {
+    console.error(err);
+    await alertModal('Impossibile aggiungere il vino, riprova.');
+    return null;
+  }
+}
+
+// +1 on a wine already in the cellar: no quantity prompt, an undo instead.
+async function plusOne(bottleId) {
+  const b = cellarBottles.find((x) => String(x.id) === String(bottleId));
+  if (!b) return;
+  const before = Number(b.quantity) || 0;
+  try {
+    await api.patch(`/api/bottles/${b.id}`, { quantity: before + 1 });
+  } catch (err) {
+    console.error(err);
+    await alertModal('Impossibile aggiungere la bottiglia, riprova.');
+    return;
+  }
+  b.quantity = before + 1;
+  changed = true;
+  rememberSearch(b.name);
+  rerender();
+  showToast(`+1 ${b.name}`, {
+    actionLabel: 'Annulla',
+    onAction: async () => {
+      try {
+        await api.patch(`/api/bottles/${b.id}`, { quantity: before });
+        b.quantity = before;
+        rerender();
+      } catch (err) {
+        console.error(err);
+      }
+    },
+  });
 }
 
 async function uploadBottlePhoto(bottleId, file) {
@@ -76,48 +176,30 @@ async function compressForUpload(file, maxDim = 1600, quality = 0.82) {
   }
 }
 
-function wireResults(container) {
-  container.querySelectorAll('.add-btn').forEach((btn) =>
-    btn.addEventListener('click', () => addWineToCellar(Number(btn.dataset.wineId))),
-  );
-}
-
-// A specific product query (e.g. "Zamuner Riserva del Fondatore") often
-// ranks a retailer's page above the producer's own site, so this never
-// auto-picks one candidate — it shows up to 3 and lets the user tap the
-// right one, same review-before-save principle as the rest of this feature.
-function webCandidateRowHtml(candidate, i) {
-  const name = escapeHtml(candidate.title ?? '');
-  let source = 'Trovato sul web';
-  if (candidate.sourceUrl) {
-    try {
-      source = new URL(candidate.sourceUrl).hostname.replace(/^www\./, '');
-    } catch {
-      // malformed sourceUrl from an external source — keep the generic label
-    }
+// ---- recent searches (this device only: a convenience, never data) ----
+const RECENT_KEY = 'calice-recent-searches';
+function recentSearches() {
+  try {
+    const list = JSON.parse(localStorage.getItem(RECENT_KEY) ?? '[]');
+    return Array.isArray(list) ? list.filter((x) => typeof x === 'string').slice(0, 5) : [];
+  } catch {
+    return [];
   }
-  const photo = candidate.imageUrl
-    ? `<img class="result-photo photo product" src="${escapeHtml(candidate.imageUrl)}" alt="">`
-    : `<div class="result-photo photo photo-rosso"></div>`;
-  return `
-    <div class="result-row" data-candidate="${i}" role="button" tabindex="0">
-      ${photo}
-      <div class="result-body"><div class="name">${name}</div><div class="sub">${escapeHtml(source)}</div></div>
-      <div class="add-btn" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
-    </div>`;
 }
-
-// Debounced separately from the local (instant) catalog search below: the
-// web search (Vivino, vivino-search.ts on the Worker) should not fire on
-// every keystroke while the user is still typing.
-let webSearchTimer;
-
-function currentQuery() {
-  return document.getElementById('add-search-input')?.value.trim() ?? '';
+// Saved when a search led somewhere (a result was picked), not per keystroke.
+function rememberSearch(term) {
+  const t = String(term ?? '').trim();
+  if (!t) return;
+  try {
+    const list = recentSearches().filter((x) => x.toLowerCase() !== t.toLowerCase());
+    localStorage.setItem(RECENT_KEY, JSON.stringify([t, ...list].slice(0, 5)));
+  } catch {
+    // storage unavailable (private mode): recents simply don't stick
+  }
 }
 
 const SHEET_TYPES = new Set(['rosso', 'bianco', 'bollicine', 'rosato']);
-const foldText = (t) => String(t ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+const foldText = (t) => String(t ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
 
 // Vivino's "region" for a wine is usually its appellation ("Franciacorta",
 // "Barolo"). When it names one of Esplora's atlas wines exactly, the atlas
@@ -144,104 +226,284 @@ function completeFromAtlas(prefill) {
   return prefill;
 }
 
+// ---- the sheet ----
+const overlay = document.getElementById('add-overlay');
+const input = document.getElementById('add-search-input');
+const results = document.getElementById('add-results');
+
+function currentQuery() {
+  return input?.value.trim() ?? '';
+}
+
+// One bottle per wine (the newest), so +1 never lists the same wine twice.
+function uniqueByWine(bottles) {
+  const seen = new Set();
+  return bottles.filter((b) => (seen.has(b.wine_id) ? false : seen.add(b.wine_id)));
+}
+
+function loadCellar() {
+  cellarLoad = (async () => {
+    const cellars = await api.get('/api/cellars');
+    currentCellarId = cellars[0].id;
+    cellarBottles = uniqueByWine(await api.get(`/api/cellars/${currentCellarId}/bottles`));
+  })();
+  cellarLoad.catch((err) => console.error(err));
+  return cellarLoad;
+}
+
+function renderIdle() {
+  if (!results) return;
+  const recent = recentSearches();
+  const mine = cellarBottles.slice(0, 5);
+  results.innerHTML = `
+    <div class="add-quick">
+      <button type="button" class="add-quick-btn" data-cam="label"><i>${ICON_CAM}</i>Etichetta</button>
+      <button type="button" class="add-quick-btn" data-cam="barcode"><i>${ICON_BAR}</i>Codice a barre</button>
+    </div>
+    ${recent.length ? `${groupLabel('Cercati di recente')}<div class="add-recent">${recent.map((r) => `<button type="button" class="recent-chip" data-recent="${escapeHtml(r)}">${ICON_CLOCK}${escapeHtml(r)}</button>`).join('')}</div>` : ''}
+    ${mine.length ? `${groupLabel('Dalla tua cantina')}<div class="add-group">${mine.map(mineRowHtml).join('')}</div>` : ''}
+    ${MANUAL_HTML}`;
+}
+
+// Words in any order, accents ignored ("chianti fontodi" finds Fontodi's
+// Chianti Classico).
+function matchesCellar(b, words) {
+  const hay = foldText([b.name, b.producer, b.region, b.denomination, b.vintage].filter(Boolean).join(' '));
+  return words.every((w) => hay.includes(w));
+}
+
+// What each group currently holds, so +1/undo can redraw without refetching.
+let lastCatalog = null; // null = still loading
+let lastWeb = null; // null = still loading
+let webTimer;
+
+function rerender() {
+  const q = currentQuery();
+  if (!q) renderIdle();
+  else renderResults(q);
+}
+
+function renderResults(query) {
+  const words = foldText(query).split(/\s+/).filter(Boolean);
+  const mine = cellarBottles.filter((b) => matchesCellar(b, words));
+  const mineIds = new Set(mine.map((b) => String(b.wine_id)));
+  const catalog = lastCatalog?.filter((w) => !mineIds.has(String(w.id)));
+  let html = '';
+  if (mine.length) html += `${groupLabel('Nella tua cantina', mine.length)}<div class="add-group">${mine.map(mineRowHtml).join('')}</div>`;
+  if (catalog?.length) html += `${groupLabel('Catalogo', catalog.length)}<div class="add-group">${catalog.map(resultRowHtml).join('')}</div>`;
+  if (lastWeb === null) {
+    html += `${groupLabel('Da Vivino', 'cerco…')}<div class="add-group" aria-hidden="true"><div class="add-skel"></div><div class="add-skel"></div></div>`;
+  } else if (lastWeb.length) {
+    html += `${groupLabel('Da Vivino', lastWeb.length)}<div class="add-group">${lastWeb.map(webCandidateRowHtml).join('')}</div>`;
+  } else {
+    html += `${groupLabel('Da Vivino', 0)}<p class="add-empty">Nessun risultato su Vivino per "${escapeHtml(query)}"</p>`;
+  }
+  results.innerHTML = html + MANUAL_HTML;
+}
+
+// Every await between the typed text and a DOM write re-checks that the text
+// is still the same (see CLAUDE.md, "Ricerche live"): a late reply for an
+// earlier query must never repaint the list.
+async function runSearch() {
+  const query = currentQuery();
+  clearTimeout(webTimer);
+  if (!query) {
+    renderIdle();
+    return;
+  }
+  lastCatalog = null;
+  lastWeb = null;
+  renderResults(query);
+  webTimer = setTimeout(() => searchWeb(query), 600);
+  try {
+    const wines = await api.get(`/api/wines/search?q=${encodeURIComponent(query)}`);
+    if (currentQuery() !== query) return;
+    lastCatalog = wines;
+  } catch (err) {
+    console.error(err);
+    if (currentQuery() !== query) return;
+    lastCatalog = [];
+  }
+  renderResults(query);
+}
+
 async function searchWeb(query) {
-  const results = document.getElementById('add-results');
-  const countEl = document.getElementById('add-results-count');
-  if (!results || currentQuery() !== query) return; // superseded by further typing
-  let suggestion = { name: query };
+  if (currentQuery() !== query) return; // superseded by further typing
+  let suggestion = {};
   try {
     suggestion = await api.post('/api/wines/recognize', { query });
   } catch (err) {
     console.error(err);
   }
   if (currentQuery() !== query) return; // superseded while the request was in flight
-
-  const candidates = suggestion.candidates ?? [];
-  if (!candidates.length) {
-    results.innerHTML = `<p class="sub">Nessun risultato sul web per "${escapeHtml(query)}"</p>`;
-    if (countEl) countEl.textContent = 'Risultati (0)';
-    return;
-  }
-  results.innerHTML = candidates.map((c, i) => webCandidateRowHtml(c, i)).join('');
-  results.querySelectorAll('[data-candidate]').forEach((row) => {
-    row.addEventListener('click', () => {
-      const c = candidates[Number(row.dataset.candidate)];
-      // Vivino candidates carry structured fields (prefill); without them
-      // the typed query stays the name.
-      const prefill = completeFromAtlas(c.prefill) ?? {};
-      openRecognizeSheet({ ...prefill, name: prefill.name ?? query, imageUrl: c.imageUrl, sourceUrl: c.sourceUrl, rawText: c.snippet });
-    });
-  });
-  // "Non lo trovi? Aggiungilo manualmente" below the results list already
-  // covers picking none of these — no second manual-add link here.
-  if (countEl) countEl.textContent = `Risultati (${candidates.length})`;
+  lastWeb = suggestion.candidates ?? [];
+  renderResults(query);
 }
 
-async function runSearch(query) {
-  const results = document.getElementById('add-results');
-  const countEl = document.getElementById('add-results-count');
-  if (!results) return;
-  clearTimeout(webSearchTimer);
-  if (!query) {
-    results.innerHTML = '';
-    if (countEl) countEl.textContent = 'Risultati';
-    return;
-  }
-  const wines = await api.get(`/api/wines/search?q=${encodeURIComponent(query)}`);
-  // Same guard searchWeb() already had, and for the same reason: one request
-  // goes out per keystroke, so while deleting a word the reply for a short
-  // intermediate query ("ba") can land after the empty-box branch above has
-  // already cleared the list — and repaint it. Typing forward has the mirror
-  // version of it, an earlier query's reply overwriting a later one's.
-  if (currentQuery() !== query) return;
-  if (countEl) countEl.textContent = `Risultati (${wines.length})`;
-  if (wines.length) {
-    // A local hit skips the (paid) web search by default — but the local
-    // record's photo/data might be poor or missing, so leave a way to pull
-    // web candidates (Vivino-prioritized) anyway instead of only falling
-    // back to the web on a local miss.
-    results.innerHTML = wines.map(resultRowHtml).join('') + `<div class="manual-link" id="force-web-search-link" role="button" tabindex="0">Cerca comunque "${escapeHtml(query)}" sul web</div>`;
-    wireResults(results);
-    document.getElementById('force-web-search-link')?.addEventListener('click', () => {
-      results.innerHTML = `<p class="sub">Cerco "${escapeHtml(query)}" sul web <span class="loading-dots"><span></span><span></span><span></span></span></p>`;
-      searchWeb(query);
-    });
-    return;
-  }
-  // Local catalog miss: search the web (Vivino) for the real bottle and its
-  // photo, debounced so a still-typing user doesn't fire a request on every
-  // intermediate substring.
-  results.innerHTML = `<p class="sub">Cerco "${escapeHtml(query)}" sul web <span class="loading-dots"><span></span><span></span><span></span></span></p>`;
-  webSearchTimer = setTimeout(() => searchWeb(query), 600);
+export function openAddSheet({ focus = true } = {}) {
+  if (!overlay) return;
+  if (input) input.value = '';
+  lastCatalog = null;
+  lastWeb = null;
+  changed = false;
+  renderIdle();
+  overlay.classList.add('open');
+  // Synchronously, inside the tap: iOS only raises the keyboard for a focus
+  // that happens in the user's own gesture.
+  if (focus) input?.focus({ preventScroll: true });
+  loadCellar().then(() => { if (overlay.classList.contains('open') && !currentQuery()) renderIdle(); }, () => {});
 }
 
-// Shared live viewfinder for both scan flows — the previous version never
-// attached the <video> to the page, so the camera stream ran invisibly and
-// a photo got snapped automatically a few seconds later with no way to aim
-// or retry. This shows the feed for real and lets the user act on it
-// (shutter tap for a label, just aiming for a barcode).
+function closeAddSheet() {
+  if (!overlay?.classList.contains('open')) return;
+  clearTimeout(webTimer);
+  input?.blur();
+  overlay.classList.remove('open');
+  // The screen underneath (Cantina, Home…) shows counts that just changed:
+  // re-run its route so it redraws.
+  if (changed) {
+    changed = false;
+    window.dispatchEvent(new HashChangeEvent('hashchange'));
+  }
+}
+
+input?.addEventListener('input', runSearch);
+input?.addEventListener('keydown', (e) => { if (e.key === 'Enter') input.blur(); });
+document.getElementById('add-close')?.addEventListener('click', closeAddSheet);
+document.getElementById('add-camera-btn')?.addEventListener('click', () => openViewfinder('label'));
+
+results?.addEventListener('click', (e) => {
+  const t = e.target;
+  const recent = t.closest('[data-recent]');
+  if (recent) {
+    input.value = recent.dataset.recent;
+    runSearch();
+    return;
+  }
+  const cam = t.closest('[data-cam]');
+  if (cam) {
+    openViewfinder(cam.dataset.cam);
+    return;
+  }
+  if (t.closest('[data-manual]')) {
+    openRecognizeSheet({ name: currentQuery() || undefined });
+    return;
+  }
+  const plus = t.closest('[data-plus1]');
+  if (plus) {
+    plusOne(plus.dataset.plus1);
+    return;
+  }
+  const wineRow = t.closest('[data-wine-id]');
+  if (wineRow) {
+    rememberSearch(currentQuery());
+    addWineToCellar(Number(wineRow.dataset.wineId));
+    return;
+  }
+  const cand = t.closest('[data-candidate]');
+  if (cand && lastWeb) {
+    const query = currentQuery();
+    const c = lastWeb[Number(cand.dataset.candidate)];
+    if (!c) return;
+    rememberSearch(query);
+    // Vivino candidates carry structured fields (prefill); without them
+    // the typed query stays the name.
+    const prefill = completeFromAtlas(c.prefill) ?? {};
+    openRecognizeSheet({ ...prefill, name: prefill.name ?? query, imageUrl: c.imageUrl, sourceUrl: c.sourceUrl, rawText: c.snippet });
+  }
+});
+
+// ---- viewfinder: label photo / barcode / back to typing ----
+const cam = {
+  overlay: document.getElementById('camera-overlay'),
+  video: document.getElementById('camera-video'),
+  still: document.getElementById('camera-still'),
+  frame: document.getElementById('camera-frame'),
+  hint: document.getElementById('camera-hint'),
+  found: document.getElementById('camera-found'),
+  shutter: document.getElementById('camera-shutter'),
+};
 let cameraStream;
+let camMode = 'label';
+// Bumped on every mode switch, retry and close: a scan loop or a recognize
+// reply from an older session sees the mismatch and drops its result.
+let camSession = 0;
+let foundAction = null;
 
-// Stops the feed but keeps the overlay up in a spinner state — used the
-// instant a shot/detection happens, so the user is blocked from poking at
-// the app again while the recognize call is still in flight.
-function stopCameraStream() {
-  cameraStream?.getTracks().forEach((t) => t.stop());
-  cameraStream = undefined;
-  document.getElementById('camera-overlay')?.classList.add('loading');
+const HINTS = {
+  label: "Inquadra l'etichetta e scatta",
+  barcode: 'Inquadra il codice a barre: si legge da solo',
+};
+
+function setHint(text) {
+  if (cam.hint) cam.hint.textContent = text;
 }
 
-function closeCamera() {
-  stopCameraStream();
-  document.getElementById('camera-overlay')?.classList.remove('open', 'loading');
+function snapshot() {
+  const v = cam.video;
+  const canvas = document.createElement('canvas');
+  canvas.width = v.videoWidth;
+  canvas.height = v.videoHeight;
+  canvas.getContext('2d').drawImage(v, 0, 0);
+  return canvas.toDataURL('image/jpeg', 0.7);
 }
 
-async function openCamera(hint) {
-  const overlay = document.getElementById('camera-overlay');
-  const video = document.getElementById('camera-video');
-  const hintEl = document.getElementById('camera-hint');
-  if (hintEl) hintEl.textContent = hint;
-  overlay?.classList.add('open');
+// Freezes the picture on the shot just taken while it is being read; the
+// stream keeps running underneath, so Riprova is instant.
+function freeze(dataUrl) {
+  cam.still.src = dataUrl;
+  cam.overlay.classList.add('frozen', 'busy');
+  cam.frame.classList.add('locked');
+}
+
+function resume() {
+  camSession++;
+  cam.overlay.classList.remove('frozen', 'busy');
+  cam.frame.classList.remove('locked');
+  cam.found.classList.remove('show');
+  cam.still.removeAttribute('src');
+  foundAction = null;
+  setHint(HINTS[camMode]);
+  if (camMode === 'barcode') scanLoop(camSession);
+}
+
+function showFound({ title, sub, primary, photo, type, action }) {
+  cam.overlay.classList.remove('busy');
+  setHint('');
+  document.getElementById('camera-found-title').textContent = title;
+  document.getElementById('camera-found-sub').textContent = sub ?? '';
+  const thumb = document.getElementById('camera-found-thumb');
+  thumb.className = `cf-thumb photo ${photoClass(type ?? 'rosso')}`;
+  thumb.style.backgroundImage = photo ? `url("${photo.replace(/"/g, '%22')}")` : '';
+  thumb.classList.toggle('has-photo', !!photo);
+  document.getElementById('camera-ok').textContent = primary;
+  foundAction = action;
+  cam.found.classList.add('show');
+}
+
+function setCamMode(mode) {
+  if (mode === 'type') {
+    // Back to the keyboard: the search sheet, focused (still inside the tap).
+    closeViewfinder();
+    if (!overlay.classList.contains('open')) openAddSheet();
+    else input?.focus({ preventScroll: true });
+    return;
+  }
+  camMode = mode;
+  cam.overlay.dataset.mode = mode;
+  cam.overlay.querySelectorAll('.camera-modes [data-mode]').forEach((b) => {
+    const on = b.dataset.mode === mode;
+    b.classList.toggle('on', on);
+    b.setAttribute('aria-checked', String(on));
+  });
+  resume();
+}
+
+async function openViewfinder(mode) {
+  input?.blur();
+  cam.overlay.classList.add('open');
+  setCamMode(mode);
+  if (cameraStream) return;
   try {
     // 'ideal' width/height, not a hard 'exact' constraint — the browser
     // still picks a supported resolution if the device can't do 1080p, it
@@ -251,136 +513,132 @@ async function openCamera(hint) {
       video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } },
     });
   } catch (err) {
-    overlay?.classList.remove('open');
-    throw err;
+    console.error(err);
+    closeViewfinder();
+    await alertModal('Impossibile accedere alla fotocamera');
+    return;
   }
-  video.srcObject = cameraStream;
-  await video.play();
-  return video;
+  if (!cam.overlay.classList.contains('open')) {
+    // closed while the permission prompt was up
+    cameraStream.getTracks().forEach((t) => t.stop());
+    cameraStream = undefined;
+    return;
+  }
+  cam.video.srcObject = cameraStream;
+  try {
+    await cam.video.play();
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+function closeViewfinder() {
+  camSession++;
+  cameraStream?.getTracks().forEach((t) => t.stop());
+  cameraStream = undefined;
+  if (cam.video) cam.video.srcObject = null;
+  cam.overlay?.classList.remove('open', 'frozen', 'busy');
+  cam.frame?.classList.remove('locked');
+  cam.found?.classList.remove('show');
+  foundAction = null;
 }
 
 // window.BarcodeDetector is always present now — index.html installs the
 // zbar-wasm-backed polyfill for any browser missing the native API (Safari
-// never shipped it). Polls detect() in a loop until a code is found or the
-// user closes the camera.
-function scanBarcode(video) {
-  return new Promise((resolve) => {
-    let settled = false;
-    const finish = (value) => {
-      if (settled) return;
-      settled = true;
-      resolve(value);
-    };
-    document.getElementById('camera-close')?.addEventListener('click', () => finish(undefined), { once: true });
-
-    const detector = new window.BarcodeDetector();
-    (async () => {
-      while (!settled) {
-        try {
-          const barcodes = await detector.detect(video);
-          if (barcodes.length) {
-            finish(barcodes[0].rawValue);
-            return;
-          }
-        } catch (err) {
-          console.error(err);
+// never shipped it). Polls detect() until a code is found, or the session
+// changes (mode switch, close).
+async function scanLoop(session) {
+  if (!('BarcodeDetector' in window)) {
+    setHint('Lettura dei codici non supportata qui: scatta l’etichetta o scrivi il nome');
+    return;
+  }
+  const detector = new window.BarcodeDetector();
+  while (session === camSession) {
+    if (cam.video.readyState >= 2) {
+      try {
+        const codes = await detector.detect(cam.video);
+        if (session !== camSession) return;
+        if (codes.length) {
+          onBarcode(codes[0].rawValue, session);
+          return;
         }
-        if (settled) return;
-        await new Promise((r) => setTimeout(r, 350));
+      } catch (err) {
+        console.error(err);
       }
-    })();
-  });
+    }
+    await new Promise((r) => setTimeout(r, 350));
+  }
 }
 
-async function runBarcodeScan() {
-  if (!('BarcodeDetector' in window)) {
-    await alertModal('Scansione barcode non supportata su questo browser, usa la ricerca testuale.');
-    return;
-  }
-  document.getElementById('camera-shutter-wrap')?.classList.add('hidden'); // continuous auto-detect, no shutter
-  let video;
+async function onBarcode(code, session) {
+  freeze(snapshot());
+  setHint('Cerco il codice…');
   try {
-    video = await openCamera('Inquadra il codice a barre da vicino, più dritto possibile');
-  } catch (err) {
-    console.error(err);
-    await alertModal('Impossibile accedere alla fotocamera');
-    return;
-  }
-
-  const barcodeValue = await scanBarcode(video);
-  if (!barcodeValue) {
-    closeCamera(); // user closed the camera without a match
-    return;
-  }
-  stopCameraStream(); // got a match — spinner up, block the user until data's ready
-
-  const results = document.getElementById('add-results');
-  try {
-    const wines = await api.get(`/api/wines/search?barcode=${encodeURIComponent(barcodeValue)}`);
+    const wines = await api.get(`/api/wines/search?barcode=${encodeURIComponent(code)}`);
+    if (session !== camSession) return;
     if (wines.length) {
-      closeCamera();
-      if (results) {
-        results.innerHTML = wines.map(resultRowHtml).join('');
-        wireResults(results);
-      }
+      const w = wines[0];
+      showFound({
+        title: `${w.name}${w.vintage ? ' ' + w.vintage : ''}`,
+        sub: `${w.producer} · trovato dal codice ${code}`,
+        primary: 'Aggiungi alla cantina',
+        photo: w.image_url,
+        type: w.type,
+        action: async () => {
+          closeViewfinder();
+          if (!currentCellarId) await loadCellar();
+          addWineToCellar(w.id);
+        },
+      });
       return;
     }
-    const suggestion = await api.post('/api/wines/recognize', { barcode: barcodeValue });
-    closeCamera();
-
+    const suggestion = await api.post('/api/wines/recognize', { barcode: code });
+    if (session !== camSession) return;
     // Whatever Open Food Facts found prefills the sheet; when it found
     // nothing, the sheet opens with just the barcode, to be filled by hand.
     // The barcode is saved with the wine, so next time it's a local hit.
-    openRecognizeSheet(suggestion);
+    showFound(suggestion.name
+      ? { title: suggestion.name, sub: `${suggestion.producer ? suggestion.producer + ' · ' : ''}codice ${code}`, primary: 'Conferma', photo: suggestion.imageUrl, type: suggestion.type, action: () => { closeViewfinder(); openRecognizeSheet(suggestion); } }
+      : { title: `Codice ${code} non trovato`, sub: 'Inserisci tu i dati: la prossima volta lo riconosco', primary: 'Compila a mano', action: () => { closeViewfinder(); openRecognizeSheet(suggestion); } });
   } catch (err) {
     console.error(err);
-    closeCamera();
-    await alertModal('Errore durante la ricerca del codice a barre');
+    if (session !== camSession) return;
+    showFound({ title: 'Ricerca non riuscita', sub: 'Controlla la connessione e riprova', primary: 'Compila a mano', action: () => { closeViewfinder(); openRecognizeSheet({ barcode: code }); } });
   }
 }
 
-async function runLabelScan() {
-  document.getElementById('camera-shutter-wrap')?.classList.remove('hidden');
-  let video;
-  try {
-    video = await openCamera("Inquadra l'etichetta e scatta");
-  } catch (err) {
-    console.error(err);
-    await alertModal('Impossibile accedere alla fotocamera');
-    return;
-  }
-
-  const photoBase64 = await new Promise((resolve) => {
-    document.getElementById('camera-shutter')?.addEventListener('click', () => {
-      const canvas = document.createElement('canvas');
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      canvas.getContext('2d').drawImage(video, 0, 0);
-      resolve(canvas.toDataURL('image/jpeg', 0.7));
-    }, { once: true });
-    document.getElementById('camera-close')?.addEventListener('click', () => resolve(null), { once: true });
-  });
-  if (!photoBase64) {
-    closeCamera(); // user closed the camera without shooting
-    return;
-  }
-  stopCameraStream(); // shot taken — spinner up, block the user until data's ready
-
+async function shootLabel() {
+  if (camMode !== 'label' || cam.overlay.classList.contains('frozen') || !cameraStream) return;
+  const session = camSession;
+  const photoBase64 = snapshot();
+  freeze(photoBase64);
+  setHint("Leggo l'etichetta…");
+  const manual = (suggestion) => () => { closeViewfinder(); openRecognizeSheet(suggestion, photoBase64); };
   try {
     const suggestion = await api.post('/api/wines/recognize', { photoBase64 });
-    closeCamera();
-    // Label reading is capped per day to stay in Cloudflare's free tier
-    // (OCR_DAILY_LIMIT in recognize.ts): say so, then let the user type.
+    if (session !== camSession) return;
     if (suggestion.ocrLimited) {
-      await alertModal("Per oggi è stato raggiunto il limite di etichette lette in automatico. Compila i dati a mano: domani la lettura torna disponibile.", { title: 'Lettura etichetta non disponibile' });
+      // Label reading is capped per day to stay in Cloudflare's free tier
+      // (OCR_DAILY_LIMIT in recognize.ts): say so, then let the user type.
+      showFound({ title: 'Lettura automatica finita per oggi', sub: 'Compila i dati a mano: domani torna disponibile', primary: 'Compila a mano', photo: photoBase64, action: manual(suggestion) });
+    } else if (suggestion.name) {
+      const sub = [suggestion.producer, suggestion.region, suggestion.vintage].filter(Boolean).join(' · ');
+      showFound({ title: suggestion.name, sub: `${sub ? sub + ' · ' : ''}letto dall'etichetta`, primary: 'Conferma', photo: photoBase64, type: suggestion.type, action: manual(suggestion) });
+    } else {
+      showFound({ title: 'Nome non leggibile', sub: 'Riprova più vicino, oppure completa tu i dati', primary: 'Compila a mano', photo: photoBase64, action: manual(suggestion) });
     }
-    openRecognizeSheet(suggestion, photoBase64);
   } catch (err) {
     console.error(err);
-    closeCamera();
-    await alertModal("Errore durante il riconoscimento dell'etichetta");
+    if (session !== camSession) return;
+    showFound({ title: "Non sono riuscito a leggere l'etichetta", sub: 'Controlla la connessione e riprova', primary: 'Compila a mano', photo: photoBase64, action: manual({}) });
   }
 }
+
+cam.overlay?.querySelectorAll('.camera-modes [data-mode]').forEach((b) => b.addEventListener('click', () => setCamMode(b.dataset.mode)));
+cam.shutter?.addEventListener('click', shootLabel);
+document.getElementById('camera-close')?.addEventListener('click', closeViewfinder);
+document.getElementById('camera-retry')?.addEventListener('click', resume);
+document.getElementById('camera-ok')?.addEventListener('click', () => foundAction?.());
 
 let pendingImageUrl;
 let pendingBarcode;
@@ -602,8 +860,7 @@ async function saveRecognizedWine() {
   try {
     const wine = await api.post('/api/wines', { name, producer, country, region, type, vintage, grapeVariety, denomination, imageUrl, barcode: pendingBarcode });
     closeRecognizeSheet();
-    const bottle = await postBottle(wine.id, quantity);
-    if (bottle) {
+    await postBottle(wine.id, quantity, async (bottle) => {
       await maybeSaveNote(bottle.id);
       if (pendingPhotoFile) {
         try {
@@ -613,24 +870,13 @@ async function saveRecognizedWine() {
           await alertModal('Vino salvato, ma il caricamento della foto è fallito.');
         }
       }
-    }
+    });
   } catch (err) {
     console.error(err);
     await alertModal('Impossibile aggiungere il vino: controlla i dati inseriti e riprova.');
   }
 }
 
-// Wired once at module load — mountAdd() re-runs on every visit to #/add, so
-// listeners on elements it doesn't re-render (search input, scan tile,
-// manual-add link) belong here, not there, to avoid stacking duplicates.
-// Mirrors the wireStaticControls() split in screens/cellar.js.
-document.getElementById('add-search-input')?.addEventListener('input', (e) => runSearch(e.target.value.trim()));
-// Navbar hide-while-keyboard-open is handled globally in main.js via
-// visualViewport (covers every input, not just this one).
-document.getElementById('scan-barcode-tile')?.addEventListener('click', runBarcodeScan);
-document.getElementById('scan-label-tile')?.addEventListener('click', runLabelScan);
-document.getElementById('camera-close')?.addEventListener('click', closeCamera);
-document.getElementById('manual-add-link')?.addEventListener('click', () => openRecognizeSheet({}));
 document.getElementById('recognize-close')?.addEventListener('click', closeRecognizeSheet);
 // Disabled for the whole save: a second tap while POST /api/wines is in
 // flight would create the wine (and the bottle, and the note) twice.
@@ -654,15 +900,3 @@ document.getElementById('rec-photo-input')?.addEventListener('change', async (e)
   photoImg.src = URL.createObjectURL(pendingPhotoFile);
   document.getElementById('recognize-photo-wrap').style.display = '';
 });
-
-export async function mountAdd() {
-  const cellars = await api.get('/api/cellars');
-  currentCellarId = cellars[0].id;
-
-  const searchInput = document.getElementById('add-search-input');
-  if (searchInput) searchInput.value = '';
-  const results = document.getElementById('add-results');
-  if (results) results.innerHTML = '';
-  const countEl = document.getElementById('add-results-count');
-  if (countEl) countEl.textContent = 'Risultati';
-}

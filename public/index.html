@@ -168,30 +168,6 @@
     </div>
   </div>
 
-  <div class="view" id="view-add">
-    <div class="add-header">
-      <div class="topbar"><div class="back-btn" id="add-back-btn" role="button" tabindex="0" aria-label="Indietro"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg></div><h2 class="screen-title">Aggiungi vino</h2></div>
-      <div class="scan-tiles">
-        <div class="scan-tile" id="scan-label-tile" role="button" tabindex="0">
-          <div class="ic-wrap"><svg class="ic" viewBox="0 0 24 24" style="width:18px;height:18px;"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7l1.8-2.5h4.4L16 7"/><circle cx="12" cy="13.5" r="3.2"/></svg></div>
-          <div class="t">Scansiona etichetta</div>
-        </div>
-        <div class="scan-tile" id="scan-barcode-tile" role="button" tabindex="0">
-          <div class="ic-wrap"><svg class="ic" viewBox="0 0 24 24" style="width:18px;height:18px;"><rect x="3" y="5" width="2" height="14"/><rect x="7" y="5" width="1" height="14"/><rect x="10" y="5" width="3" height="14"/><rect x="15" y="5" width="1" height="14"/><rect x="18" y="5" width="2" height="14"/></svg></div>
-          <div class="t">Codice a barre</div>
-        </div>
-      </div>
-      <input id="add-search-input" class="search" aria-label="Cerca un vino" placeholder="Cerca per nome, produttore, regione…" type="text">
-    </div>
-    <div class="add-body">
-      <div>
-        <div class="section-head"><h3 id="add-results-count">Risultati</h3></div>
-        <div id="add-results" style="display:flex; flex-direction:column; gap:8px; margin-top:8px;"></div>
-      </div>
-      <div class="manual-link" id="manual-add-link" role="button" tabindex="0">Non lo trovi? Aggiungilo manualmente</div>
-    </div>
-  </div>
-
   <div class="view" id="view-stats">
     <div class="topbar"><h2 class="screen-title">Statistiche</h2></div>
     <div class="hero">
@@ -238,7 +214,7 @@
     </div>
     <div class="logout" role="button" tabindex="0">Esci</div>
     <div class="app-footer">
-      <div class="app-build">build 108</div>
+      <div class="app-build">build 109</div>
       <div class="app-credit"><a href="https://www.flaticon.com/free-icons/wine" target="_blank" rel="noopener">Wine icons created by iconixar - Flaticon</a></div>
     </div>
   </div>
@@ -313,7 +289,7 @@
   <div class="navbar">
     <button class="navbtn active" data-view="view-home"><svg class="ic" viewBox="0 0 24 24"><path d="M4 11l8-6 8 6"/><path d="M6 10v9h12v-9"/></svg>Home</button>
     <button class="navbtn" data-view="view-cellar"><svg class="ic" viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1"/><rect x="13" y="4" width="7" height="7" rx="1"/><rect x="4" y="13" width="7" height="7" rx="1"/><rect x="13" y="13" width="7" height="7" rx="1"/></svg>Cantina</button>
-    <button class="navbtn nav-add" data-view="view-add" aria-label="Aggiungi vino"><span class="nav-add-circle"><svg aria-hidden="true" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span></button>
+    <button class="navbtn nav-add" aria-label="Aggiungi un vino" aria-haspopup="dialog"><span class="nav-add-circle"><svg aria-hidden="true" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span></button>
     <button class="navbtn" data-view="view-stats"><svg class="ic" viewBox="0 0 24 24"><line x1="5" y1="19" x2="5" y2="11"/><line x1="12" y1="19" x2="12" y2="6"/><line x1="19" y1="19" x2="19" y2="14"/></svg>Statistiche</button>
     <button class="navbtn" data-view="view-profile"><svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.4"/><path d="M5 20c1.2-4 4-6 7-6s5.8 2 7 6"/></svg>Profilo</button>
   </div>
@@ -396,6 +372,17 @@
     </div>
   </div>
 
+  <div class="compare-overlay" id="add-overlay">
+    <div class="compare-sheet add-sheet" role="dialog" aria-modal="true" aria-labelledby="add-title">
+      <div class="compare-head"><h3 id="add-title">Aggiungi un vino</h3><div class="close" id="add-close" role="button" tabindex="0" aria-label="Chiudi"><svg aria-hidden="true" viewBox="0 0 24 24" style="width:14px;height:14px;" fill="none" stroke="#241e1a" stroke-width="1.8" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="6" y1="18" x2="18" y2="6"/></svg></div></div>
+      <div class="search-field">
+        <svg class="search-field-ic" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4-4"/></svg>
+        <input id="add-search-input" type="text" enterkeyhint="search" autocomplete="off" aria-label="Cerca un vino" placeholder="Nome, produttore, regione…">
+        <button type="button" class="search-field-btn" id="add-camera-btn" aria-label="Fotografa l'etichetta"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7l1.8-2.5h4.4L16 7"/><circle cx="12" cy="13.5" r="3.2"/></svg></button>
+      </div>
+      <div class="add-results" id="add-results"></div>
+    </div>
+  </div>
   <div class="compare-overlay" id="recognize-overlay">
     <div class="compare-sheet">
       <div class="compare-head"><h3 id="recognize-title">Rivedi e conferma</h3><div class="close" id="recognize-close" role="button" tabindex="0" aria-label="Chiudi"><svg aria-hidden="true" viewBox="0 0 24 24" style="width:14px;height:14px;" fill="none" stroke="#241e1a" stroke-width="1.8" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="6" y1="18" x2="18" y2="6"/></svg></div></div>
@@ -431,12 +418,30 @@
       <div class="action" id="recognize-save" style="cursor:pointer;" role="button" tabindex="0">Salva</div>
     </div>
   </div>
-  <div class="camera-overlay" id="camera-overlay">
-    <video id="camera-video" autoplay playsinline muted></video>
-    <div class="camera-spinner" id="camera-spinner"></div>
-    <div class="camera-close" id="camera-close" role="button" tabindex="0" aria-label="Chiudi fotocamera"><svg aria-hidden="true" viewBox="0 0 24 24" style="width:14px;height:14px;" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="6" y1="18" x2="18" y2="6"/></svg></div>
-    <div class="camera-hint" id="camera-hint"></div>
-    <div class="camera-shutter-wrap" id="camera-shutter-wrap"><div class="camera-shutter" id="camera-shutter" role="button" tabindex="0" aria-label="Scatta foto"></div></div>
+  <div class="camera-overlay" id="camera-overlay" data-mode="label" role="dialog" aria-modal="true" aria-label="Fotocamera">
+    <div class="camera-view">
+      <video id="camera-video" autoplay playsinline muted></video>
+      <img id="camera-still" class="camera-still" alt="">
+      <div class="camera-frame" id="camera-frame" aria-hidden="true"><i></i><i></i><i></i><i></i><div class="camera-scanline"></div></div>
+      <div class="camera-top">
+        <div class="camera-close" id="camera-close" role="button" tabindex="0" aria-label="Chiudi fotocamera"><svg aria-hidden="true" viewBox="0 0 24 24" style="width:14px;height:14px;" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="6" y1="18" x2="18" y2="6"/></svg></div>
+        <span class="camera-title">Aggiungi un vino</span>
+        <span class="camera-top-spacer"></span>
+      </div>
+      <div class="camera-hint" id="camera-hint" aria-live="polite"></div>
+      <div class="camera-found" id="camera-found" aria-live="polite">
+        <div class="cf-row"><span class="cf-thumb" id="camera-found-thumb"></span><div class="cf-body"><div class="cf-title" id="camera-found-title"></div><div class="cf-sub" id="camera-found-sub"></div></div></div>
+        <div class="cf-btns"><button type="button" class="cf-retry" id="camera-retry">Riprova</button><button type="button" class="cf-ok" id="camera-ok">Conferma</button></div>
+      </div>
+    </div>
+    <div class="camera-bar">
+      <div class="camera-modes" role="radiogroup" aria-label="Cosa inquadrare">
+        <button type="button" role="radio" data-mode="label">Etichetta</button>
+        <button type="button" role="radio" data-mode="barcode">Codice</button>
+        <button type="button" role="radio" data-mode="type">Scrivi</button>
+      </div>
+      <div class="camera-shutter" id="camera-shutter" role="button" tabindex="0" aria-label="Scatta foto"></div>
+    </div>
   </div>
 </div>
 <script>
