@@ -1214,9 +1214,12 @@ questo file è il riassunto "dove eravamo rimasti".
     `pointerup` del tocco (una sola azione per tocco: il click che segue
     viene ignorato in cattura per 800 ms; uno scroll dà `pointercancel`, mai
     `pointerup`); il pulsante mostra subito "Aggiungo…"; `confirmWish()` ha
-    tutto dentro il try e mostra il motivo di qualsiasi errore. Se il
-    problema resta, la scritta "Aggiungo…" (presente o no) dice se il tocco
-    arriva: è il prossimo dato da chiedere all'utente.
+    tutto dentro il try e mostra il motivo di qualsiasi errore. **Confermato
+    funzionante dall'utente sulla build 120.** Non è isolato se il merito sia
+    del `pointerup` o del semplice riavvio dell'app (un primo test sulla 120
+    non mostrava nemmeno "Aggiungo…", segno che girava ancora il codice
+    della 119 finché l'app non è stata chiusa davvero). Se ricapita: prima
+    chiedere il numero di build in Profilo.
 
 ## Cose note, non (ancora) da rifare
 
