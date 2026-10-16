@@ -101,7 +101,9 @@ function rowHtml(b) {
   const sub = `${escapeHtml(b.producer)} · ${escapeHtml(b.region ?? b.country)}`;
   const price = priceText(b.price_paid) ? `${priceText(b.price_paid)} €` : '—';
   const score = b.score != null ? b.score.toFixed(1) : '—';
-  const loc = locationLabel(b);
+  // The user's own score, or Vivino's when they have not given one.
+  const one = (n) => Number(n).toFixed(1).replace('.', ',');
+  const rating = b.my_rating != null ? `★ ${one(b.my_rating)}` : b.vivino_rating != null ? `Vivino ★ ${one(b.vivino_rating)}` : '';
   const quantity = escapeHtml(b.quantity);
   // .cellar-item wraps the sliding row and the actions revealed behind it.
   // The actions come AFTER the row in the DOM so Tab order is: row -> Modifica
@@ -111,7 +113,7 @@ function rowHtml(b) {
       <div class="cellar-row" role="group" data-id="${b.id}" data-photo="${photo}" data-name="${name}" data-sub="${sub}" data-price="${price}" data-score="${score}">
         <div class="rowcheck"><svg class="check-ic" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 12 9 17 20 6"/></svg></div>
         ${photoHtml(b, 'cphoto')}
-        <div class="cinfo" role="button" tabindex="0"><div class="name">${name}</div><div class="sub">${sub} · ×${quantity}${loc ? ' · ' + escapeHtml(loc) : ''}</div></div>
+        <div class="cinfo" role="button" tabindex="0"><div class="name">${name}</div><div class="sub">${sub} · ×${quantity}${rating ? ' · ' + rating : ''}</div></div>
         <div class="cprice">${price}<small>a bottiglia</small></div>
       </div>
       <div class="swipe-actions">

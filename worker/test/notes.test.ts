@@ -176,3 +176,25 @@ describe('GET /api/me/palate', () => {
     expect(await res.json()).toEqual({ notes: 2, tags: { Ciliegia: 2, Rosa: 1 } });
   });
 });
+
+describe('my rating', () => {
+  it('sets, changes and clears my score through my latest note', async () => {
+    const auth = { 'X-Calice-Dev-Email': 'voto@b.com' };
+    const cellars = await (await app.request('/api/cellars', { headers: auth }, env)).json<any[]>();
+    const wine = await env.DB.prepare(`insert into wines (name, producer, country, type, source) values ('Campofiorin', 'Masi', 'Italia', 'rosso', 'catalog') returning id`).first<{ id: number }>();
+    const bottle = await (await app.request(`/api/cellars/${cellars[0].id}/bottles`, { method: 'POST', body: JSON.stringify({ wineId: wine!.id, quantity: 2 }), headers: { ...auth, 'content-type': 'application/json' } }, env)).json<{ id: number }>();
+    const put = (rating: unknown) => app.request(`/api/bottles/${bottle.id}/my-rating`, { method: 'PUT', body: JSON.stringify({ rating }), headers: { ...auth, 'content-type': 'application/json' } }, env);
+    const mine = async () => (await (await app.request(`/api/cellars/${cellars[0].id}/bottles`, { headers: auth }, env)).json<any[]>())[0].my_rating;
+
+    expect((await put(4.5)).status).toBe(200);
+    expect(await mine()).toBe(4.5);
+    await put(3.75);
+    expect(await mine()).toBe(3.8);
+    expect((await put(7)).status).toBe(400);
+    await put(null);
+    expect(await mine()).toBeNull();
+    const { n } = (await env.DB.prepare('select count(*) as n from tasting_notes where bottle_id = ?').bind(bottle.id).first<{ n: number }>())!;
+    expect(n).toBe(0);
+  });
+});
+

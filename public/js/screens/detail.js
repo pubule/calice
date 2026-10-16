@@ -90,7 +90,7 @@ function renderHero(bottle) {
   const facts = [bottle.denomination, bottle.vintage ? String(bottle.vintage) : null,
     bottle.alcohol ? `${String(bottle.alcohol).replace('.', ',')}% vol` : null];
   chips.replaceChildren(...facts.filter(Boolean).map((t) => Object.assign(document.createElement('span'), { textContent: t })));
-  // ...and what it is worth, as a row of numbers: price, the notes' average
+  // ...and what it is worth, as a row of numbers: price, the user's own score
   // and Vivino's community rating.
   const one = (n) => Number(n).toFixed(1).replace('.', ',');
   const stat = (value, label, aria) => {
@@ -102,7 +102,7 @@ function renderHero(bottle) {
   };
   const stats = [];
   if (priceText(bottle.price_paid)) stats.push(stat(`${priceText(bottle.price_paid)} €`, 'a bottiglia'));
-  if (bottle.score != null) stats.push(stat(`★ ${one(bottle.score)}`, 'le tue note', `Voto medio delle note ${one(bottle.score)} su 5`));
+  if (bottle.my_rating != null) stats.push(stat(`★ ${one(bottle.my_rating)}`, 'il tuo voto', `Il tuo voto ${one(bottle.my_rating)} su 5`));
   if (bottle.vivino_rating != null) {
     const n = Number(bottle.vivino_ratings_count) || 0;
     const votes = `${n.toLocaleString('it-IT')} ${n === 1 ? 'voto' : 'voti'}`;

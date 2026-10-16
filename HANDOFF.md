@@ -1367,6 +1367,18 @@ questo file è il riassunto "dove eravamo rimasti".
     catalogo sono condivise: cambiare la foto di un vino la cambia per
     tutti quelli che lo hanno.
 
+61. **Voto personale nella lista e in Modifica** (build 131). Nella riga di
+    Cantina, al posto della posizione: "★ 4,5" (voto dell'utente) o, se
+    manca, "Vivino ★ 4,1". Nel foglio Modifica, sezione "La tua bottiglia",
+    campo "Il tuo voto" (1-5, decimali ammessi, vuoto = nessuno) con le
+    stelle che si riempiono in proporzione mentre si scrive. Il voto è il
+    `rating` dell'ultima nota dell'utente su quella bottiglia: `PUT
+    /api/bottles/:id/my-rating {rating|null}` lo aggiorna, crea una nota
+    senza testo se non ce n'è, e con null cancella la nota se era vuota
+    (altrimenti rating 0, come il compositore). La lista bottiglie ha
+    `my_rating` (ultima nota propria, 0 = null); nella scheda la riga di
+    numeri mostra "il tuo voto" invece della media di tutte le note.
+
 ## Cose note, non (ancora) da rifare
 
 - `status-bar-style` è `black-translucent` (non più `default`), `.screen`

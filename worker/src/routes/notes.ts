@@ -112,6 +112,37 @@ noteRoutes.patch('/:bottleId/notes/:noteId', async (c) => {
   return c.json(parseNote(note));
 });
 
+// The user's own score for a bottle (1-5, halves and tenths allowed), set
+// from the wine's edit sheet: it is the rating of their latest note, created
+// with no text if there is none. null clears it: the note goes if it held
+// nothing else, otherwise only its stars (rating 0, as the composer does).
+noteRoutes.put('/:bottleId/my-rating', async (c) => {
+  const bottleId = Number(c.req.param('bottleId'));
+  const userId = c.get('userId');
+  const bottle = await c.env.DB.prepare('select cellar_id from bottles where id = ?').bind(bottleId).first<{ cellar_id: number }>();
+  if (!bottle || !(await isCellarMember(c.env.DB, bottle.cellar_id, userId))) return c.json({ error: 'not found' }, 404);
+  const { rating } = await c.req.json<{ rating: number | null }>();
+  if (rating !== null && !(typeof rating === 'number' && rating >= 1 && rating <= 5)) return c.json({ error: 'rating must be between 1 and 5, or null' }, 400);
+  const value = rating === null ? null : Math.round(rating * 10) / 10;
+  const note = await c.env.DB
+    .prepare(
+      `select id, text, flavor_tags, food_pairings, taste_acidity, taste_sweetness, taste_tannin, taste_body, taste_alcohol, taste_intensity, taste_finish
+       from tasting_notes where bottle_id = ? and user_id = ? order by created_at desc, id desc limit 1`,
+    )
+    .bind(bottleId, userId)
+    .first<Record<string, unknown> & { id: number; text: string }>();
+  if (value !== null) {
+    if (note) await c.env.DB.prepare('update tasting_notes set rating = ? where id = ?').bind(value, note.id).run();
+    else await c.env.DB.prepare(`insert into tasting_notes (bottle_id, user_id, rating, text) values (?, ?, ?, '')`).bind(bottleId, userId, value).run();
+  } else if (note) {
+    const { id, text, ...rest } = note;
+    const empty = !text?.trim() && Object.values(rest).every((v) => v == null);
+    if (empty) await c.env.DB.prepare('delete from tasting_notes where id = ?').bind(id).run();
+    else await c.env.DB.prepare('update tasting_notes set rating = 0 where id = ?').bind(id).run();
+  }
+  return c.json({ my_rating: value });
+});
+
 noteRoutes.get('/:bottleId/notes', async (c) => {
   const bottleId = Number(c.req.param('bottleId'));
   const userId = c.get('userId');
