@@ -973,6 +973,23 @@ questo file è il riassunto "dove eravamo rimasti".
     mito; proposta una mappa delle sensazioni tattili, ma l'utente ha
     chiesto di toglierla — non riproporla.
 
+35. **Slot occupato negli elementi della cantina** (build 103). Scelta
+    dell'utente su mockup: direzione B (scheda sotto il livello, con una
+    freccia verso lo slot) + vista **Elenco** della C. Al posto del vecchio
+    popup scuro (`#bottle-popup`, rimosso con il suo CSS):
+    - slot vuoti tratteggiati, pieni nel colore del tipo (aggiunto il
+      rosato), legenda sotto la griglia;
+    - scheda con foto, quantità, posizione e quattro azioni: **Apri**,
+      **Stappa** (stesse regole della scheda vino: −1 con Annulla, l'ultima
+      chiede conferma e rimuove il vino, liberando lo slot), **Sposta** (gli
+      slot liberi pulsano, si tocca la destinazione; banner con Annulla),
+      **Libera** (subito, con Annulla nel toast). In modalità "scegli dove
+      riporla" resta anche "Sostituisci con …";
+    - Griglia/Elenco: l'elenco mostra una riga per bottiglia con posizione;
+      toccandola si aprono solo le azioni (la riga mostra già il resto).
+    Stato in `cellar.js`: `slotSel`, `movingBottle`, `elemView`, azzerati
+    tornando all'elenco degli elementi o chiudendo il foglio.
+
 ## Cose note, non (ancora) da rifare
 
 - `status-bar-style` è `black-translucent` (non più `default`), `.screen`

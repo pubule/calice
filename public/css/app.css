@@ -522,15 +522,35 @@
   .slot-circle.filled.type-bollicine{border-color:#b8ac74; background:#e0d9b8;}
   .slot-circle.filled.type-bollicine .slabel{color:rgba(36,30,26,.6);}
   .slot-circle.sel{outline:2.5px solid #5b2333; outline-offset:2px;}
-  .bottle-popup{display:none; flex-direction:column; gap:8px; background:#241e1a; color:#f7f5f0; border-radius:12px; padding:11px 13px;}
-  .bottle-popup.show{display:flex;}
-  .bottle-popup .bpop-main{display:flex; align-items:center; gap:10px;}
-  .bottle-popup .bphoto{width:20px; height:30px; border-radius:3px; flex-shrink:0;}
-  .bottle-popup .binfo{flex:1; min-width:0;}
-  .bottle-popup .bname{font-size:calc(12.5rem/17); font-weight:600;}
-  .bottle-popup .bsub{font-size:calc(12rem/17); color:rgba(247,245,240,.65); margin-top:1px;}
-  .bottle-popup .bgo{font-size:calc(11rem/17); font-weight:600; color:#f0c8d3; flex-shrink:0; cursor:pointer;}
-  .bottle-popup .bpop-actions{display:flex; flex-wrap:wrap; justify-content:flex-end; gap:6px 14px; padding-top:6px; border-top:1px solid rgba(247,245,240,.14);}
+  /* Element grid: empty slots dashed, filled ones in the wine's colour,
+     free slots pulse as targets while a bottle is being moved. */
+  .slot-circle.empty{background:transparent; border-style:dashed; border-color:#cfc6b6;}
+  .slot-circle.filled.type-rosato{border-color:#b97a89; background:#d9a3b0;}
+  .slot-circle.filled.type-rosato .slabel{color:rgba(36,30,26,.6);}
+  .slot-circle.target{border-color:#5b2333; animation:slot-pulse 1.2s ease-in-out infinite;}
+  @keyframes slot-pulse{50%{box-shadow:0 0 0 5px rgba(91,35,51,.15);}}
+  @media (prefers-reduced-motion: reduce){ .slot-circle.target{animation:none;} }
+  .slot-legend{display:flex; flex-wrap:wrap; justify-content:center; gap:6px 12px; font-size:calc(11.5rem/17); color:#736a5d;}
+  .slot-legend .lg{display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:4px; vertical-align:-1px;}
+  .slot-legend .lg.rosso{background:#3d1420;} .slot-legend .lg.bianco{background:#d9c98a;} .slot-legend .lg.bollicine{background:#e0d9b8; border:1px solid #b8ac74;} .slot-legend .lg.rosato{background:#d9a3b0;}
+  .slot-legend .lg.libero{border:1.5px dashed #b8ab97;}
+  .slot-move-banner{display:flex; align-items:center; justify-content:space-between; gap:10px; background:#f4e8eb; color:#5b2333; border-radius:12px; padding:10px 12px; font-size:calc(12.5rem/17);}
+  .slot-move-banner button{border:0; background:none; color:#5b2333; font:inherit; font-weight:700; min-height:44px; cursor:pointer;}
+  .slot-card{position:relative; background:#ffffff; border:1px solid #e2e0d8; border-radius:14px; padding:12px; display:flex; flex-direction:column; gap:10px;}
+  .slot-card.with-arrow::before{content:''; position:absolute; top:-7px; left:var(--arrow, 50%); width:12px; height:12px; background:#ffffff; border-left:1px solid #e2e0d8; border-top:1px solid #e2e0d8; transform:translateX(-50%) rotate(45deg);}
+  .slot-card-main{display:flex; align-items:center; gap:11px;}
+  .slot-card .cphoto, .slot-list-row .cphoto{width:34px; height:48px; border-radius:4px; flex-shrink:0;}
+  .slot-pos{align-self:flex-start; font-family:'JetBrains Mono',monospace; font-size:calc(11rem/17); letter-spacing:.06em; text-transform:uppercase; color:#5b2333; background:#f4e8eb; border-radius:9999px; padding:3px 9px; white-space:nowrap;}
+  .slot-list-row .slot-pos{align-self:center;}
+  .slot-actions{display:grid; grid-template-columns:repeat(4, 1fr); gap:6px;}
+  .slot-act{display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; min-height:56px; padding:8px 2px; border:1px solid #e2e0d8; background:#faf9f6; border-radius:12px; font-family:'Archivo',sans-serif; font-size:calc(12rem/17); color:#241e1a; cursor:pointer; min-width:0;}
+  .slot-act svg{width:18px; height:18px;}
+  .slot-card.compact{padding:8px; margin-top:-4px;}
+  .slot-act.danger{color:#8a2336;}
+  .slot-view-toggle{margin-top:2px;}
+  .slot-list{display:flex; flex-direction:column; gap:9px;}
+  .slot-list-row.sel{border-color:#5b2333;}
+  .slot-list-free{font-size:calc(12rem/17); color:#736a5d; text-align:center; padding:6px 0;}
 
   /* ---- scatolone: nessuno slot, solo elenco contenuto ---- */
   .box-note{font-size:calc(11.5rem/17); color:#736a5d; line-height:1.5;}

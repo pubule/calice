@@ -41,6 +41,11 @@ let activeChips = { type: null, country: null, region: null };
 let picker = null; // { bottle, onPicked }
 let elementsMode = 'list'; // 'list' | 'detail' | 'create'
 let currentElementId = null;
+// Element grid: the bottle whose slot card is open, the bottle being moved
+// (free slots become targets), and grid vs list view.
+let slotSel = null;
+let movingBottle = null;
+let elemView = 'grid';
 
 function colLetter(i) {
   return String.fromCharCode(65 + i);
@@ -540,10 +545,14 @@ function openElementsOverlay() {
 function closeElementsOverlay() {
   closeSheet('elements-overlay');
   picker = null;
+  slotSel = null;
+  movingBottle = null;
 }
 
 function renderElementsList() {
   elementsMode = 'list';
+  slotSel = null;
+  movingBottle = null;
   document.getElementById('elements-back-btn').style.visibility = 'hidden';
   const cellarName = cellars.find((c) => c.id === currentCellarId)?.name ?? '';
   document.getElementById('elements-title').textContent = picker ? 'Scegli dove riporla' : `Elementi — ${cellarName}`;
@@ -674,6 +683,11 @@ function renderElementDetail(id) {
 
   const occupied = elemCount(el);
   const capacity = elemCapacity(el);
+  const bottleAt = (t, c, d) => currentBottles.find((b) => b.element_id === id && b.slot_tier === t && b.slot_col === c && b.slot_depth === d);
+  const selected = slotSel ? currentBottles.find((b) => b.id === slotSel) : null;
+  // Moving only makes sense in the grid: the free slots are the targets.
+  if (movingBottle) elemView = 'grid';
+
   let html = `
     <div class="icon-btn danger" id="delete-element-btn" title="Elimina elemento" role="button" tabindex="0" aria-label="Elimina elemento" style="align-self:flex-end; margin-bottom:10px;"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"/><path d="M6 7l1 13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-13"/><path d="M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3"/></svg></div>
     <div class="elements-view">
@@ -682,56 +696,126 @@ function renderElementDetail(id) {
       <div class="stat"><b>${occupied}</b><span>Occupati</span></div>
       <div class="stat"><b>${capacity - occupied}</b><span>Liberi</span></div>
     </div>
-    <div class="bottle-popup" id="bottle-popup"></div>`;
-  for (let t = 1; t <= el.tiers; t++) {
-    html += `<div class="tier-block"><div class="tier-label">Livello ${t}</div><div class="tier-rows">`;
-    for (let d = 1; d <= el.depth; d++) {
-      html += `<div class="slot-row">`;
-      for (let c = 0; c < el.cols; c++) {
-        const occ = currentBottles.find((b) => b.element_id === id && b.slot_tier === t && b.slot_col === c && b.slot_depth === d);
-        const typeClass = occ ? (occ.type === 'bianco' ? 'type-bianco' : occ.type === 'bollicine' ? 'type-bollicine' : '') : '';
-        html += `<div class="slot-circle${occ ? ' filled ' + typeClass : ''}" data-t="${t}" data-c="${c}" data-d="${d}" role="button" tabindex="0" aria-label="Livello ${t}, ${colLetter(c)}.${d}, ${occ ? escapeHtml(occ.name) : 'libero'}"><span class="slabel">${colLetter(c)}.${d}</span></div>`;
+    <div class="segmented slot-view-toggle">
+      <button type="button" data-view="grid" class="${elemView === 'grid' ? 'active' : ''}" aria-pressed="${elemView === 'grid'}">Griglia</button>
+      <button type="button" data-view="list" class="${elemView === 'list' ? 'active' : ''}" aria-pressed="${elemView === 'list'}">Elenco</button>
+    </div>
+    ${movingBottle ? `<div class="slot-move-banner"><span>Tocca uno slot libero per spostare <b>${escapeHtml(movingBottle.name)}</b></span><button type="button" id="slot-move-cancel">Annulla</button></div>` : ''}`;
+
+  if (elemView === 'list') {
+    const rows = currentBottles
+      .filter((b) => b.element_id === id)
+      .sort((a, b) => a.slot_tier - b.slot_tier || a.slot_depth - b.slot_depth || a.slot_col - b.slot_col);
+    html += `<div class="slot-list">${rows.map((b) => `
+      <div class="elem-row slot-list-row${selected?.id === b.id ? ' sel' : ''}" data-bottle="${b.id}" role="button" tabindex="0" aria-expanded="${selected?.id === b.id}">
+        ${photoHtml(b, 'cphoto')}
+        <div class="elem-body"><div class="elem-name">${escapeHtml(b.name)}</div><div class="elem-sub">${escapeHtml(b.producer)}${b.quantity > 1 ? ` · ×${b.quantity}` : ''}</div></div>
+        <span class="slot-pos">${colLetter(b.slot_col)}.${b.slot_depth} · L${b.slot_tier}</span>
+      </div>${selected?.id === b.id ? slotCardHtml(b, { compact: true }) : ''}`).join('')}
+      ${capacity - occupied > 0 ? `<div class="slot-list-free">${capacity - occupied} ${capacity - occupied === 1 ? 'slot libero' : 'slot liberi'}: passa alla griglia per riempirli</div>` : ''}
+    </div>`;
+  } else {
+    for (let t = 1; t <= el.tiers; t++) {
+      html += `<div class="tier-block"><div class="tier-label">Livello ${t}</div><div class="tier-rows">`;
+      for (let d = 1; d <= el.depth; d++) {
+        html += `<div class="slot-row">`;
+        for (let c = 0; c < el.cols; c++) {
+          const occ = bottleAt(t, c, d);
+          const cls = occ ? ` filled ${slotTypeClass(occ)}${selected?.id === occ.id ? ' sel' : ''}` : ` empty${movingBottle ? ' target' : ''}`;
+          html += `<div class="slot-circle${cls}" data-t="${t}" data-c="${c}" data-d="${d}" role="button" tabindex="0" aria-label="Livello ${t}, ${colLetter(c)}.${d}, ${occ ? escapeHtml(occ.name) : 'libero'}"${occ ? ` aria-expanded="${selected?.id === occ.id}"` : ''}><span class="slabel">${colLetter(c)}.${d}</span></div>`;
+        }
+        html += '</div>';
       }
-      html += '</div>';
+      html += '</div></div>';
+      // The selected bottle's card opens right under its own level, with an
+      // arrow pointing at the slot (placed after render, see below).
+      if (selected && selected.slot_tier === t && !movingBottle) html += slotCardHtml(selected);
     }
-    html += '</div></div>';
+    html += `<div class="slot-legend"><span><i class="lg rosso"></i>Rosso</span><span><i class="lg bianco"></i>Bianco</span><span><i class="lg bollicine"></i>Bollicine</span><span><i class="lg rosato"></i>Rosato</span><span><i class="lg libero"></i>Libero</span></div>`;
+    if (!movingBottle) html += `<p class="page-sub" style="margin:0; font-size:calc(11.5rem/17); color:#736a5d; text-align:center;">Tocca uno slot vuoto per posizionarci ${picker ? '"' + escapeHtml(picker.bottle.name) + '"' : 'una bottiglia'}. Tocca uno slot pieno per vederne il contenuto.</p>`;
   }
-  html += `<p class="page-sub" style="margin:0; font-size:calc(11.5rem/17); color:#736a5d; text-align:center;">Tocca uno slot vuoto per posizionarci ${picker ? '"' + escapeHtml(picker.bottle.name) + '"' : 'una bottiglia'}. Tocca uno slot pieno per vederne il contenuto.</p></div>`;
+  html += '</div>';
   body.innerHTML = html;
 
   document.getElementById('delete-element-btn').addEventListener('click', () => deleteCurrentElement());
+  body.querySelectorAll('.slot-view-toggle button').forEach((btn) => btn.addEventListener('click', () => {
+    elemView = btn.dataset.view;
+    renderElementDetail(id);
+  }));
+  document.getElementById('slot-move-cancel')?.addEventListener('click', () => { movingBottle = null; renderElementDetail(id); });
   body.querySelectorAll('.slot-circle').forEach((cell) => {
     const t = Number(cell.dataset.t), c = Number(cell.dataset.c), d = Number(cell.dataset.d);
-    const occ = currentBottles.find((b) => b.element_id === id && b.slot_tier === t && b.slot_col === c && b.slot_depth === d);
-    cell.addEventListener('click', () => (occ ? showBottlePopup(occ) : placeBottle(id, t, c, d)));
+    const occ = bottleAt(t, c, d);
+    cell.addEventListener('click', () => {
+      if (movingBottle) {
+        if (!occ) moveBottleTo(movingBottle, id, t, c, d);
+        return;
+      }
+      if (occ) { slotSel = slotSel === occ.id ? null : occ.id; renderElementDetail(id); }
+      else placeBottle(id, t, c, d);
+    });
   });
+  body.querySelectorAll('.slot-list-row').forEach((row) => row.addEventListener('click', () => {
+    const bid = Number(row.dataset.bottle);
+    slotSel = slotSel === bid ? null : bid;
+    renderElementDetail(id);
+  }));
+  if (selected) wireSlotCard(selected, id);
 }
 
-function showBottlePopup(b) {
-  const popup = document.getElementById('bottle-popup');
-  // "Sostituisci" only makes sense while picking a slot for a DIFFERENT
-  // bottle (picker set from a bottle's own "modifica posizione" link) —
-  // not when just browsing, and not when the tapped slot is picker.bottle
-  // itself (already there).
+// Slot colour by wine type; empty slots are drawn dashed (.empty).
+function slotTypeClass(b) {
+  return { bianco: 'type-bianco', bollicine: 'type-bollicine', rosato: 'type-rosato' }[b.type] ?? '';
+}
+
+const SLOT_ICON = {
+  open: '<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6"/><path d="M20 4l-9 9"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg>',
+  uncork: '<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21h6M10 21V11l-1-4h6l-1 4v10"/><path d="M12 3v2M16 4l-1 1.5M8 4l1 1.5"/></svg>',
+  move: '<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 9l-3 3 3 3M19 9l3 3-3 3M2 12h20"/></svg>',
+  free: '<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>',
+};
+
+// Card for an occupied slot, opened under its level (grid) or its row (list):
+// the bottle and its position, then Apri / Stappa / Sposta / Libera. While
+// picking a slot for another bottle it also offers to swap them.
+// In the list the row above already shows the bottle and its position, so
+// the compact card is just the actions.
+function slotCardHtml(b, { compact = false } = {}) {
   const canSwap = picker && picker.bottle.id !== b.id;
-  popup.innerHTML = `
-    <div class="bpop-main">
-      ${photoHtml(b, 'bphoto')}
-      <div class="binfo"><div class="bname">${escapeHtml(b.name)}</div><div class="bsub">${escapeHtml(b.producer)}${b.vintage ? ' · ' + b.vintage : ''}</div></div>
-      <div class="bgo" id="popup-open-btn" role="button" tabindex="0">Apri ›</div>
-    </div>
-    <div class="bpop-actions">
-      ${canSwap ? `<div class="bgo" id="popup-swap-btn" role="button" tabindex="0">Sostituisci con "${escapeHtml(picker.bottle.name)}"</div>` : ''}
-      <div class="bgo" id="popup-free-btn" role="button" tabindex="0">Libera questo slot</div>
+  return `
+    <div class="slot-card${compact ? ' compact' : ''}" id="slot-card">
+      ${compact ? '' : `<div class="slot-card-main">
+        ${photoHtml(b, 'cphoto')}
+        <div class="elem-body"><div class="elem-name">${escapeHtml(b.name)}</div><div class="elem-sub">${escapeHtml(b.producer)}${b.vintage ? ' · ' + b.vintage : ''} · ${b.quantity} ${Number(b.quantity) === 1 ? 'bottiglia' : 'bottiglie'}</div></div>
+      </div>
+      <span class="slot-pos">Livello ${b.slot_tier} · ${colLetter(b.slot_col)}.${b.slot_depth}</span>`}
+      ${canSwap ? `<div class="primary-btn" id="slot-swap-btn" role="button" tabindex="0">Sostituisci con "${escapeHtml(picker.bottle.name)}"</div>` : ''}
+      <div class="slot-actions">
+        <button type="button" class="slot-act" id="slot-open-btn">${SLOT_ICON.open}Apri</button>
+        <button type="button" class="slot-act" id="slot-uncork-btn">${SLOT_ICON.uncork}Stappa</button>
+        <button type="button" class="slot-act" id="slot-move-btn">${SLOT_ICON.move}Sposta</button>
+        <button type="button" class="slot-act danger" id="slot-free-btn">${SLOT_ICON.free}Libera</button>
+      </div>
     </div>`;
-  popup.classList.add('show');
-  document.getElementById('popup-open-btn').addEventListener('click', async () => {
+}
+
+function wireSlotCard(b, elId) {
+  const card = document.getElementById('slot-card');
+  if (!card) return;
+  // Point the card's arrow at the selected slot (grid only).
+  const circle = document.querySelector('#elements-body .slot-circle.sel');
+  if (circle) {
+    const x = circle.getBoundingClientRect().left + circle.offsetWidth / 2 - card.getBoundingClientRect().left;
+    card.style.setProperty('--arrow', `${Math.round(x)}px`);
+    card.classList.add('with-arrow');
+  }
+  document.getElementById('slot-open-btn').addEventListener('click', async () => {
     closeElementsOverlay();
     await openDetail(b, await me());
   });
-  document.getElementById('popup-swap-btn')?.addEventListener('click', async () => {
+  document.getElementById('slot-swap-btn')?.addEventListener('click', async () => {
     const { bottle, onPicked } = picker;
-    const elId = b.element_id, tier = b.slot_tier, col = b.slot_col, depth = b.slot_depth;
+    const tier = b.slot_tier, col = b.slot_col, depth = b.slot_depth;
     // Free the current occupant first — otherwise two bottles would
     // briefly (and, if the second call failed, permanently) claim the
     // same slot server-side.
@@ -740,11 +824,69 @@ function showBottlePopup(b) {
     closeElementsOverlay();
     onPicked?.(bottle);
   });
-  document.getElementById('popup-free-btn').addEventListener('click', async () => {
-    await assignBottleToSlot(b, null, null, null, null);
-    popup.classList.remove('show');
-    if (currentElementId != null) renderElementDetail(currentElementId);
+  document.getElementById('slot-move-btn').addEventListener('click', () => {
+    movingBottle = b;
+    slotSel = null;
+    renderElementDetail(elId);
   });
+  document.getElementById('slot-free-btn').addEventListener('click', async () => {
+    const prev = [b.element_id, b.slot_tier, b.slot_col, b.slot_depth];
+    const where = `Livello ${b.slot_tier} · ${colLetter(b.slot_col)}.${b.slot_depth}`;
+    await assignBottleToSlot(b, null, null, null, null);
+    slotSel = null;
+    renderElementDetail(elId);
+    showToast(`${where} liberato`, {
+      actionLabel: 'Annulla',
+      onAction: async () => {
+        await assignBottleToSlot(b, ...prev);
+        if (currentElementId === elId && elementsMode === 'detail') renderElementDetail(elId);
+      },
+    });
+  });
+  document.getElementById('slot-uncork-btn').addEventListener('click', () => uncorkFromSlot(b, elId));
+}
+
+// Same rules as "Stappa una bottiglia" in the wine's detail sheet: one fewer,
+// with Annulla; the last one asks before removing the wine from the cellar,
+// which also frees its slot.
+async function uncorkFromSlot(b, elId) {
+  const before = Number(b.quantity) || 0;
+  if (before <= 1) {
+    const ok = await confirmModal("Era l'ultima bottiglia: rimuovere il vino dalla cantina?", {
+      title: 'Ultima bottiglia',
+      confirmLabel: 'Rimuovi',
+      danger: true,
+    });
+    if (!ok) return;
+    await api.del(`/api/bottles/${b.id}`);
+    currentBottles = currentBottles.filter((x) => x.id !== b.id);
+    slotSel = null;
+    applyFilters();
+    renderElementDetail(elId);
+    showToast('Ultima bottiglia stappata: slot libero');
+    return;
+  }
+  await api.patch(`/api/bottles/${b.id}`, { quantity: before - 1 });
+  b.quantity = before - 1;
+  applyFilters();
+  renderElementDetail(elId);
+  showToast(`Stappata · ${b.quantity === 1 ? 'ne resta 1' : `ne restano ${b.quantity}`}`, {
+    actionLabel: 'Annulla',
+    onAction: async () => {
+      await api.patch(`/api/bottles/${b.id}`, { quantity: before });
+      b.quantity = before;
+      applyFilters();
+      if (currentElementId === elId && elementsMode === 'detail') renderElementDetail(elId);
+    },
+  });
+}
+
+async function moveBottleTo(b, elId, t, c, d) {
+  await assignBottleToSlot(b, elId, t, c, d);
+  movingBottle = null;
+  slotSel = b.id;
+  renderElementDetail(elId);
+  showToast(`Spostata in Livello ${t} · ${colLetter(c)}.${d}`);
 }
 
 async function assignBottleToSlot(bottle, elId, tier, col, depth) {
