@@ -1256,6 +1256,22 @@ questo file è il riassunto "dove eravamo rimasti".
     "Salva nota" compatto, "Stappa una bottiglia" nella sua scheda. Regola in
     CLAUDE.md (minimi HIG).
 
+55. **Foto dal sito del produttore — fase di prova** (solo server, build
+    invariata). Idea dell'utente: dopo l'aggiunta da Vivino, cercare foto (e
+    informazioni) sul sito del produttore. Valutazione: le foto sì (scelte
+    dall'utente, mai sostituite in automatico), le informazioni no (testi
+    liberi/PDF, niente di certo). Prima di costruire la UI, diagnosi:
+    `GET /api/wines/recognize/producer?site=…&wine=…&producer=…`
+    (`lib/producer-site.ts`, testato con un sito finto): apre la home e
+    `sitemap.xml` (più 2 sitemap figlie), sceglie fino a 3 pagine per
+    somiglianza col nome del vino (`nameTokens`/`matchScore`), raccoglie
+    og:image, twitter:image, immagini schema.org Product e `<img>` con alt o
+    nome file somiglianti (loghi/icone esclusi). Massimo 8 richieste, 6 s
+    l'una, niente salvato. In attesa dei risultati reali dall'utente
+    (Zamuner, Ambrosini, Le Lore) per decidere se fare il pulsante "Cerca
+    foto sul sito del produttore" in Modifica e il link "Scheda del
+    produttore".
+
 ## Cose note, non (ancora) da rifare
 
 - `status-bar-style` è `black-translucent` (non più `default`), `.screen`

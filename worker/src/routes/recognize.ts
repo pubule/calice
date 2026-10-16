@@ -4,6 +4,7 @@ import { lookupBarcode as defaultLookupBarcode } from '../lib/open-food-facts';
 import { enrichFromWikidata as defaultEnrichFromWikidata } from '../lib/wikidata';
 import { runVisionOcr as defaultRunVisionOcr } from '../lib/vision-ocr';
 import { searchVivino as defaultSearchVivino, queryVivino } from '../lib/vivino-search';
+import { findProducerImages } from '../lib/producer-site';
 import type { Env } from '../index';
 
 export type { WineCandidate } from '../lib/vivino-search';
@@ -129,6 +130,24 @@ recognizeRoutes.get('/debug', async (c) => {
   const q = c.req.query('q')?.trim();
   if (!q) return c.json({ error: 'q required' }, 400);
   return c.json(await queryVivino(q));
+});
+
+// Diagnostic for the "photo from the producer's site" idea: what the Worker
+// finds on a winery site for one wine (pages that match its name, images on
+// them). Read-only; nothing is saved. Example:
+// /api/wines/recognize/producer?site=https://www.zamuner.it&wine=Blanc%20de%20Noirs%20Brut&producer=Zamuner
+recognizeRoutes.get('/producer', async (c) => {
+  const site = c.req.query('site')?.trim();
+  const wine = c.req.query('wine')?.trim();
+  if (!site || !wine) return c.json({ error: 'site and wine required' }, 400);
+  let url: URL;
+  try {
+    url = new URL(/^https?:\/\//i.test(site) ? site : `https://${site}`);
+  } catch {
+    return c.json({ error: 'site must be a web address' }, 400);
+  }
+  if (url.protocol !== 'https:' && url.protocol !== 'http:') return c.json({ error: 'site must be http(s)' }, 400);
+  return c.json(await findProducerImages(url.toString(), wine, c.req.query('producer')?.trim()));
 });
 
 recognizeRoutes.post('/', async (c) => {
