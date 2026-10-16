@@ -205,8 +205,21 @@ export function refreshCellarList(removedId) {
 // rows and the buttons in the bottle detail sheet (detail.js).
 // `onDone(updated)` receives the refreshed bottle object: the list is
 // re-fetched after a save, so the one the caller holds is stale.
+// The wine sheet can also be opened from Home, before Cantina was ever
+// shown (or showing another cellar): load the bottle's own cellar first, so
+// saving, positions and elements work on the right data.
+async function ensureCellarOf(bottle) {
+  if (currentCellarId != null && currentCellarId === (bottle.cellar_id ?? currentCellarId) && currentBottles.some((b) => b.id === bottle.id)) return;
+  cellars = await api.get('/api/cellars');
+  currentCellarId = bottle.cellar_id ?? currentCellarId ?? cellars[0]?.id;
+  const cellar = cellars.find((c) => c.id === currentCellarId);
+  if (cellar) document.getElementById('active-cellar-name').textContent = cellar.name;
+  await loadCellarData();
+}
+
 export function editBottle(bottle, onDone) {
   openEditWineSheet(bottle, async () => {
+    if (currentCellarId == null) currentCellarId = bottle.cellar_id;
     await loadCellarData();
     onDone?.(currentBottles.find((x) => x.id === bottle.id) ?? null);
   });
@@ -1061,8 +1074,9 @@ async function deleteCurrentElement() {
 
 // Opened from a bottle's "modifica posizione" link, on top of the already-open
 // detail overlay. onPicked receives the mutated bottle once a slot is chosen.
-export function openLocationPicker(bottle, onPicked) {
-  picker = { bottle, onPicked };
+export async function openLocationPicker(bottle, onPicked) {
+  await ensureCellarOf(bottle);
+  picker = { bottle: currentBottles.find((b) => b.id === bottle.id) ?? bottle, onPicked };
   openElementsOverlay();
 }
 

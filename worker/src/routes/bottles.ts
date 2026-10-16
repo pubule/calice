@@ -109,12 +109,18 @@ async function assertBottleAccess(env: Env, bottleId: number, userId: number): P
 bottleRoutes.patch('/:id', async (c) => {
   const id = Number(c.req.param('id'));
   if (!(await assertBottleAccess(c.env, id, c.get('userId')))) return c.json({ error: 'not found' }, 404);
-  const body = await c.req.json<Partial<{ quantity: number; pricePaid: number | null; shelfLocation: string; drinkFrom: string; drinkUntil: string }>>();
+  const body = await c.req.json<Partial<{ quantity: number; pricePaid: number | null; shelfLocation: string; drinkFrom: string | null; drinkUntil: string | null }>>();
   if (!isPrice(body.pricePaid)) return c.json({ error: 'pricePaid must be a number between 0 and 100000' }, 400);
   // Fields are partial (coalesce: omitted = unchanged), except the price:
   // "pricePaid": null clears it (the edit sheet's field emptied), which
   // coalesce could never do. Omitting it still leaves it as it is.
   const priceGiven = 'pricePaid' in body ? 1 : 0;
+  // The drinking window too: sent as a pair from the edit sheet, null clears
+  // it (back to the app's estimate). Dates as YYYY-MM-DD.
+  const windowGiven = 'drinkFrom' in body || 'drinkUntil' in body ? 1 : 0;
+  const isDate = (v: unknown) => v == null || (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v));
+  if (!isDate(body.drinkFrom) || !isDate(body.drinkUntil)) return c.json({ error: 'drinkFrom/drinkUntil must be YYYY-MM-DD or null' }, 400);
+  if (body.drinkFrom && body.drinkUntil && body.drinkFrom > body.drinkUntil) return c.json({ error: 'drinkFrom must not be after drinkUntil' }, 400);
   if (body.quantity != null && !(Number.isInteger(body.quantity) && body.quantity >= 0 && body.quantity <= 9999)) {
     return c.json({ error: 'quantity must be an integer between 0 and 9999' }, 400);
   }
@@ -124,11 +130,11 @@ bottleRoutes.patch('/:id', async (c) => {
          quantity = coalesce(?, quantity),
          price_paid = case when ? then ? else price_paid end,
          shelf_location = coalesce(?, shelf_location),
-         drink_from = coalesce(?, drink_from),
-         drink_until = coalesce(?, drink_until)
+         drink_from = case when ? then ? else drink_from end,
+         drink_until = case when ? then ? else drink_until end
        where id = ? returning *`,
     )
-    .bind(body.quantity ?? null, priceGiven, body.pricePaid ?? null, body.shelfLocation ?? null, body.drinkFrom ?? null, body.drinkUntil ?? null, id)
+    .bind(body.quantity ?? null, priceGiven, body.pricePaid ?? null, body.shelfLocation ?? null, windowGiven, body.drinkFrom ?? null, windowGiven, body.drinkUntil ?? null, id)
     .first<Record<string, unknown>>();
   if (body.quantity != null) await trimPlaces(c.env.DB, id);
   return c.json({ ...withoutLegacyPlace(bottle!), places: await bottlePlaces(c.env.DB, id) });

@@ -1,5 +1,6 @@
 import { api } from '../api-client.js';
 import { escapeHtml, photoClass, priceText } from '../util.js';
+import { estimatedWindow } from '../drink-window.js';
 import { alertModal, promptModal, pasteModal } from '../modal.js';
 import { showToast } from '../toast.js';
 import { tastingProfileHtml, wireTastingProfile, resetTastingProfile, readTastingProfile, isTastingProfileEmpty } from '../tasting-profile.js';
@@ -947,6 +948,38 @@ let pendingPhoto = null;
 let sheetMode = 'create'; // 'create' | 'edit'
 let editingWineId = null;
 let editingBottleId = null;
+let editingDrinkBottle = null; // the bottle being edited, for the drink estimate
+
+// "Da bere" in the edit sheet: the estimate (from what is typed now: type,
+// denomination, vintage) shows as placeholders and as a note; years typed
+// replace it, "Usa la stima" empties them.
+function renderDrinkEstimate() {
+  if (!editingDrinkBottle) return;
+  const vintage = Number(document.getElementById('rec-vintage').value) || null;
+  const w = estimatedWindow({
+    ...editingDrinkBottle,
+    name: document.getElementById('rec-name').value,
+    type: document.getElementById('rec-type').value,
+    denomination: document.getElementById('rec-denomination').value,
+    vintage,
+  });
+  const from = document.getElementById('rec-drink-from');
+  const until = document.getElementById('rec-drink-until');
+  from.placeholder = String(w.from);
+  until.placeholder = String(w.until);
+  const est = document.getElementById('rec-drink-est');
+  const best = w.peakFrom === w.peakUntil ? `nel ${w.peakFrom}` : `tra il ${w.peakFrom} e il ${w.peakUntil}`;
+  const base = vintage ? `dall'annata ${vintage}` : 'da quando l\'hai aggiunto (con l\'annata è più precisa)';
+  est.textContent = `Stima ${base}: dal ${w.from} al ${w.until}, al meglio ${best}. Scrivi gli anni per cambiarla.`;
+  if (from.value || until.value) {
+    const reset = Object.assign(document.createElement('a'), { textContent: 'Usa la stima', role: 'button', tabIndex: 0 });
+    reset.addEventListener('click', () => { from.value = ''; until.value = ''; renderDrinkEstimate(); });
+    est.append(' ', reset);
+  }
+}
+for (const id of ['rec-drink-from', 'rec-drink-until', 'rec-vintage', 'rec-type', 'rec-denomination', 'rec-name']) {
+  document.getElementById(id)?.addEventListener('input', renderDrinkEstimate);
+}
 let editSavedCallback = null;
 
 const recognizeTaste = document.getElementById('recognize-taste');
@@ -979,6 +1012,8 @@ function openRecognizeSheet(suggestion, capturedPhotoDataUrl) {
   document.getElementById('recognize-title').textContent = 'Rivedi e conferma';
   document.getElementById('recognize-save').textContent = 'Salva';
   document.getElementById('rec-note-section').classList.remove('hidden');
+  document.getElementById('rec-drink-field').classList.add('hidden');
+  editingDrinkBottle = null;
 
   document.getElementById('rec-name').value = suggestion.name ?? '';
   document.getElementById('rec-producer').value = suggestion.producer ?? '';
@@ -1044,6 +1079,11 @@ export function openEditWineSheet(bottle, onSaved) {
   document.getElementById('rec-denomination').value = bottle.denomination ?? '';
   document.getElementById('rec-price').value = priceText(bottle.price_paid, { grouping: false });
   document.getElementById('rec-qty').value = String(Number(bottle.quantity) || 0);
+  editingDrinkBottle = bottle;
+  document.getElementById('rec-drink-from').value = bottle.drink_from ? String(bottle.drink_from).slice(0, 4) : '';
+  document.getElementById('rec-drink-until').value = bottle.drink_until ? String(bottle.drink_until).slice(0, 4) : '';
+  document.getElementById('rec-drink-field').classList.remove('hidden');
+  renderDrinkEstimate();
   pendingVivino = bottle.vivino_rating != null ? { rating: { average: Number(bottle.vivino_rating), count: bottle.vivino_ratings_count ?? null } } : null;
   fillVivinoFields({ alcohol: bottle.alcohol, producerUrl: bottle.producer_url, rating: pendingVivino?.rating });
   resetNoteComposer();
@@ -1126,10 +1166,24 @@ async function saveRecognizedWine() {
     return;
   }
 
+  // Drinking window (edit only): two years, or both empty for the estimate.
+  let drink = null;
+  if (sheetMode === 'edit') {
+    const f = document.getElementById('rec-drink-from').value.trim();
+    const u = document.getElementById('rec-drink-until').value.trim();
+    const year = (v) => (/^\d{4}$/.test(v) && Number(v) >= 1900 && Number(v) <= 2200 ? Number(v) : null);
+    if (!f && !u) drink = { drinkFrom: null, drinkUntil: null };
+    else if (year(f) && year(u) && year(f) <= year(u)) drink = { drinkFrom: `${f}-01-01`, drinkUntil: `${u}-12-31` };
+    else {
+      await alertModal('Scrivi due anni, per esempio dal 2028 al 2040, oppure lasciali vuoti per usare la stima.');
+      return;
+    }
+  }
+
   if (sheetMode === 'edit') {
     try {
       await api.patch(`/api/wines/${editingWineId}`, { name, producer, country, region, type, vintage, grapeVariety, denomination, ...extras });
-      await api.patch(`/api/bottles/${editingBottleId}`, quantity == null ? { pricePaid } : { pricePaid, quantity });
+      await api.patch(`/api/bottles/${editingBottleId}`, { pricePaid, ...(quantity == null ? {} : { quantity }), ...drink });
       closeRecognizeSheet();
       await savePendingPhoto(editingWineId, 'Vino modificato');
       editSavedCallback?.();

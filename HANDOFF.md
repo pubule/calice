@@ -1401,6 +1401,27 @@ questo file è il riassunto "dove eravamo rimasti".
     opzione). Le stelle si riempiono in proporzione (`setMyStars()`,
     variabile CSS `--fill` con gradiente ritagliato sul testo).
 
+62. **"Da bere" con finestra di consumo** (build 137, scelta B sui mockup).
+    Prima la sezione era sempre vuota: dipendeva da `drink_from/drink_until`
+    che nessun foglio permetteva di inserire. Ora `js/drink-window.js` stima
+    per ogni vino quando si può bere e gli anni migliori, da denominazione o
+    tipo (tabella `RULES`: Barolo/Barbaresco 8-20, Amarone/Brunello 6-20,
+    rossi giovani 0-3, Riserva 4-12, Prosecco 0-2, metodo classico 0-4,
+    bollicine 0-3, bianchi 0-3, rosati 0-2, altri rossi 2-8) contati
+    dall'annata; **senza annata** dalla data in cui il vino è stato aggiunto
+    (quasi tutti i vini dell'utente sono senza annata: la scheda lo dice e
+    suggerisce di inserirla). In Home ogni vino ha una barra (chiaro = si
+    può bere, scuro = anni migliori, tacca = oggi) ordinata per urgenza
+    (`drinkOrder`); un tocco apre la scheda. Numero "da bere" = tutti tranne
+    i troppo giovani; avviso "Da bere presto" per fine finestra. Nella
+    scheda una riga "Da bere" sotto la posizione. In Modifica campo "Da
+    bere dal/al" (anni): vuoto = stima (mostrata come placeholder e in una
+    nota), "Usa la stima" lo svuota. `PATCH /api/bottles/:id` ora
+    sovrascrive `drinkFrom/drinkUntil` quando presenti (null = stima),
+    YYYY-MM-DD. `cellar.js`: aprire la scheda da Home prima di Cantina
+    lasciava `currentCellarId` nullo (Modifica e posizione fallivano):
+    `ensureCellarOf()` carica la cantina del vino.
+
 ## Cose note, non (ancora) da rifare
 
 - `status-bar-style` è `black-translucent` (non più `default`), `.screen`

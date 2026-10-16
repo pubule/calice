@@ -2,6 +2,8 @@ import { api } from '../api-client.js';
 import { me } from '../auth.js';
 import { escapeHtml, skeletonBar } from '../util.js';
 import { navigate } from '../router.js';
+import { drinkWindow, drinkStatus, drinkOrder, STATUS_LABEL } from '../drink-window.js';
+import { openDetail } from './detail.js';
 
 // Duplicated per-screen rather than shared, matching stats.js/explore.js —
 // b.type is unvalidated API data, so an unrecognised key falls back to
@@ -69,22 +71,44 @@ function toggleLink(id, key, count, expandLabel) {
   };
 }
 
+// "Da bere": every wine with its drinking window drawn as a bar (scelta B
+// sui mockup): light = can drink, dark = best years, the tick = today. The
+// most urgent first (see drinkOrder). A tap opens the wine's sheet.
+function windowBar(w) {
+  const now = new Date();
+  const t = now.getFullYear() + now.getMonth() / 12;
+  const start = Math.min(w.from, Math.floor(t));
+  const end = Math.max(w.until + 1, Math.ceil(t) + 1);
+  const pct = (y) => `${(((y - start) / (end - start)) * 100).toFixed(1)}%`;
+  const width = (a, b) => `${(((b - a) / (end - start)) * 100).toFixed(1)}%`;
+  const s = drinkStatus(w);
+  const middle = s === 'young' ? `dal ${w.from} · al meglio ${w.peakFrom}–${w.peakUntil}` : STATUS_LABEL[s];
+  return `
+    <div class="win" aria-hidden="true"><i style="left:${pct(w.from)};width:${width(w.from, w.until + 1)}"></i><i class="peak" style="left:${pct(w.peakFrom)};width:${width(w.peakFrom, w.peakUntil + 1)}"></i><em style="left:${pct(t)}"></em></div>
+    <div class="win-lbl"><span>${start}</span><span class="win-state ${s}">${middle}</span><span>${end - 1}</span></div>`;
+}
+
 function renderSoon() {
   const list = expanded.soon ? soonBottles : soonBottles.slice(0, PREVIEW_COUNT);
   document.getElementById('home-soon').innerHTML = list
-    .map(
-      (b) => `
-      <div class="list-row">
+    .map((b) => {
+      const s = drinkStatus(b.window);
+      const label = `${b.name}${b.vintage ? ' ' + b.vintage : ''}`;
+      return `
+      <div class="list-row drink-row" data-id="${b.id}">
         <span class="type-dot" style="background:${TYPE_COLOR[b.type] || DEFAULT_COLOR}"></span>
-        <div class="lbody" style="cursor:default">
-          <div class="lname">${escapeHtml(b.name)}</div>
-          <div class="lsub">${escapeHtml(b.producer)} · ${escapeHtml(b.region ?? b.country)}</div>
+        <div class="lbody" role="button" tabindex="0" aria-label="${escapeHtml(`${label}, ${STATUS_LABEL[s]}, da bere dal ${b.window.from} al ${b.window.until}`)}">
+          <div class="lname">${escapeHtml(label)}</div>
+          ${windowBar(b.window)}
         </div>
-        <span class="status-tag ready">pronto</span>
-      </div>`,
-    )
-    .join('');
-  toggleLink('home-soon-toggle', 'soon', soonBottles.length, 'vedi tutte');
+      </div>`;
+    })
+    .join('') || '<div class="empty-note">Nessun vino in cantina.</div>';
+  document.querySelectorAll('#home-soon .drink-row .lbody').forEach((el) => el.addEventListener('click', async () => {
+    const b = soonBottles.find((x) => x.id === Number(el.closest('.drink-row').dataset.id));
+    if (b) openDetail(b, await me());
+  }));
+  toggleLink('home-soon-toggle', 'soon', soonBottles.length, `vedi tutti (${soonBottles.length})`);
 }
 
 function renderRegions() {
@@ -164,13 +188,16 @@ export async function mountHome() {
 
   const totalBottles = bottles.reduce((n, b) => n + b.quantity, 0);
   const totalValue = bottles.reduce((n, b) => n + (b.price_paid || 0) * b.quantity, 0);
-  const today = new Date().toISOString().slice(0, 10);
-  const soon = bottles.filter((b) => b.drink_until && b.drink_from <= today && today <= b.drink_until);
+  // Every wine still in the cellar, with its drinking window; "da bere"
+  // counts those that are not too young.
+  const inCellar = bottles.filter((b) => b.quantity > 0).map((b) => ({ ...b, window: drinkWindow(b) })).sort(drinkOrder);
+  const ready = inCellar.filter((b) => drinkStatus(b.window) !== 'young');
+  const urgent = inCellar.filter((b) => ['soon', 'past'].includes(drinkStatus(b.window)));
 
   document.getElementById('home-stats').innerHTML = `
     <div class="stat"><div class="num">${totalBottles}</div><div class="lbl">bottiglie</div></div>
     <div class="stat"><div class="num">€${totalValue.toFixed(0)}</div><div class="lbl">valore</div></div>
-    <div class="stat"><div class="num">${soon.length}</div><div class="lbl">da bere</div></div>
+    <div class="stat"><div class="num">${ready.length}</div><div class="lbl">da bere</div></div>
   `;
 
   const byRegion = {};
@@ -179,7 +206,7 @@ export async function mountHome() {
     byRegion[key] = (byRegion[key] || 0) + b.quantity;
   }
 
-  soonBottles = soon;
+  soonBottles = inCellar;
   regionEntries = Object.entries(byRegion).sort((a, b) => b[1] - a[1]);
   activityRows = activity;
   expanded.soon = false;
@@ -190,7 +217,7 @@ export async function mountHome() {
   document.getElementById('home-alerts').innerHTML = ''; // populated below, one banner per condition
   const lowStock = bottles.find((b) => b.quantity <= 2);
   const banners = [];
-  if (soon.length) banners.push(`<div class="alert-banner"><div class="txt"><b>Hai vini pronti da bere</b>${soon.length} bottiglie nella finestra di consumo</div><div class="alert-dismiss" role="button" tabindex="0" aria-label="Chiudi avviso">&times;</div></div>`);
+  if (urgent.length) banners.push(`<div class="alert-banner"><div class="txt"><b>Da bere presto</b>${urgent.length === 1 ? `${escapeHtml(urgent[0].name)} è alla fine della sua finestra` : `${urgent.length} vini sono alla fine della loro finestra`}</div><div class="alert-dismiss" role="button" tabindex="0" aria-label="Chiudi avviso">&times;</div></div>`);
   if (lowStock) banners.push(`<div class="alert-banner"><div class="txt"><b>Scorte in esaurimento</b>${escapeHtml(lowStock.name)}: ${lowStock.quantity === 1 ? 'resta 1 bottiglia' : `restano ${lowStock.quantity} bottiglie`}</div><div class="alert-dismiss" role="button" tabindex="0" aria-label="Chiudi avviso">&times;</div></div>`);
   document.getElementById('home-alerts').innerHTML = banners.join('');
   document.querySelectorAll('#home-alerts .alert-dismiss').forEach((btn) => {

@@ -4,6 +4,7 @@ import { openLocationPicker, locationLabel, refreshCellarList, editBottle, delet
 import { confirmModal, alertModal, promptModal } from '../modal.js';
 import { showToast } from '../toast.js';
 import { landscapeFor, knownLandscape } from '../landscape.js';
+import { drinkWindow, drinkSummary } from '../drink-window.js';
 import { tastingProfileHtml, wireTastingProfile, resetTastingProfile, readTastingProfile, setTastingProfile, isTastingProfileEmpty, tasteSummary } from '../tasting-profile.js';
 
 let currentBottleId = null;
@@ -133,6 +134,14 @@ function renderHero(bottle) {
   renderStats(bottle);
   loadLandscape(bottle);
   document.getElementById('loc-value').textContent = locationLabel(bottle) || 'Non assegnata';
+  const w = drinkWindow(bottle);
+  const sum = drinkSummary(w);
+  const value = document.getElementById('drink-value');
+  value.replaceChildren(Object.assign(document.createElement('b'), { textContent: sum.title }), ` · ${sum.text}`);
+  value.firstChild.style.cssText = 'display:inline; color:#241e1a; font-size:inherit; margin:0;';
+  document.getElementById('drink-note').textContent = w.basis === 'added'
+    ? 'Stima da quando l\'hai aggiunto: con l\'annata (in Modifica) è più precisa.'
+    : w.basis === 'manual' ? 'Anni scelti da te.' : '';
 }
 
 // The vineyard photo behind the bottle, for the wine's denomination, region
@@ -480,6 +489,7 @@ function wireStaticControls() {
   document.getElementById('loc-edit-btn')?.addEventListener('click', () => {
     if (!currentBottle) return;
     openLocationPicker(currentBottle, (updated) => {
+      if (currentBottle && updated && currentBottle !== updated && currentBottle.id === updated.id) currentBottle.places = updated.places;
       document.getElementById('loc-value').textContent = locationLabel(updated) || 'Non assegnata';
     });
   });

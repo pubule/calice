@@ -196,6 +196,18 @@ describe('bottles', () => {
     expect(freed).toEqual({ bottleId, places: [] });
   });
 
+  it('sets and clears the drinking window, refusing bad dates', async () => {
+    const { auth, bottleId } = await setup('b11@b.com', 1);
+    const set = await (await app.request(`/api/bottles/${bottleId}`, json(auth, 'PATCH', { drinkFrom: '2028-01-01', drinkUntil: '2040-12-31' }), env)).json<any>();
+    expect([set.drink_from, set.drink_until]).toEqual(['2028-01-01', '2040-12-31']);
+    const other = await (await app.request(`/api/bottles/${bottleId}`, json(auth, 'PATCH', { pricePaid: 20 }), env)).json<any>();
+    expect(other.drink_from).toBe('2028-01-01');
+    expect((await app.request(`/api/bottles/${bottleId}`, json(auth, 'PATCH', { drinkFrom: '2040-01-01', drinkUntil: '2030-12-31' }), env)).status).toBe(400);
+    expect((await app.request(`/api/bottles/${bottleId}`, json(auth, 'PATCH', { drinkFrom: 'domani', drinkUntil: null }), env)).status).toBe(400);
+    const cleared = await (await app.request(`/api/bottles/${bottleId}`, json(auth, 'PATCH', { drinkFrom: null, drinkUntil: null }), env)).json<any>();
+    expect([cleared.drink_from, cleared.drink_until]).toEqual([null, null]);
+  });
+
   it('frees the latest places when the number of bottles goes down', async () => {
     const { auth, bottleId, elementId } = await setup('b10@b.com', 2);
     await app.request(`/api/bottles/${bottleId}/places`, json(auth, 'POST', { elementId, tier: 1, col: 0, depth: 1 }), env);
