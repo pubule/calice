@@ -1148,6 +1148,21 @@ questo file è il riassunto "dove eravamo rimasti".
     Altri dati disponibili nella stessa risposta, non usati: voto per annata,
     gradazione, annate esistenti, voto e sito del produttore.
 
+47. **Altri dati certi da Vivino** (build 116, migrazione 0013). Su
+    richiesta "solo quello per cui sei certo": classe della denominazione
+    ("Franciacorta DOCG"; solo DOCG/DOC/IGT/IGP/AOC/AOP/DOCa/DOQ/DO, mai
+    "VDT"), regione amministrativa presa dal produttore **solo** se Vivino vi
+    colloca la regione del vino (`parent_id` o stessa regione), gradazione
+    (`wines.alcohol`) e sito del produttore (`wines.producer_url`, solo
+    http/https), voto della singola annata quando ha abbastanza voti (il
+    chip "Vivino" segue l'annata digitata e si salva quello). Nella scheda:
+    link al sito sotto produttore · regione, etichetta "12,5% vol".
+    `completeFromAtlas()` ignora la classe finale per trovare il vino
+    nell'atlante. **Lasciati fuori di proposito**: uve, abbinamenti e stile,
+    che Vivino manda solo come codici numerici senza una tabella certa per
+    tradurli. Il Batudè di produzione è stato aggiornato a mano (12,5% e
+    tenutambrosini.it, dalla risposta di diagnosi).
+
 ## Cose note, non (ancora) da rifare
 
 - `status-bar-style` è `black-translucent` (non più `default`), `.screen`

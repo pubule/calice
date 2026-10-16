@@ -52,6 +52,8 @@ function catalogPick(w) {
   return {
     key: `c${w.id}`, wineId: w.id, name: w.name, producer: w.producer, vintage: w.vintage,
     type: w.type, country: w.country, region: w.region, denomination: w.denomination, grape: w.grape_variety, image: w.image_url,
+    alcohol: w.alcohol, producerUrl: w.producer_url,
+    rating: w.vivino_rating ? { average: w.vivino_rating, count: w.vivino_ratings_count } : undefined,
   };
 }
 function webPick(c, i) {
@@ -59,9 +61,20 @@ function webPick(c, i) {
   return {
     key: `w${i}`, wineId: null, name: pre.name ?? c.title ?? '', title: c.title, producer: pre.producer,
     type: pre.type, country: pre.country, region: pre.region, denomination: pre.denomination, grape: pre.grapeVariety,
-    image: c.imageUrl, sourceUrl: c.sourceUrl, snippet: c.snippet, rating: c.rating,
+    image: c.imageUrl, sourceUrl: c.sourceUrl, snippet: c.snippet, rating: c.rating, vintageRatings: c.vintageRatings,
+    alcohol: pre.alcohol, producerUrl: pre.producerUrl,
   };
 }
+
+// Vivino's rating for the chosen vintage when that year has enough ratings,
+// otherwise the wine's overall one.
+function ratingFor(w, vintage) {
+  const year = String(vintage ?? '').trim();
+  const r = year && w.vintageRatings?.[year];
+  return r ? { ...r, year } : w.rating;
+}
+
+const alcoholLabel = (a) => (a ? `${String(a).replace('.', ',')}% vol` : null);
 
 // Tapping a result opens it in place (the user's choice among three mockups,
 // over a second sheet): what will be saved, the vintage, how many bottles,
@@ -88,16 +101,17 @@ function pickRowHtml(w) {
 // Vivino's community rating, e.g. "Vivino ★ 3,8 · 475 voti".
 function vivinoLabel(r) {
   if (!r?.average) return null;
-  return `Vivino ★ ${r.average.toFixed(1).replace('.', ',')} · ${r.count.toLocaleString('it-IT')} ${r.count === 1 ? 'voto' : 'voti'}`;
+  return `Vivino${r.year ? ' ' + r.year : ''} ★ ${r.average.toFixed(1).replace('.', ',')} · ${r.count.toLocaleString('it-IT')} ${r.count === 1 ? 'voto' : 'voti'}`;
 }
 
 function pickPanelHtml(w) {
-  const facts = [TYPE_LABEL[w.type], w.denomination && w.region ? w.region : null, w.grape, w.vintage ? `Annata ${w.vintage}` : null, vivinoLabel(w.rating)].filter(Boolean);
+  const facts = [TYPE_LABEL[w.type], w.denomination && w.region ? w.region : null, w.grape, w.vintage ? `Annata ${w.vintage}` : null, alcoholLabel(w.alcohol)].filter(Boolean);
+  const vivino = vivinoLabel(ratingFor(w, w.vintage ?? expanded.vintage));
   const vintageField = w.vintage ? '' : `
       <div class="exp-row"><label for="exp-vintage">Annata</label><input id="exp-vintage" class="num-input exp-vintage" type="number" inputmode="numeric" placeholder="Nessuna" value="${escapeHtml(expanded.vintage ?? '')}"></div>`;
   return `
     <div class="result-exp">
-      ${facts.length ? `<div class="exp-facts">${facts.map((f) => `<span>${escapeHtml(f)}</span>`).join('')}</div>` : '<p class="exp-note">Da Vivino arriva solo il nome: gli altri dati li puoi aggiungere con "Modifica tutti i dati".</p>'}
+      ${facts.length || vivino ? `<div class="exp-facts">${facts.map((f) => `<span>${escapeHtml(f)}</span>`).join('')}${vivino ? `<span data-vivino>${escapeHtml(vivino)}</span>` : ''}</div>` : '<p class="exp-note">Da Vivino arriva solo il nome: gli altri dati li puoi aggiungere con "Modifica tutti i dati".</p>'}
       ${vintageField}
       <div class="exp-row"><span id="exp-qty-label">Bottiglie</span><div class="qty-step" role="group" aria-labelledby="exp-qty-label"><button type="button" data-qty="-1" aria-label="Una bottiglia in meno">−</button><output>${expanded.qty}</output><button type="button" data-qty="1" aria-label="Una bottiglia in più">+</button></div></div>
       <button type="button" class="exp-add" data-confirm>Aggiungi alla cantina</button>
@@ -234,7 +248,9 @@ const foldText = (t) => String(t ?? '').normalize('NFD').replace(/[\u0300-\u036f
 function completeFromAtlas(prefill) {
   if (!prefill?.denomination) return prefill;
   const country = COUNTRIES.find((c) => foldText(c.name) === foldText(prefill.country));
-  const wanted = foldText(prefill.denomination);
+  // Vivino now sends the class too ("Franciacorta DOCG"); the atlas is keyed
+  // by the bare name.
+  const wanted = foldText(prefill.denomination).replace(/\s+(docg|doc|igt|igp|aoc|aop|doca|doq|do)$/, '');
   for (const region of country?.regions ?? []) {
     const wine = (region.wines ?? []).find((w) => foldText(w.name) === wanted);
     if (!wine) continue;
@@ -363,7 +379,8 @@ async function confirmPick(w, button) {
         name: w.name, producer: w.producer || 'Produttore sconosciuto', country: w.country || 'Italia',
         region: w.region || undefined, type: SHEET_TYPES.has(w.type) ? w.type : 'rosso', vintage,
         grapeVariety: w.grape || undefined, denomination: w.denomination || undefined, imageUrl,
-        vivinoRating: w.rating?.average, vivinoRatingsCount: w.rating?.count,
+        vivinoRating: ratingFor(w, vintage)?.average, vivinoRatingsCount: ratingFor(w, vintage)?.count,
+        alcohol: w.alcohol || undefined, producerUrl: w.producerUrl || undefined,
       });
       wineId = wine.id;
     }
@@ -384,7 +401,7 @@ function editPick(w) {
   openRecognizeSheet({
     name: w.name, producer: w.producer, country: w.country, region: w.region, type: SHEET_TYPES.has(w.type) ? w.type : undefined,
     vintage, grapeVariety: w.grape, denomination: w.denomination, imageUrl: w.image, sourceUrl: w.sourceUrl, rawText: w.snippet,
-    rating: w.rating,
+    rating: w.rating, vintageRatings: w.vintageRatings, alcohol: w.alcohol, producerUrl: w.producerUrl,
   });
 }
 
@@ -516,7 +533,13 @@ results?.addEventListener('click', (e) => {
   }
 });
 results?.addEventListener('input', (e) => {
-  if (e.target.id === 'exp-vintage' && expanded) expanded.vintage = e.target.value;
+  if (e.target.id !== 'exp-vintage' || !expanded) return;
+  expanded.vintage = e.target.value;
+  // The Vivino chip follows the typed year (that vintage's rating, if any).
+  const pick = shownPicks.get(expanded.key);
+  const chip = e.target.closest('.result-item')?.querySelector('[data-vivino]');
+  const label = pick && vivinoLabel(ratingFor(pick, expanded.vintage));
+  if (chip && label) chip.textContent = label;
 });
 
 // ---- viewfinder: label photo / barcode / back to typing ----
@@ -748,7 +771,7 @@ document.getElementById('camera-ok')?.addEventListener('click', () => foundActio
 
 let pendingImageUrl;
 let pendingBarcode;
-let pendingRating; // Vivino's rating of the result the sheet was opened from
+let pendingVivino; // Vivino extras of the result the sheet was opened from: rating(s), alcohol, website
 let pendingPhotoFile;
 
 // The sheet is shared by three entry points that all end up at the same
@@ -805,7 +828,7 @@ function openRecognizeSheet(suggestion, capturedPhotoDataUrl) {
   resetNoteComposer();
   pendingImageUrl = suggestion.imageUrl;
   pendingBarcode = suggestion.barcode;
-  pendingRating = suggestion.rating;
+  pendingVivino = { rating: suggestion.rating, vintageRatings: suggestion.vintageRatings, alcohol: suggestion.alcohol, producerUrl: suggestion.producerUrl };
   pendingPhotoFile = undefined;
   document.getElementById('rec-photo-input').value = '';
 
@@ -968,7 +991,8 @@ async function saveRecognizedWine() {
   try {
     const wine = await api.post('/api/wines', {
       name, producer, country, region, type, vintage, grapeVariety, denomination, imageUrl, barcode: pendingBarcode,
-      vivinoRating: pendingRating?.average, vivinoRatingsCount: pendingRating?.count,
+      vivinoRating: ratingFor(pendingVivino ?? {}, vintage)?.average, vivinoRatingsCount: ratingFor(pendingVivino ?? {}, vintage)?.count,
+      alcohol: pendingVivino?.alcohol || undefined, producerUrl: pendingVivino?.producerUrl || undefined,
     });
     closeRecognizeSheet();
     await postBottle(wine.id, quantity, async (bottle) => {

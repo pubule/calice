@@ -99,6 +99,11 @@ describe('POST /api/wines', () => {
     const ok = await post({ ...base, vivinoRating: 3.84, vivinoRatingsCount: 475 });
     expect(ok.status).toBe(200);
     expect(await ok.json<any>()).toMatchObject({ vivino_rating: 3.8, vivino_ratings_count: 475 });
+    const extra = await post({ ...base, name: 'Con extra', alcohol: 12.5, producerUrl: 'https://www.tenutambrosini.it/' });
+    expect(await extra.json<any>()).toMatchObject({ alcohol: 12.5, producer_url: 'https://www.tenutambrosini.it/' });
+    for (const bad of [{ alcohol: 0 }, { alcohol: 40 }, { producerUrl: 'javascript:alert(1)' }, { producerUrl: 'non un url' }]) {
+      expect((await post({ ...base, name: 'Altro', ...bad })).status, JSON.stringify(bad)).toBe(400);
+    }
     for (const bad of [{ vivinoRating: 3.8 }, { vivinoRatingsCount: 10 }, { vivinoRating: 0, vivinoRatingsCount: 10 }, { vivinoRating: 6, vivinoRatingsCount: 10 }, { vivinoRating: 4, vivinoRatingsCount: 1.5 }]) {
       expect((await post({ ...base, name: 'Altro', ...bad })).status, JSON.stringify(bad)).toBe(400);
     }

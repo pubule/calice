@@ -12,6 +12,16 @@ function isNonEmptyShortString(v: unknown): v is string {
   return typeof v === 'string' && v.trim().length > 0 && v.length <= MAX_TEXT_LEN;
 }
 
+function isHttpUrl(v: unknown): boolean {
+  if (!isNonEmptyShortString(v)) return false;
+  try {
+    const url = new URL(v);
+    return url.protocol === 'http:' || url.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
 // SQLite's LIKE ignores case only for ASCII and never ignores accents, so
 // "saten" missed "Satèn". Search runs on wines.search_text instead: the
 // searchable fields folded here (accents stripped, lowercase, curly
@@ -61,6 +71,7 @@ wineRoutes.post('/', async (c) => {
   const body = await c.req.json<{
     name: string; producer: string; region?: string; country: string; type: string; vintage?: number; barcode?: string;
     grapeVariety?: string; denomination?: string; imageUrl?: string; vivinoRating?: number; vivinoRatingsCount?: number;
+    alcohol?: number; producerUrl?: string;
   }>();
 
   if (!isNonEmptyShortString(body.name)) return c.json({ error: 'name is required (1-200 chars)' }, 400);
@@ -73,6 +84,10 @@ wineRoutes.post('/', async (c) => {
     return c.json({ error: 'vivinoRating must be 1-5 with a positive integer vivinoRatingsCount' }, 400);
   }
   const vivinoRating = hasRating ? Math.round((body.vivinoRating as number) * 10) / 10 : null;
+  if (body.alcohol != null && !(typeof body.alcohol === 'number' && body.alcohol > 0 && body.alcohol <= 25)) {
+    return c.json({ error: 'alcohol must be a number between 0 and 25' }, 400);
+  }
+  if (body.producerUrl != null && !isHttpUrl(body.producerUrl)) return c.json({ error: 'producerUrl must be a valid http(s) URL' }, 400);
   const vivinoCount = hasRating ? body.vivinoRatingsCount as number : null;
   if (body.grapeVariety != null && !isNonEmptyShortString(body.grapeVariety)) {
     return c.json({ error: 'grapeVariety must be 1-200 chars' }, 400);
@@ -118,11 +133,12 @@ wineRoutes.post('/', async (c) => {
       .prepare(
         `update wines set region = coalesce(region, ?), barcode = coalesce(barcode, ?), grape_variety = coalesce(grape_variety, ?),
            denomination = coalesce(denomination, ?), image_url = coalesce(image_url, ?), search_text = null,
-           vivino_rating = coalesce(?, vivino_rating), vivino_ratings_count = coalesce(?, vivino_ratings_count)
+           vivino_rating = coalesce(?, vivino_rating), vivino_ratings_count = coalesce(?, vivino_ratings_count),
+           alcohol = coalesce(alcohol, ?), producer_url = coalesce(producer_url, ?)
          where id = ? returning *`,
       )
       .bind(body.region ?? null, body.barcode ?? null, body.grapeVariety ?? null, body.denomination ?? null, body.imageUrl ?? null,
-        vivinoRating, vivinoCount, existing.id)
+        vivinoRating, vivinoCount, body.alcohol ?? null, body.producerUrl ?? null, existing.id)
       .first();
     return c.json(wine);
   }
@@ -130,12 +146,13 @@ wineRoutes.post('/', async (c) => {
   const wine = await c.env.DB
     .prepare(
       `insert into wines (name, producer, region, country, type, vintage, barcode, grape_variety, denomination, image_url,
-         vivino_rating, vivino_ratings_count, source, created_by)
-       values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'custom', ?) returning *`,
+         vivino_rating, vivino_ratings_count, alcohol, producer_url, source, created_by)
+       values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'custom', ?) returning *`,
     )
     .bind(
       body.name, body.producer, body.region ?? null, body.country, type, body.vintage ?? null, body.barcode ?? null,
-      body.grapeVariety ?? null, body.denomination ?? null, body.imageUrl ?? null, vivinoRating, vivinoCount, c.get('userId'),
+      body.grapeVariety ?? null, body.denomination ?? null, body.imageUrl ?? null, vivinoRating, vivinoCount,
+      body.alcohol ?? null, body.producerUrl ?? null, c.get('userId'),
     )
     .first();
   return c.json(wine);

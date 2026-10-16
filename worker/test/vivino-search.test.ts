@@ -35,6 +35,34 @@ describe('hitToCandidate', () => {
     expect(c?.snippet).toBe('Rosso · Barolo, Italia');
   });
 
+  it('reads the class into the denomination, the region above it, alcohol, website and per-vintage ratings', () => {
+    const c = hitToCandidate({
+      ...batude,
+      alcohol: 12.5,
+      region: { id: 817, name: 'Franciacorta', parent_id: 745, country: 'it', class: { abbreviation: 'DOCG' } },
+      winery: { name: 'Ambrosini', seo_name: 'ambrosini', website: 'https://www.tenutambrosini.it/', region: { id: 745, name: 'Lombardia', class: { abbreviation: 'VDT' } } },
+      vintages: [
+        { year: '2019', statistics: { ratings_average: 3.7, ratings_count: 68 } },
+        { year: '2017', statistics: { ratings_average: 0, ratings_count: 4 } },
+        { year: 'U.V.', statistics: { ratings_average: 3.8, ratings_count: 475 } },
+      ],
+    });
+    expect(c?.prefill).toMatchObject({ denomination: 'Franciacorta DOCG', region: 'Lombardia', alcohol: 12.5, producerUrl: 'https://www.tenutambrosini.it/' });
+    expect(c?.vintageRatings).toEqual({ '2019': { average: 3.7, count: 68 } });
+  });
+
+  it("leaves out what isn't certain: a winery region elsewhere, a table-wine class, a bad website", () => {
+    const c = hitToCandidate({
+      ...batude,
+      region: { id: 900, name: 'Salento', parent_id: 901, country: 'it', class: { abbreviation: 'VDT' } },
+      winery: { name: 'Antinori', website: 'javascript:alert(1)', region: { id: 50, name: 'Toscana' } },
+    });
+    expect(c?.prefill?.denomination).toBe('Salento');
+    expect(c?.prefill?.region).toBeUndefined();
+    expect(c?.prefill?.producerUrl).toBeUndefined();
+    expect(c?.prefill?.alcohol).toBeUndefined();
+  });
+
   it('reads the community rating, and treats a 0 average (too few ratings) as none', () => {
     expect(hitToCandidate({ ...batude, statistics: { ratings_average: 3.84, ratings_count: 475 } })?.rating).toEqual({ average: 3.8, count: 475 });
     expect(hitToCandidate({ ...batude, statistics: { ratings_average: 0, ratings_count: 3 } })?.rating).toBeUndefined();

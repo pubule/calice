@@ -276,6 +276,8 @@
   .detail-hero .info .name{margin:0; font-family:'Newsreader',serif; font-weight:500; font-size:calc(26rem/17); line-height:1.12; color:#241e1a; text-wrap:balance;}
   .detail-hero .info .sub{font-size:calc(13.5rem/17); color:#736a5d; margin-top:4px;}
   .hero-chips{display:flex; flex-wrap:wrap; gap:6px; margin-top:10px;}
+  .hero-site{display:inline-block; margin-top:4px; color:#5b2333; font-weight:600; text-decoration:underline; text-underline-offset:3px; position:relative;}
+  .hero-site::after{content:''; position:absolute; inset:-12px -4px;}
   .hero-chips:empty{display:none;}
   .hero-chips span{padding:4px 10px; border-radius:999px; background:#ece7de; color:#4a423a; font-size:calc(12rem/17);}
   /* Barra in alto, ferma mentre la scheda scorre: la X resta sempre a portata

@@ -59,9 +59,25 @@ function renderHero(bottle) {
   else product.removeAttribute('src');
   document.querySelector('#detail-overlay .info .name').textContent = bottle.name;
   document.getElementById('detail-bar-name').textContent = bottle.name;
-  document.querySelector('#detail-overlay .info .sub').textContent = `${bottle.producer} · ${bottle.region ?? bottle.country}`;
+  // Producer · region, then the producer's website (from Vivino) as a link.
+  const sub = document.querySelector('#detail-overlay .info .sub');
+  sub.replaceChildren(`${bottle.producer} · ${bottle.region ?? bottle.country}`);
+  let site = null;
+  try {
+    const u = bottle.producer_url ? new URL(bottle.producer_url) : null;
+    if (u && (u.protocol === 'https:' || u.protocol === 'http:')) site = u;
+  } catch { /* not a URL: no link */ }
+  if (site) {
+    const a = Object.assign(document.createElement('a'), {
+      href: site.href, target: '_blank', rel: 'noopener noreferrer', className: 'hero-site',
+      textContent: site.hostname.replace(/^www\./, ''),
+    });
+    a.setAttribute('aria-label', `Sito del produttore: ${a.textContent}`);
+    sub.append(document.createElement('br'), a);
+  }
   const chips = document.querySelector('#detail-overlay .hero-chips');
-  const facts = [TYPE_LABEL[bottle.type], bottle.denomination, bottle.vintage ? String(bottle.vintage) : null];
+  const facts = [TYPE_LABEL[bottle.type], bottle.denomination, bottle.vintage ? String(bottle.vintage) : null,
+    bottle.alcohol ? `${String(bottle.alcohol).replace('.', ',')}% vol` : null];
   chips.replaceChildren(...facts.filter(Boolean).map((t) => Object.assign(document.createElement('span'), { textContent: t })));
   // Two ratings side by side: the notes' average and Vivino's community one.
   const one = (n) => Number(n).toFixed(1).replace('.', ',');

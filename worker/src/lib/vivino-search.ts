@@ -1,7 +1,13 @@
 import { fetchWithTimeout } from './fetch-timeout';
-export type WinePrefill = { name?: string; producer?: string; country?: string; type?: string; denomination?: string; grapeVariety?: string };
+export type WinePrefill = {
+  name?: string; producer?: string; country?: string; type?: string; denomination?: string; grapeVariety?: string;
+  region?: string; alcohol?: number; producerUrl?: string;
+};
 export type VivinoRating = { average: number; count: number };
-export type WineCandidate = { title?: string; snippet?: string; sourceUrl?: string; imageUrl?: string; prefill?: WinePrefill; rating?: VivinoRating };
+export type WineCandidate = {
+  title?: string; snippet?: string; sourceUrl?: string; imageUrl?: string; prefill?: WinePrefill; rating?: VivinoRating;
+  vintageRatings?: Record<string, VivinoRating>;
+};
 
 // Vivino's own wine search — the index behind the search box on
 // vivino.com (Algolia, queried by the site's frontend with a public,
@@ -84,16 +90,56 @@ export function hitToCandidate(hit: any): WineCandidate | null {
   if (winery) prefill.producer = winery;
   if (country) prefill.country = country;
   if (typeof hit?.type_id === 'number' && APP_TYPE[hit.type_id]) prefill.type = APP_TYPE[hit.type_id];
-  if (region) prefill.denomination = region;
+  if (region) prefill.denomination = withClass(region, str(hit?.region?.class?.abbreviation));
   const grapes = grapeNames(hit);
   if (grapes) prefill.grapeVariety = grapes;
+  // The administrative region (Franciacorta → Lombardia) comes from the
+  // winery's record, used only when Vivino files the wine's own region under
+  // it (or it is the same region): a producer can make wine elsewhere.
+  const wineryRegion = hit?.winery?.region;
+  const wineRegionId = hit?.region?.id;
+  if (typeof wineryRegion?.id === 'number' && (wineryRegion.id === hit?.region?.parent_id || wineryRegion.id === wineRegionId)) {
+    const name = str(wineryRegion.name);
+    if (name) prefill.region = name;
+  }
+  const alcohol = Number(hit?.alcohol);
+  if (hit?.alcohol != null && Number.isFinite(alcohol) && alcohol > 0 && alcohol <= 25) prefill.alcohol = alcohol;
+  const website = webUrl(str(hit?.winery?.website));
+  if (website) prefill.producerUrl = website;
 
   const candidate: WineCandidate = { title, sourceUrl, prefill };
   if (snippet) candidate.snippet = snippet;
   if (imageUrl) candidate.imageUrl = imageUrl;
   const rating = ratingOf(hit?.statistics);
   if (rating) candidate.rating = rating;
+  // Per-vintage ratings, only for years with enough ratings to have one.
+  const byYear: Record<string, VivinoRating> = {};
+  for (const v of Array.isArray(hit?.vintages) ? hit.vintages : []) {
+    const year = str(v?.year);
+    const r = ratingOf(v?.statistics);
+    if (year && /^\d{4}$/.test(year) && r) byYear[year] = r;
+  }
+  if (Object.keys(byYear).length) candidate.vintageRatings = byYear;
   return candidate;
+}
+
+// Only real appellation classes are appended ("Franciacorta" + "DOCG"): Vivino
+// also files plain regions under classes like "VDT" (table wine), which would
+// read as nonsense after a region name.
+const APPELLATION_CLASSES = new Set(['DOCG', 'DOC', 'IGT', 'IGP', 'AOC', 'AOP', 'DOCa', 'DOQ', 'DO']);
+function withClass(region: string, cls: string | undefined): string {
+  if (!cls || !APPELLATION_CLASSES.has(cls)) return region;
+  return region.split(/\s+/).includes(cls) ? region : `${region} ${cls}`;
+}
+
+function webUrl(raw: string | undefined): string | undefined {
+  if (!raw || raw.length > 200) return undefined;
+  try {
+    const url = new URL(raw);
+    return url.protocol === 'https:' || url.protocol === 'http:' ? url.toString() : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 // The wine's community rating across all vintages (hit.statistics). Vivino
