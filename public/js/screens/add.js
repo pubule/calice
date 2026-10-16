@@ -107,9 +107,11 @@ function vivinoLabel(r) {
 }
 
 function pickPanelHtml(w) {
-  const facts = [TYPE_LABEL[w.type], w.denomination && w.region ? w.region : null, w.grape, w.vintage ? `Annata ${w.vintage}` : null, alcoholLabel(w.alcohol)].filter(Boolean);
-  const vivino = vivinoLabel(ratingFor(w, w.vintage ?? expanded.vintage));
-  const vintageField = w.vintage ? '' : `
+  const facts = [TYPE_LABEL[w.type], w.denomination && w.region ? w.region : null, w.grape, alcoholLabel(w.alcohol)].filter(Boolean);
+  const vivino = vivinoLabel(ratingFor(w, expanded.vintage));
+  // Always editable, starting from the wine's own vintage: another year of a
+  // wine already in the catalog is added as that year (see ensureWine).
+  const vintageField = `
       <div class="exp-row"><label for="exp-vintage">Annata</label><input id="exp-vintage" class="num-input exp-vintage" type="number" inputmode="numeric" placeholder="Nessuna" value="${escapeHtml(expanded.vintage ?? '')}"></div>`;
   return `
     <div class="result-exp">
@@ -340,11 +342,16 @@ function validVintage(raw) {
 // The panel's "Aggiungi alla cantina": a catalog wine is added as it is; a
 // Vivino one is created first (POST /api/wines dedupes on name, producer and
 // vintage, so the same wine is never stored twice).
+// The vintage in the open panel: empty = none; undefined when not a year.
+function panelVintage() {
+  const typed = String(expanded?.vintage ?? '').trim();
+  return typed ? validVintage(typed) : null;
+}
+
 async function confirmPick(w, button) {
   const qty = expanded?.qty ?? 1;
-  const typed = expanded?.vintage ?? '';
-  const vintage = w.vintage ?? validVintage(typed);
-  if (!w.vintage && String(typed).trim() && vintage === undefined) {
+  const vintage = panelVintage();
+  if (vintage === undefined) {
     await alertModal("L'annata deve essere un anno, per esempio 2019.");
     return;
   }
@@ -365,11 +372,15 @@ async function confirmPick(w, button) {
 // The wine's id in the catalog, creating it first for a Vivino result
 // (POST /api/wines dedupes, so the same wine is never stored twice).
 async function ensureWine(w, vintage) {
-  if (w.wineId) return w.wineId;
+  if (w.wineId) {
+    if ((w.vintage ?? null) === (vintage ?? null)) return w.wineId;
+    // Another year of a catalog wine: that vintage's wine (copied if new).
+    return (await api.post(`/api/wines/${w.wineId}/vintage`, { vintage: vintage ?? null })).id;
+  }
   const imageUrl = w.image && w.image.length <= 200 ? w.image : undefined;
   const wine = await api.post('/api/wines', {
     name: w.name, producer: w.producer || 'Produttore sconosciuto', country: w.country || 'Italia',
-    region: w.region || undefined, type: SHEET_TYPES.has(w.type) ? w.type : 'rosso', vintage,
+    region: w.region || undefined, type: SHEET_TYPES.has(w.type) ? w.type : 'rosso', vintage: vintage ?? undefined,
     grapeVariety: w.grape || undefined, denomination: w.denomination || undefined, imageUrl,
     vivinoRating: ratingFor(w, vintage)?.average, vivinoRatingsCount: ratingFor(w, vintage)?.count,
     alcohol: w.alcohol || undefined, producerUrl: w.producerUrl || undefined,
@@ -398,9 +409,8 @@ async function confirmWish(w, button) {
   button.disabled = true;
   button.textContent = 'Aggiungo…';
   try {
-    const typed = expanded?.vintage ?? '';
-    const vintage = w.vintage ?? validVintage(typed);
-    if (!w.vintage && String(typed).trim() && vintage === undefined) {
+    const vintage = panelVintage();
+    if (vintage === undefined) {
       await alertModal("L'annata deve essere un anno, per esempio 2019.");
       return;
     }
@@ -436,7 +446,7 @@ async function confirmWish(w, button) {
 
 function editPick(w) {
   rememberSearch(currentQuery());
-  const vintage = w.vintage ?? validVintage(expanded?.vintage);
+  const vintage = panelVintage() ?? undefined;
   openRecognizeSheet({
     name: w.name, producer: w.producer, country: w.country, region: w.region, type: SHEET_TYPES.has(w.type) ? w.type : undefined,
     vintage, grapeVariety: w.grape, denomination: w.denomination, imageUrl: w.image, sourceUrl: w.sourceUrl, rawText: w.snippet,
@@ -572,7 +582,7 @@ function handleResultsTap(t) {
     return;
   }
   if (t.closest('[data-expand]')) {
-    expanded = expanded?.key === pick.key ? null : { key: pick.key, qty: 1, vintage: '', mode: 'cellar', price: '' };
+    expanded = expanded?.key === pick.key ? null : { key: pick.key, qty: 1, vintage: pick.vintage ? String(pick.vintage) : '', mode: 'cellar', price: '' };
     renderResults(currentQuery());
     const opened = expanded && results.querySelector(`.result-item[data-key="${CSS.escape(pick.key)}"]`);
     // Scroll the results list only: scrollIntoView would also move the sheet
@@ -947,6 +957,7 @@ let pendingPhoto = null;
 // never a past note to restore here even when editing the wine's own data).
 let sheetMode = 'create'; // 'create' | 'edit'
 let editingWineId = null;
+let editingVintage = null; // the bottle's vintage when the edit sheet opened
 let editingBottleId = null;
 let editingDrinkBottle = null; // the bottle being edited, for the drink estimate
 
@@ -1061,6 +1072,7 @@ function openRecognizeSheet(suggestion, capturedPhotoDataUrl) {
 export function openEditWineSheet(bottle, onSaved) {
   sheetMode = 'edit';
   editingWineId = bottle.wine_id;
+  editingVintage = bottle.vintage ?? null;
   editingBottleId = bottle.id;
   editSavedCallback = onSaved ?? null;
   document.getElementById('recognize-title').textContent = 'Modifica vino';
@@ -1182,10 +1194,17 @@ async function saveRecognizedWine() {
 
   if (sheetMode === 'edit') {
     try {
-      await api.patch(`/api/wines/${editingWineId}`, { name, producer, country, region, type, vintage, grapeVariety, denomination, ...extras });
+      // Another vintage is another wine, possibly shared with other bottles:
+      // only this bottle moves to that vintage's wine (never rewrite the
+      // year of the shared one), then the form's data goes on that wine.
+      let wineId = editingWineId;
+      if ((vintage ?? null) !== editingVintage) {
+        wineId = (await api.post(`/api/bottles/${editingBottleId}/vintage`, { vintage: vintage ?? null })).id;
+      }
+      await api.patch(`/api/wines/${wineId}`, { name, producer, country, region, type, vintage, grapeVariety, denomination, ...extras });
       await api.patch(`/api/bottles/${editingBottleId}`, { pricePaid, ...(quantity == null ? {} : { quantity }), ...drink });
       closeRecognizeSheet();
-      await savePendingPhoto(editingWineId, 'Vino modificato');
+      await savePendingPhoto(wineId, 'Vino modificato');
       editSavedCallback?.();
     } catch (err) {
       console.error(err);

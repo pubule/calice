@@ -208,6 +208,21 @@ describe('bottles', () => {
     expect([cleared.drink_from, cleared.drink_until]).toEqual([null, null]);
   });
 
+  it('moves one bottle to another vintage without touching the shared wine', async () => {
+    const { auth, cellarId, bottleId } = await setup('b12@b.com', 1);
+    const other = await (await app.request(`/api/cellars/${cellarId}/bottles`, json(auth, 'POST', { wineId, quantity: 1 }), env)).json<{ id: number }>();
+    const moved = await (await app.request(`/api/bottles/${bottleId}/vintage`, json(auth, 'POST', { vintage: 2019 }), env)).json<any>();
+    expect(moved.id).not.toBe(wineId);
+    expect(moved).toMatchObject({ name: 'Barolo DOCG', producer: 'Elio Altare', vintage: 2019, denomination: 'Barolo DOCG', image_url: 'https://x/barolo.jpg' });
+    const rows = await (await app.request(`/api/cellars/${cellarId}/bottles`, { headers: auth }, env)).json<any[]>();
+    expect(rows.find((r) => r.id === other.id).vintage).toBeNull();
+    expect(rows.find((r) => r.id === bottleId).vintage).toBe(2019);
+    // The same vintage again reuses that wine instead of copying it twice.
+    const again = await (await app.request(`/api/bottles/${other.id}/vintage`, json(auth, 'POST', { vintage: 2019 }), env)).json<any>();
+    expect(again.id).toBe(moved.id);
+    expect((await app.request(`/api/bottles/${bottleId}/vintage`, json(auth, 'POST', { vintage: 1500 }), env)).status).toBe(400);
+  });
+
   it('frees the latest places when the number of bottles goes down', async () => {
     const { auth, bottleId, elementId } = await setup('b10@b.com', 2);
     await app.request(`/api/bottles/${bottleId}/places`, json(auth, 'POST', { elementId, tier: 1, col: 0, depth: 1 }), env);

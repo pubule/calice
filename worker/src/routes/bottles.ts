@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { requireAuth } from '../lib/session';
 import { isCellarMember } from '../lib/cellars';
+import { wineOfVintage } from '../lib/wine-vintage';
 import type { Env } from '../index';
 
 export const cellarBottleRoutes = new Hono<{ Bindings: Env; Variables: { userId: number } }>();
@@ -213,6 +214,28 @@ placeRoutes.delete('/:id', async (c) => {
   if (bottleId == null) return c.json({ error: 'not found' }, 404);
   await c.env.DB.prepare('delete from bottle_places where id = ?').bind(placeId).run();
   return c.json({ bottleId, places: await bottlePlaces(c.env.DB, bottleId) });
+});
+
+// Another vintage for this bottle only (from the edit sheet): the vintage is
+// part of the wine, which other bottles (and other people) may share, so the
+// bottle moves to the wine of that vintage — the existing one with the same
+// name and producer, or a copy of its current wine with the new vintage.
+bottleRoutes.post('/:id/vintage', async (c) => {
+  const id = Number(c.req.param('id'));
+  const userId = c.get('userId');
+  if (!(await assertBottleAccess(c.env, id, userId))) return c.json({ error: 'not found' }, 404);
+  const { vintage } = await c.req.json<{ vintage: number | null }>();
+  if (vintage !== null && !(Number.isInteger(vintage) && vintage >= 1900 && vintage <= 2100)) {
+    return c.json({ error: 'vintage must be an integer between 1900 and 2100, or null' }, 400);
+  }
+  const wine = (await c.env.DB
+    .prepare('select wines.* from wines join bottles on bottles.wine_id = wines.id where bottles.id = ?')
+    .bind(id)
+    .first<{ id: number; name: string; producer: string; vintage: number | null }>())!;
+  if ((wine.vintage ?? null) === vintage) return c.json(wine);
+  const targetId = await wineOfVintage(c.env.DB, wine.id, vintage, userId);
+  await c.env.DB.prepare('update bottles set wine_id = ? where id = ?').bind(targetId, id).run();
+  return c.json(await c.env.DB.prepare('select * from wines where id = ?').bind(targetId).first());
 });
 
 bottleRoutes.delete('/:id', async (c) => {

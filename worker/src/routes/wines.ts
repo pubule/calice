@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { requireAuth } from '../lib/session';
+import { wineOfVintage } from '../lib/wine-vintage';
 import type { Env } from '../index';
 
 export const wineRoutes = new Hono<{ Bindings: Env; Variables: { userId: number } }>();
@@ -192,6 +193,20 @@ async function hasWineAccess(env: Env, wineId: number, userId: number): Promise<
 // an optional field (region/vintage/grapeVariety/denomination) genuinely
 // blanked out needs to reach the DB as NULL, which coalesce(?, column) can
 // never do (it can't tell "explicitly cleared" from "field omitted").
+// The same catalog wine in another vintage (adding a different year of a
+// wine already in the catalog): returns that wine, copied if needed.
+wineRoutes.post('/:id/vintage', async (c) => {
+  const id = Number(c.req.param('id'));
+  const { vintage } = await c.req.json<{ vintage: number | null }>();
+  if (vintage !== null && !(Number.isInteger(vintage) && vintage >= 1900 && vintage <= 2100)) {
+    return c.json({ error: 'vintage must be an integer between 1900 and 2100, or null' }, 400);
+  }
+  const exists = await c.env.DB.prepare('select 1 from wines where id = ?').bind(id).first();
+  if (!exists) return c.json({ error: 'not found' }, 404);
+  const targetId = await wineOfVintage(c.env.DB, id, vintage, c.get('userId'));
+  return c.json(await c.env.DB.prepare('select * from wines where id = ?').bind(targetId).first());
+});
+
 wineRoutes.patch('/:id', async (c) => {
   const id = Number(c.req.param('id'));
   if (!(await hasWineAccess(c.env, id, c.get('userId')))) return c.json({ error: 'not found' }, 404);

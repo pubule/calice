@@ -97,7 +97,8 @@ const ICON_SWIPE_DELETE = '<svg aria-hidden="true" viewBox="0 0 24 24" fill="non
 
 function rowHtml(b) {
   const photo = photoClass(b.type);
-  const name = escapeHtml(b.name);
+  // The vintage with the name: two years of the same wine are two rows.
+  const name = escapeHtml(b.vintage && !String(b.name).includes(String(b.vintage)) ? `${b.name} ${b.vintage}` : b.name);
   const sub = `${escapeHtml(b.producer)} · ${escapeHtml(b.region ?? b.country)}`;
   const price = priceText(b.price_paid) ? `${priceText(b.price_paid)} €` : '—';
   const score = b.score != null ? b.score.toFixed(1) : '—';

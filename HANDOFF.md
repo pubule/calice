@@ -1437,6 +1437,22 @@ questo file è il riassunto "dove eravamo rimasti".
     in CLAUDE.md, stessa famiglia di bug). Modifica / Elimina spostati
     subito sotto "Le tue foto", prima di posizione e "Da bere".
 
+64. **Annate diverse dello stesso vino** (build 142). L'annata sta sul vino
+    (`wines.vintage`): un'altra annata è un'altra riga di `wines`, e quindi
+    un'altra riga in Cantina. Sistemati tre punti: (1) in Cantina l'annata
+    accanto al nome; (2) nel pannello di un risultato il campo Annata c'è
+    sempre, precompilato con quella del vino: se è diversa, `ensureWine()`
+    chiede `POST /api/wines/:id/vintage` (il vino di quell'annata, copiato
+    se nuovo) invece di riusare il vino del catalogo; prima un vino di
+    catalogo con l'annata non permetteva di aggiungerne un'altra, e uno
+    senza annata ignorava quella scritta; (3) in Modifica, cambiare
+    l'annata sposta **solo quella bottiglia** sul vino dell'annata giusta
+    (`POST /api/bottles/:id/vintage`), poi il resto del modulo va su quel
+    vino: prima riscriveva l'annata del vino condiviso. Copia comune in
+    `lib/wine-vintage.ts` (riusa nome+produttore+annata se esiste; copia
+    anche la foto: `wine-image.ts` cancella il file da R2 solo se nessun
+    altro vino lo usa).
+
 ## Cose note, non (ancora) da rifare
 
 - `status-bar-style` è `black-translucent` (non più `default`), `.screen`
