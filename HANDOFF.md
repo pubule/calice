@@ -912,8 +912,9 @@ questo file è il riassunto "dove eravamo rimasti".
       `null`), opzioni dei menu, scheda "Cosa aspettarti".
     - Ruota: scelto un vino, gira sulla famiglia con più suoi aromi, ogni
       spicchio ha un numero (aromi del vino lì dentro), quelli a zero si
-      spengono; in alto la scheda "Cosa aspettarti" con il pulsante
-      "Assaggio guidato" → `#/assaggio?vino=<nome>`.
+      spengono; in alto la scheda "Cosa aspettarti" (il pulsante verso
+      l'assaggio è stato tolto in build 98; `#/assaggio?vino=<nome>` funziona
+      ancora come rotta).
     - Assaggio guidato (`screens/tasting.js`, `#/assaggio`): scelta vino +
       etichetta facoltativa → Naso (aromi attesi tratteggiati + "Senti
       altro?") → Bocca (cursori con il segno dell'atteso; un cursore non
@@ -924,6 +925,20 @@ questo file è il riassunto "dove eravamo rimasti".
       (GET/POST/DELETE, solo i propri), stessa validazione delle note
       (`validateNote` esportata da `notes.ts`). `/api/me/palate` conta anche
       gli assaggi.
+
+32. **Aromi in bocca + ruota più pulita** (build 98).
+    - L'utente pensava "al naso i fiori, in bocca il frutto": non è così
+      (al naso si riconoscono tutti gli aromi; in bocca dolce/acido/amaro/
+      salato e tatto, più gli aromi che risalgono per via retronasale).
+      Aggiunto quindi nel passo Bocca "Aromi in bocca" (aromi sentiti al
+      naso + attesi), salvati a parte in `tastings.mouth_tags` (migrazione
+      0009); il riepilogo dice per ognuno "al naso e in bocca / solo al naso /
+      solo in bocca". Il palato conta un aroma una volta per assaggio anche
+      se segnato in entrambi.
+    - Ruota con un vino filtrato: niente "Dove lo trovi" né "Vini in cui si
+      trova" (mostravano altri vini, fuori contesto) e niente pulsante
+      "Assaggio guidato" (ridondante con la sezione in Home, chiesto
+      dall'utente). Senza filtro restano come prima.
 
 ## Cose note, non (ancora) da rifare
 

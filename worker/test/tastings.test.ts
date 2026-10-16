@@ -23,10 +23,12 @@ describe('guided tastings', () => {
     expect(list.map((t) => t.style)).toEqual(['Barolo']);
   });
 
-  it('feeds Il mio palato alongside bottle notes', async () => {
+  it('feeds Il mio palato alongside bottle notes, an aroma on nose and mouth counting once', async () => {
+    const saved = await (await post({ style: 'Amarone', rating: 4, text: '', flavorTags: ['Prugna secca'], mouthTags: ['Prugna secca', 'Cacao'] })).json<any>();
+    expect(saved.mouth_tags).toEqual(['Prugna secca', 'Cacao']);
     await post({ style: 'Barolo', rating: 4, text: '', flavorTags: ['Rosa'] });
     const palate = await (await app.request('/api/me/palate', { headers: me }, env)).json();
-    expect(palate).toEqual({ notes: 1, tags: { Rosa: 1 } });
+    expect(palate).toEqual({ notes: 2, tags: { 'Prugna secca': 1, Cacao: 1, Rosa: 1 } });
   });
 
   it('rejects a missing style or a bad rating, and deletes only the author’s own', async () => {

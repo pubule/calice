@@ -9,13 +9,13 @@ noteRoutes.use('*', requireAuth);
 const TASTE_AXES = ['tasteAcidity', 'tasteSweetness', 'tasteTannin', 'tasteBody', 'tasteAlcohol', 'tasteIntensity', 'tasteFinish'] as const;
 // The aroma and pairing lists are long (tasting-profile.js), so a thorough
 // note can legitimately tick more than a handful.
-const MAX_TAGS = 40;
+export const MAX_TAGS = 40;
 const MAX_TAG_LEN = 40;
 
 // Flavour notes and food pairings are optional structured tags alongside the
 // free-text note — a viewer can log just these without writing a paragraph,
 // so text is no longer required (still capped, still trimmed to a string).
-function isTagArray(v: unknown): v is string[] {
+export function isTagArray(v: unknown): v is string[] {
   return Array.isArray(v) && v.length <= MAX_TAGS && v.every((t) => typeof t === 'string' && t.length > 0 && t.length <= MAX_TAG_LEN);
 }
 function isTasteValue(v: unknown): v is number | null | undefined {
@@ -147,22 +147,26 @@ palateRoutes.get('/palate', async (c) => {
   const rows = await c.env.DB
     // Notes on bottles and guided tastings (tastings.ts) both feed the palate.
     .prepare(
-      `select flavor_tags from tasting_notes where user_id = ? and flavor_tags is not null
+      `select flavor_tags, null as mouth_tags from tasting_notes where user_id = ? and flavor_tags is not null
        union all
-       select flavor_tags from tastings where user_id = ? and flavor_tags is not null`,
+       select flavor_tags, mouth_tags from tastings where user_id = ? and (flavor_tags is not null or mouth_tags is not null)`,
     )
     .bind(c.get('userId'), c.get('userId'))
-    .all<{ flavor_tags: string }>();
+    .all<{ flavor_tags: string | null; mouth_tags: string | null }>();
   const tags: Record<string, number> = {};
-  for (const row of rows.results) {
-    let list: unknown;
+  const parse = (raw: string | null): unknown[] => {
     try {
-      list = JSON.parse(row.flavor_tags);
+      const list = raw ? JSON.parse(raw) : [];
+      return Array.isArray(list) ? list : [];
     } catch {
-      continue;
+      return [];
     }
-    if (!Array.isArray(list)) continue;
-    for (const t of new Set(list)) if (typeof t === 'string') tags[t] = (tags[t] ?? 0) + 1;
+  };
+  for (const row of rows.results) {
+    // An aroma noted both on the nose and in the mouth counts once per tasting.
+    for (const t of new Set([...parse(row.flavor_tags), ...parse(row.mouth_tags)])) {
+      if (typeof t === 'string') tags[t] = (tags[t] ?? 0) + 1;
+    }
   }
   return c.json({ notes: rows.results.length, tags });
 });

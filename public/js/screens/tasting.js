@@ -9,6 +9,8 @@ import { expectedTags, expectedTaste, typeOptionsHtml, wineOptionsHtml } from '.
 // Assaggio guidato (#/assaggio, optional ?vino=<wheel wine>): pick a wine of
 // the aroma wheel — no bottle needed — then three steps, Naso → Bocca →
 // Giudizio, each showing what to expect, and a summary of expected vs felt.
+// Bocca also asks which aromas come back in the mouth (retronasal), stored
+// apart from the nose's so the summary can say where each was found.
 // Saved to /api/tastings (not to a bottle), listed on the start screen, and
 // counted in Il mio palato. Chosen by the user from a mockup: steps as in the
 // wheel's "Assaggia" idea, but as its own Home section with any wine.
@@ -24,6 +26,9 @@ function freshState(wine = '') {
   return {
     step: 'start', type: wine ? WINE_STYLES[wine]?.type ?? '' : '', wine, label: '',
     felt: new Set(), extraFam: FLAVOR_CATEGORIES[0].id,
+    // Aromas found again in the mouth (retronasal): the nose is where every
+    // aroma is recognised, the mouth confirms some of them, often more clearly.
+    mouth: new Set(),
     // null = slider not touched: never saved, so the expected value shown as
     // a hint can't silently become the user's answer.
     taste: TASTE_AXES.map(() => null), stars: 0, text: '', past: null,
@@ -136,7 +141,19 @@ function mouthHtml() {
       }).join('')}
       <p class="tasting-hint">Un cursore grigio non è ancora valutato: se non lo tocchi non viene salvato.</p>
     </div>
+    <div class="aroma-card">
+      <div class="field-label">Aromi in bocca</div>
+      <p class="aroma-card-desc">Dopo aver deglutito gli aromi risalgono al naso da dietro: quali ritrovi? Spesso il frutto è più netto qui che al naso.</p>
+      <div class="chip-row">${mouthCandidates().map((t) => { const on = state.mouth.has(t); const exp = expectedTags(state.wine).includes(t);
+        return `<div class="chip${exp ? ' expected' : ''}${on ? ' active' : ''}" data-mouth="${escapeHtml(t)}" role="button" tabindex="0" aria-pressed="${on}">${on ? '✓ ' : ''}${escapeHtml(t)}</div>`; }).join('')}</div>
+    </div>
     <div class="tasting-foot"><button type="button" class="primary-btn" data-step="verdict">Avanti · Giudizio</button></div>`;
+}
+
+// What the nose found first, then the rest of what's expected for the wine.
+function mouthCandidates() {
+  const exp = expectedTags(state.wine);
+  return [...new Set([...state.felt, ...exp, ...state.mouth])];
 }
 
 function wireSliders() {
@@ -203,8 +220,16 @@ function comparison(wine, felt, taste) {
   return { exp, found, extra, rows };
 }
 
-function summaryHtml({ wine, label, felt, taste, stars, text }, readOnly) {
+function whereRows(felt, mouth) {
+  return [...new Set([...felt, ...mouth])].map((t) => {
+    const n = felt.includes(t), m = mouth.includes(t);
+    return [t, n && m ? 'al naso e in bocca' : n ? 'solo al naso' : 'solo in bocca'];
+  });
+}
+
+function summaryHtml({ wine, label, felt, mouth, taste, stars, text }, readOnly) {
   const { exp, found, extra, rows } = comparison(wine, felt, taste);
+  const where = mouth.length ? whereRows(felt, mouth) : [];
   return `
     ${readOnly ? `<span class="aroma-pill tasting-wine">${escapeHtml(label ? `${wine} · ${label}` : wine)}</span>` : ''}
     <div class="aroma-card">
@@ -215,6 +240,7 @@ function summaryHtml({ wine, label, felt, taste, stars, text }, readOnly) {
     </div>
     <div class="aroma-card">
       <div class="field-label">Bocca</div>
+      ${where.length ? `<div class="aroma-wines tasting-where">${where.map(([t, w]) => `<div><span>${escapeHtml(t)}</span><span>${escapeHtml(w)}</span></div>`).join('')}</div>` : ''}
       <div class="aroma-wines tasting-diff">${rows.map(([n, t, off]) => `<div class="${off ? 'off' : ''}"><span>${escapeHtml(n)}</span><span>${escapeHtml(t)}</span></div>`).join('')}</div>
     </div>
     <div class="aroma-card">
@@ -235,11 +261,11 @@ function render() {
   else if (state.step === 'nose') html += noseHtml();
   else if (state.step === 'mouth') html += mouthHtml();
   else if (state.step === 'verdict') html += verdictHtml();
-  else if (state.step === 'summary') html += summaryHtml({ wine: state.wine, label: state.label, felt: [...state.felt], taste: state.taste, stars: state.stars, text: state.text }, false);
+  else if (state.step === 'summary') html += summaryHtml({ wine: state.wine, label: state.label, felt: [...state.felt], mouth: [...state.mouth], taste: state.taste, stars: state.stars, text: state.text }, false);
   else if (state.step === 'past') {
     const t = state.past;
     html += summaryHtml({
-      wine: t.style, label: t.label, felt: t.flavor_tags,
+      wine: t.style, label: t.label, felt: t.flavor_tags, mouth: t.mouth_tags ?? [],
       taste: TASTE_AXES.map((a) => t[`taste_${a.id}`] ?? null), stars: t.rating, text: t.text,
     }, true);
   }
@@ -268,7 +294,7 @@ function back() {
 async function save() {
   const btn = document.getElementById('tasting-save');
   btn.disabled = true;
-  const payload = { style: state.wine, label: state.label || null, rating: state.stars, text: state.text, flavorTags: [...state.felt] };
+  const payload = { style: state.wine, label: state.label || null, rating: state.stars, text: state.text, flavorTags: [...state.felt], mouthTags: [...state.mouth] };
   TASTE_AXES.forEach((axis, i) => { payload[`taste${axis.id[0].toUpperCase()}${axis.id.slice(1)}`] = state.taste[i]; });
   try {
     const saved = await api.post('/api/tastings', payload);
@@ -319,6 +345,12 @@ function wire() {
     if (felt) {
       const tag = felt.dataset.felt;
       if (state.felt.has(tag)) state.felt.delete(tag); else state.felt.add(tag);
+      return keepScroll(render);
+    }
+    const mouth = e.target.closest('[data-mouth]');
+    if (mouth) {
+      const tag = mouth.dataset.mouth;
+      if (state.mouth.has(tag)) state.mouth.delete(tag); else state.mouth.add(tag);
       return keepScroll(render);
     }
     const fam = e.target.closest('[data-fam]');

@@ -2,7 +2,6 @@ import { api } from '../api-client.js';
 import { escapeHtml } from '../util.js';
 import { FLAVOR_CATEGORIES } from '../tasting-profile.js';
 import { AROMA_GUIDE, TAG_WINES, TAG_NOTES, WINE_STYLES } from '../data/aroma-guide.js';
-import { navigate } from '../router.js';
 import { expectationHtml, wineOptionsHtml, typeOptionsHtml } from '../wine-expectation.js';
 
 // Ruota degli aromi (#/aromi). Two panes:
@@ -135,7 +134,7 @@ function familyCardHtml(f) {
       <p class="aroma-card-desc">${escapeHtml(guide.desc)}</p>
       ${wineTags ? `<p class="aroma-card-desc aroma-filter-note">${wineTags.some((t) => f.tags.includes(t)) ? `In evidenza gli aromi tipici di ${escapeHtml(filterWine)}.` : `${escapeHtml(filterWine)} non ha aromi tipici in questa famiglia.`}</p>` : ''}
       <div class="chip-row aroma-chips">${chips}</div>
-      ${wines.length ? `<div class="field-label">Dove lo trovi</div>${wineRowsHtml(wines)}` : ''}
+      ${wines.length && !filterWine ? `<div class="field-label">Dove lo trovi</div>${wineRowsHtml(wines)}` : ''}
     </div>`;
 }
 
@@ -147,7 +146,7 @@ function tagCardHtml(tag) {
   const wines = (TAG_WINES[tag] ?? []).map((w) => [w, [tag, ...(WINE_AROMAS.get(w) ?? []).filter((t) => t !== tag)].slice(0, 6)]);
   const body = TAG_NOTES[tag]
     ? `<p class="aroma-card-desc">${escapeHtml(TAG_NOTES[tag])}</p>`
-    : wines.length
+    : wines.length && !filterWine
       ? `<div class="field-label">Vini in cui si trova</div>${wineRowsHtml(wines)}`
       : `<p class="aroma-card-desc">${escapeHtml(guide.desc)}</p>`;
   return `
@@ -183,7 +182,7 @@ function renderWheelPane() {
     ? (n ? `${n} ${n === 1 ? 'aroma tipico' : 'aromi tipici'} di ${filterWine} in questa famiglia` : `Nessun aroma tipico di ${filterWine} qui`)
     : 'Trascina la ruota o usa le frecce';
   const expect = filterWine
-    ? `<div class="aroma-card">${expectationHtml(filterWine, { selectedTag })}<button type="button" class="primary-btn" id="aroma-taste-btn">Assaggio guidato</button></div>`
+    ? `<div class="aroma-card">${expectationHtml(filterWine, { selectedTag })}</div>`
     : '';
   document.getElementById('aroma-card').innerHTML = expect + (selectedTag ? tagCardHtml(selectedTag) : '') + familyCardHtml(f);
 }
@@ -288,7 +287,6 @@ function wireStaticControls() {
   });
 
   document.getElementById('aroma-card').addEventListener('click', (e) => {
-    if (e.target.closest('#aroma-taste-btn')) { navigate(`#/assaggio?vino=${encodeURIComponent(filterWine)}`); return; }
     const chip = e.target.closest('[data-tag]');
     if (!chip) return;
     const tag = chip.dataset.tag;

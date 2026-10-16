@@ -651,6 +651,7 @@
   .tasting-score b{font-family:'Newsreader',serif; font-weight:500; font-size:calc(30rem/17);}
   .tasting-score span{font-size:calc(12.5rem/17); color:#736a5d;}
   .tasting-diff div.off span:last-child{color:#5b2333; font-weight:600;}
+  .tasting-where{margin-bottom:6px;}
   .tasting-row{cursor:pointer;}
 
   /* ---- esplora vini per paese: dropdown regione ---- */
