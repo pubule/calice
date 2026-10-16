@@ -112,8 +112,8 @@ noteRoutes.patch('/:bottleId/notes/:noteId', async (c) => {
   return c.json(parseNote(note));
 });
 
-// The user's own score for a bottle (1-5, halves and tenths allowed), set
-// from the wine's edit sheet: it is the rating of their latest note, created
+// The user's own score for a bottle (1-5, tenths allowed), set by tapping
+// the stars in the wine's sheet: it is the rating of their latest note, created
 // with no text if there is none. null clears it: the note goes if it held
 // nothing else, otherwise only its stars (rating 0, as the composer does).
 noteRoutes.put('/:bottleId/my-rating', async (c) => {
@@ -133,14 +133,18 @@ noteRoutes.put('/:bottleId/my-rating', async (c) => {
     .first<Record<string, unknown> & { id: number; text: string }>();
   if (value !== null) {
     if (note) await c.env.DB.prepare('update tasting_notes set rating = ? where id = ?').bind(value, note.id).run();
-    else await c.env.DB.prepare(`insert into tasting_notes (bottle_id, user_id, rating, text) values (?, ?, ?, '')`).bind(bottleId, userId, value).run();
+    else {
+      const created = await c.env.DB.prepare(`insert into tasting_notes (bottle_id, user_id, rating, text) values (?, ?, ?, '') returning id`).bind(bottleId, userId, value).first<{ id: number }>();
+      return c.json({ my_rating: value, note_id: created!.id });
+    }
+    return c.json({ my_rating: value, note_id: note.id });
   } else if (note) {
     const { id, text, ...rest } = note;
     const empty = !text?.trim() && Object.values(rest).every((v) => v == null);
     if (empty) await c.env.DB.prepare('delete from tasting_notes where id = ?').bind(id).run();
     else await c.env.DB.prepare('update tasting_notes set rating = 0 where id = ?').bind(id).run();
   }
-  return c.json({ my_rating: value });
+  return c.json({ my_rating: null, note_id: null });
 });
 
 noteRoutes.get('/:bottleId/notes', async (c) => {

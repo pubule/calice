@@ -186,7 +186,9 @@ describe('my rating', () => {
     const put = (rating: unknown) => app.request(`/api/bottles/${bottle.id}/my-rating`, { method: 'PUT', body: JSON.stringify({ rating }), headers: { ...auth, 'content-type': 'application/json' } }, env);
     const mine = async () => (await (await app.request(`/api/cellars/${cellars[0].id}/bottles`, { headers: auth }, env)).json<any[]>())[0].my_rating;
 
-    expect((await put(4.5)).status).toBe(200);
+    const first = await put(4.5);
+    expect(first.status).toBe(200);
+    expect((await first.json<any>()).note_id).toBeGreaterThan(0);
     expect(await mine()).toBe(4.5);
     await put(3.75);
     expect(await mine()).toBe(3.8);

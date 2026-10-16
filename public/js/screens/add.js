@@ -947,15 +947,6 @@ let pendingPhoto = null;
 let sheetMode = 'create'; // 'create' | 'edit'
 let editingWineId = null;
 let editingBottleId = null;
-let editingRating = null; // the user's own score when the edit sheet opened
-
-// Stars follow the typed score: filled in proportion, nothing if invalid.
-function renderRatingStars() {
-  const r = readDecimal('rec-rating');
-  const v = !r.invalid && r.value >= 1 && r.value <= 5 ? r.value : 0;
-  document.getElementById('rec-rating-fill').style.width = `${(v / 5) * 100}%`;
-}
-document.getElementById('rec-rating')?.addEventListener('input', renderRatingStars);
 let editSavedCallback = null;
 
 const recognizeTaste = document.getElementById('recognize-taste');
@@ -988,7 +979,6 @@ function openRecognizeSheet(suggestion, capturedPhotoDataUrl) {
   document.getElementById('recognize-title').textContent = 'Rivedi e conferma';
   document.getElementById('recognize-save').textContent = 'Salva';
   document.getElementById('rec-note-section').classList.remove('hidden');
-  document.getElementById('rec-rating-field').classList.add('hidden');
 
   document.getElementById('rec-name').value = suggestion.name ?? '';
   document.getElementById('rec-producer').value = suggestion.producer ?? '';
@@ -1054,10 +1044,6 @@ export function openEditWineSheet(bottle, onSaved) {
   document.getElementById('rec-denomination').value = bottle.denomination ?? '';
   document.getElementById('rec-price').value = priceText(bottle.price_paid, { grouping: false });
   document.getElementById('rec-qty').value = String(Number(bottle.quantity) || 0);
-  editingRating = bottle.my_rating ?? null;
-  document.getElementById('rec-rating').value = editingRating == null ? '' : String(editingRating).replace('.', ',');
-  document.getElementById('rec-rating-field').classList.remove('hidden');
-  renderRatingStars();
   pendingVivino = bottle.vivino_rating != null ? { rating: { average: Number(bottle.vivino_rating), count: bottle.vivino_ratings_count ?? null } } : null;
   fillVivinoFields({ alcohol: bottle.alcohol, producerUrl: bottle.producer_url, rating: pendingVivino?.rating });
   resetNoteComposer();
@@ -1140,19 +1126,10 @@ async function saveRecognizedWine() {
     return;
   }
 
-  // The user's own score (edit only): 1 to 5, decimals allowed, empty = none.
-  const ratingRead = sheetMode === 'edit' ? readDecimal('rec-rating') : { value: null };
-  if (ratingRead.invalid || (ratingRead.value != null && !(ratingRead.value >= 1 && ratingRead.value <= 5))) {
-    await alertModal('Il voto va da 1 a 5, per esempio 4 o 4,5. Lascialo vuoto per non dare un voto.');
-    return;
-  }
-  const myRating = ratingRead.value == null ? null : Math.round(ratingRead.value * 10) / 10;
-
   if (sheetMode === 'edit') {
     try {
       await api.patch(`/api/wines/${editingWineId}`, { name, producer, country, region, type, vintage, grapeVariety, denomination, ...extras });
       await api.patch(`/api/bottles/${editingBottleId}`, quantity == null ? { pricePaid } : { pricePaid, quantity });
-      if (myRating !== editingRating) await api.put(`/api/bottles/${editingBottleId}/my-rating`, { rating: myRating });
       closeRecognizeSheet();
       await savePendingPhoto(editingWineId, 'Vino modificato');
       editSavedCallback?.();

@@ -44,6 +44,28 @@ function noteHtml(n) {
 
 const TYPE_LABEL = { rosso: 'Rosso', bianco: 'Bianco', bollicine: 'Bollicine', rosato: 'Rosato' };
 
+function renderStats(bottle) {
+  // ...and what it is worth, as a row of numbers: price, the user's own score
+  // and Vivino's community rating.
+  const one = (n) => Number(n).toFixed(1).replace('.', ',');
+  const stat = (value, label, aria) => {
+    const el = document.createElement('div');
+    el.className = 'hero-stat';
+    el.append(Object.assign(document.createElement('b'), { textContent: value }), Object.assign(document.createElement('span'), { textContent: label }));
+    if (aria) el.setAttribute('aria-label', aria);
+    return el;
+  };
+  const stats = [];
+  if (priceText(bottle.price_paid)) stats.push(stat(`${priceText(bottle.price_paid)} €`, 'a bottiglia'));
+  if (bottle.my_rating != null) stats.push(stat(`★ ${one(bottle.my_rating)}`, 'il tuo voto', `Il tuo voto ${one(bottle.my_rating)} su 5`));
+  if (bottle.vivino_rating != null) {
+    const n = Number(bottle.vivino_ratings_count) || 0;
+    const votes = `${n.toLocaleString('it-IT')} ${n === 1 ? 'voto' : 'voti'}`;
+    stats.push(stat(`★ ${one(bottle.vivino_rating)}`, 'Vivino', `Voto medio su Vivino ${one(bottle.vivino_rating)} su 5, ${votes}`));
+  }
+  document.querySelector('#detail-overlay .hero-stats').replaceChildren(...stats);
+}
+
 function renderHero(bottle) {
   const art = document.querySelector('#detail-overlay .hero-art');
   const product = art.querySelector('.hero-product');
@@ -90,25 +112,7 @@ function renderHero(bottle) {
   const facts = [bottle.denomination, bottle.vintage ? String(bottle.vintage) : null,
     bottle.alcohol ? `${String(bottle.alcohol).replace('.', ',')}% vol` : null];
   chips.replaceChildren(...facts.filter(Boolean).map((t) => Object.assign(document.createElement('span'), { textContent: t })));
-  // ...and what it is worth, as a row of numbers: price, the user's own score
-  // and Vivino's community rating.
-  const one = (n) => Number(n).toFixed(1).replace('.', ',');
-  const stat = (value, label, aria) => {
-    const el = document.createElement('div');
-    el.className = 'hero-stat';
-    el.append(Object.assign(document.createElement('b'), { textContent: value }), Object.assign(document.createElement('span'), { textContent: label }));
-    if (aria) el.setAttribute('aria-label', aria);
-    return el;
-  };
-  const stats = [];
-  if (priceText(bottle.price_paid)) stats.push(stat(`${priceText(bottle.price_paid)} €`, 'a bottiglia'));
-  if (bottle.my_rating != null) stats.push(stat(`★ ${one(bottle.my_rating)}`, 'il tuo voto', `Il tuo voto ${one(bottle.my_rating)} su 5`));
-  if (bottle.vivino_rating != null) {
-    const n = Number(bottle.vivino_ratings_count) || 0;
-    const votes = `${n.toLocaleString('it-IT')} ${n === 1 ? 'voto' : 'voti'}`;
-    stats.push(stat(`★ ${one(bottle.vivino_rating)}`, 'Vivino', `Voto medio su Vivino ${one(bottle.vivino_rating)} su 5, ${votes}`));
-  }
-  hero.querySelector('.hero-stats').replaceChildren(...stats);
+  renderStats(bottle);
   loadLandscape(bottle);
   document.getElementById('loc-value').textContent = locationLabel(bottle) || 'Non assegnata';
 }
@@ -347,6 +351,30 @@ function wireStaticControls() {
       }));
     });
   });
+
+  // The stars of this sheet's composer are the user's own score: a tap saves
+  // it at once (it is the rating of their latest note, created empty if
+  // there is none), and Cantina's list and the numbers above follow.
+  // "Salva nota" then updates that same note.
+  const myStars = Array.from(document.querySelectorAll('#detail-overlay .add-note .stars-input span'));
+  myStars.forEach((star, i) => star.addEventListener('click', async () => {
+    const bottle = currentBottle;
+    if (!bottle) return;
+    try {
+      const res = await api.put(`/api/bottles/${bottle.id}/my-rating`, { rating: i + 1 });
+      if (res.note_id && currentBottle === bottle && savedNoteId == null) {
+        savedNoteId = res.note_id;
+        document.getElementById('note-submit').textContent = 'Aggiorna nota';
+      }
+      bottle.my_rating = res.my_rating;
+      if (currentBottle === bottle) renderStats(bottle);
+      refreshCellarList();
+      showToast(`Voto salvato · ★ ${i + 1}`);
+    } catch (err) {
+      console.error(err);
+      await alertModal('Non è stato possibile salvare il voto. Riprova.', { title: 'Voto non salvato' });
+    }
+  }));
 
   const detailTaste = document.getElementById('detail-taste');
   detailTaste.innerHTML = tastingProfileHtml();
