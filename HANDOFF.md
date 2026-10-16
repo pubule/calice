@@ -951,6 +951,17 @@ questo file è il riassunto "dove eravamo rimasti".
       "N su M già nelle tue note" accanto al titolo (`mine` da
       `/api/me/palate`). Tornando a "Tutti i vini" la ruota ricompare.
 
+33. **Cursori di gusto a scatti 1-10** (build 101). Richiesta dell'utente:
+    "troppo liberi". Tutti i cursori (nota di degustazione in scheda vino e
+    foglio di aggiunta, Assaggio guidato) si fermano su 10 valori e mostrano
+    il numero nel cursore; tastiera ±1. **Il salvataggio resta 0-100**
+    (valore = scatto × 10, quindi 5 = 50 = metà, come prima): niente
+    migrazione, e le note vecchie si mostrano sullo scatto più vicino.
+    Helper `TASTE_STEPS`/`toStep`/`fromStep`/`stepLeft` in
+    `tasting-profile.js`; anche il gusto atteso dei vini (`expectedTaste`)
+    viene arrotondato agli scatti, così segno atteso, etichette e
+    riepilogo parlano dello stesso valore che si può scegliere.
+
 ## Cose note, non (ancora) da rifare
 
 - `status-bar-style` è `black-translucent` (non più `default`), `.screen`

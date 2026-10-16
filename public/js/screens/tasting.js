@@ -2,7 +2,7 @@ import { api } from '../api-client.js';
 import { escapeHtml } from '../util.js';
 import { confirmModal, alertModal } from '../modal.js';
 import { showToast } from '../toast.js';
-import { FLAVOR_CATEGORIES, TASTE_AXES } from '../tasting-profile.js';
+import { FLAVOR_CATEGORIES, TASTE_AXES, TASTE_STEPS, toStep, fromStep } from '../tasting-profile.js';
 import { WINE_STYLES } from '../data/aroma-guide.js';
 import { expectedTags, expectedTaste, typeOptionsHtml, wineOptionsHtml } from '../wine-expectation.js';
 
@@ -36,9 +36,10 @@ function freshState(wine = '') {
 }
 
 const body = () => document.getElementById('tasting-body');
-// Thumb centre for a 0-100 value: inset by half the thumb (42px) so it never
-// leaves the track; the expected marker uses the same scale to line up.
-const pos = (v) => `calc(21px + (100% - 42px) * ${v} / 100)`;
+// Thumb centre for a stored 0-100 value, on the 1-10 step scale shared with
+// the note composer (tasting-profile.js): inset by half the thumb (42px) so it
+// never leaves the track; the expected marker uses the same scale to line up.
+const pos = (v) => `calc(21px + (100% - 42px) * ${(toStep(v) - 1) / (TASTE_STEPS - 1)})`;
 const familyOf = (tag) => FLAVOR_CATEGORIES.find((f) => f.tags.includes(tag));
 function formatDate(iso) {
   const d = new Date(iso.replace(' ', 'T') + 'Z');
@@ -133,9 +134,9 @@ function mouthHtml() {
         const shown = v ?? exp[i] ?? 50;
         return `<div class="gs" data-axis="${i}">
           <div class="gs-labels"><span class="${v != null && v < 40 ? 'dom' : ''}">${escapeHtml(axis.left)}</span><span class="gs-name">${escapeHtml(axis.name)}</span><span class="${v != null && v > 60 ? 'dom' : ''}">${escapeHtml(axis.right)}</span></div>
-          <div class="gs-track${v == null ? ' untouched' : ''}" role="slider" tabindex="0" aria-label="${escapeHtml(axis.name)}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${shown}" aria-valuetext="${v == null ? 'non valutato' : shown}">
+          <div class="gs-track${v == null ? ' untouched' : ''}" role="slider" tabindex="0" aria-label="${escapeHtml(axis.name)}" aria-valuemin="1" aria-valuemax="10" aria-valuenow="${toStep(shown)}" aria-valuetext="${v == null ? 'non valutato' : `${toStep(shown)} su 10`}">
             ${exp[i] == null ? '' : `<span class="gs-exp" style="left:${pos(exp[i])}"></span>`}
-            <span class="gs-thumb" style="left:${pos(shown)}"></span>
+            <span class="gs-thumb" style="left:${pos(shown)}">${v == null ? '' : toStep(v)}</span>
           </div>
         </div>`;
       }).join('')}
@@ -160,17 +161,19 @@ function wireSliders() {
   body().querySelectorAll('.gs').forEach((gs) => {
     const i = Number(gs.dataset.axis);
     const track = gs.querySelector('.gs-track');
-    const set = (v) => {
-      state.taste[i] = Math.round(Math.max(0, Math.min(100, v)));
+    const set = (step) => {
+      state.taste[i] = fromStep(step);
+      const thumb = track.querySelector('.gs-thumb');
       track.classList.remove('untouched');
-      track.querySelector('.gs-thumb').style.left = pos(state.taste[i]);
-      track.setAttribute('aria-valuenow', String(state.taste[i]));
-      track.setAttribute('aria-valuetext', String(state.taste[i]));
+      thumb.style.left = pos(state.taste[i]);
+      thumb.textContent = String(toStep(state.taste[i]));
+      track.setAttribute('aria-valuenow', String(toStep(state.taste[i])));
+      track.setAttribute('aria-valuetext', `${toStep(state.taste[i])} su 10`);
       const [l, , r] = gs.querySelectorAll('.gs-labels span');
       l.classList.toggle('dom', state.taste[i] < 40);
       r.classList.toggle('dom', state.taste[i] > 60);
     };
-    const fromX = (x) => { const rect = track.getBoundingClientRect(); set(((x - rect.left - 21) / (rect.width - 42)) * 100); };
+    const fromX = (x) => { const rect = track.getBoundingClientRect(); set(1 + ((x - rect.left - 21) / (rect.width - 42)) * (TASTE_STEPS - 1)); };
     track.addEventListener('pointerdown', (e) => {
       track.setPointerCapture(e.pointerId);
       fromX(e.clientX);
@@ -181,10 +184,10 @@ function wireSliders() {
       track.addEventListener('pointercancel', end, { once: true });
     });
     track.addEventListener('keydown', (e) => {
-      const step = { ArrowRight: 5, ArrowUp: 5, ArrowLeft: -5, ArrowDown: -5 }[e.key];
-      if (step == null) return;
+      const delta = { ArrowRight: 1, ArrowUp: 1, ArrowLeft: -1, ArrowDown: -1 }[e.key];
+      if (delta == null) return;
       e.preventDefault();
-      set((state.taste[i] ?? expectedTaste(state.wine)[i] ?? 50) + step);
+      set(toStep(state.taste[i] ?? expectedTaste(state.wine)[i] ?? 50) + delta);
     });
   });
 }

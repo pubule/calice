@@ -1,5 +1,5 @@
 import { escapeHtml } from './util.js';
-import { FLAVOR_CATEGORIES, TASTE_AXES } from './tasting-profile.js';
+import { FLAVOR_CATEGORIES, TASTE_AXES, toStep } from './tasting-profile.js';
 import { TAG_WINES, WINE_TYPES, WINE_STYLES } from './data/aroma-guide.js';
 
 // What to expect from a wine of the aroma wheel (WINE_STYLES): its typical
@@ -16,7 +16,9 @@ export function expectedTags(wine) {
 // apply (tannin 0 = whites and sparkling).
 export function expectedTaste(wine) {
   const taste = WINE_STYLES[wine]?.taste ?? [];
-  return TASTE_AXES.map((axis, i) => (axis.id === 'tannin' && taste[i] === 0 ? null : taste[i] ?? null));
+  // Snapped to the sliders' 1-10 steps (× 10) so marker, label and the
+  // tasting summary all read the same value the user can actually pick.
+  return TASTE_AXES.map((axis, i) => (axis.id === 'tannin' && taste[i] === 0 ? null : taste[i] == null ? null : toStep(taste[i]) * 10));
 }
 
 export function typeOptionsHtml(placeholder) {
@@ -42,7 +44,7 @@ export function expectationHtml(wine, { mine = {} } = {}) {
     const v = taste[i];
     const side = v == null ? 'non pertinente' : v < 40 ? axis.left : v > 60 ? axis.right : 'equilibrato';
     return `<div class="expect-row"><span class="expect-name">${escapeHtml(axis.name)}</span>
-      <span class="expect-track">${v == null ? '' : `<i style="left:${v}%"></i>`}</span>
+      <span class="expect-track">${v == null ? '' : `<i style="left:calc(6px + (100% - 12px) * ${(toStep(v) - 1) / 9})"></i>`}</span>
       <span class="expect-side">${escapeHtml(side)}</span></div>`;
   }).join('');
   const tags = expectedTags(wine);

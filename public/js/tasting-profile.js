@@ -106,8 +106,17 @@ const FOOD_PAIRINGS = [
   'Grigliate', 'Fritti', 'Dolci', 'Pasticceria secca', 'Cioccolato', 'Frutta',
 ];
 
-const THUMB_W = 46;
 const DEFAULT_VALUE = 50;
+
+// The sliders move in ten steps, 1 to 10 — a free 0-100 slider asked for a
+// precision nobody has on the palate. Storage stays 0-100 (step × 10), so
+// notes saved before the change keep their meaning and are shown on the
+// nearest step. 5 (= 50) is the untouched middle.
+export const TASTE_STEPS = 10;
+export const toStep = (value) => Math.min(TASTE_STEPS, Math.max(1, Math.round(Number(value) / 10)));
+export const fromStep = (step) => Math.min(TASTE_STEPS, Math.max(1, Math.round(step))) * 10;
+// Thumb position for a step, inset by the thumb's width so it stays on the track.
+export const stepLeft = (step, thumbW) => `calc((100% - ${thumbW}px) * ${(step - 1) / (TASTE_STEPS - 1)})`;
 
 export function tastingProfileHtml() {
   const flavorCards = FLAVOR_CATEGORIES.map(
@@ -127,7 +136,7 @@ export function tastingProfileHtml() {
     (axis) => `
     <div class="taste-slider" data-axis="${axis.id}" data-value="${DEFAULT_VALUE}">
       <div class="taste-labels"><span class="tl-left">${axis.left}</span><span class="tl-right">${axis.right}</span></div>
-      <div class="taste-track" role="slider" tabindex="0" aria-label="${axis.name}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${DEFAULT_VALUE}"><div class="taste-thumb"></div></div>
+      <div class="taste-track" role="slider" tabindex="0" aria-label="${axis.name}" aria-valuemin="1" aria-valuemax="10" aria-valuenow="${toStep(DEFAULT_VALUE)}"><div class="taste-thumb">${toStep(DEFAULT_VALUE)}</div></div>
     </div>`,
   ).join('');
   const pairingChips = FOOD_PAIRINGS.map((p) => `<div class="chip" data-toggle role="button" tabindex="0" aria-pressed="false">${p}</div>`).join('');
@@ -161,10 +170,11 @@ function positionThumb(slider) {
   const leftLabel = slider.querySelector('.tl-left');
   const rightLabel = slider.querySelector('.tl-right');
   const value = sliderValue(slider);
-  track.setAttribute('aria-valuenow', String(value));
-  track.setAttribute('aria-valuetext', value < 40 ? leftLabel.textContent : value > 60 ? rightLabel.textContent : 'Equilibrato');
-  const maxLeft = track.getBoundingClientRect().width - THUMB_W;
-  thumb.style.left = (value / 100) * maxLeft + 'px';
+  const step = toStep(value);
+  track.setAttribute('aria-valuenow', String(step));
+  track.setAttribute('aria-valuetext', `${step} su 10, ${value < 40 ? leftLabel.textContent : value > 60 ? rightLabel.textContent : 'equilibrato'}`);
+  thumb.style.left = stepLeft(step, 46);
+  thumb.textContent = String(step);
   leftLabel.classList.toggle('dominant', value < 40);
   rightLabel.classList.toggle('dominant', value > 60);
 }
@@ -192,8 +202,8 @@ export function wireTastingProfile(root) {
     const track = slider.querySelector('.taste-track');
     const setValue = (clientX) => {
       const rect = track.getBoundingClientRect();
-      const raw = ((clientX - rect.left) / rect.width) * 100;
-      slider.dataset.value = Math.round(Math.max(0, Math.min(100, raw)));
+      const ratio = (clientX - rect.left - 23) / (rect.width - 46);
+      slider.dataset.value = fromStep(1 + ratio * (TASTE_STEPS - 1));
       positionThumb(slider);
     };
     track.addEventListener('pointerdown', (e) => {
@@ -207,14 +217,14 @@ export function wireTastingProfile(root) {
     });
     // Keyboard / VoiceOver: arrows nudge the same dataset.value the pointer sets.
     track.addEventListener('keydown', (e) => {
-      const step = { ArrowRight: 5, ArrowUp: 5, ArrowLeft: -5, ArrowDown: -5, PageUp: 10, PageDown: -10 }[e.key];
+      const delta = { ArrowRight: 1, ArrowUp: 1, ArrowLeft: -1, ArrowDown: -1, PageUp: 2, PageDown: -2 }[e.key];
       let next;
-      if (step != null) next = sliderValue(slider) + step;
-      else if (e.key === 'Home') next = 0;
-      else if (e.key === 'End') next = 100;
+      if (delta != null) next = toStep(sliderValue(slider)) + delta;
+      else if (e.key === 'Home') next = 1;
+      else if (e.key === 'End') next = TASTE_STEPS;
       else return;
       e.preventDefault();
-      slider.dataset.value = Math.max(0, Math.min(100, next));
+      slider.dataset.value = fromStep(next);
       positionThumb(slider);
     });
     positionThumb(slider);
