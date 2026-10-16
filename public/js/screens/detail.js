@@ -41,30 +41,42 @@ function noteHtml(n) {
     </div>`;
 }
 
+const TYPE_LABEL = { rosso: 'Rosso', bianco: 'Bianco', bollicine: 'Bollicine', rosato: 'Rosato' };
+
 function renderHero(bottle) {
-  const hero = document.querySelector('#detail-overlay .detail-hero');
-  hero.className = 'detail-hero photo ' + photoClass(bottle.type);
-  // A real product photo (saved from a web-search candidate) replaces the
-  // generic type-tinted background set by the class above. It is an <img> next
-  // to the name, not the hero's background: a background sat under the text,
-  // and a wide label photo (not a slim bottle cut-out) ran right into the name.
-  const product = hero.querySelector('.hero-product');
-  hero.style.backgroundImage = bottle.image_url ? 'none' : '';
-  hero.classList.toggle('has-product', !!bottle.image_url);
+  const art = document.querySelector('#detail-overlay .hero-art');
+  const product = art.querySelector('.hero-product');
+  // Without a photo the thumbnail shows the type's placeholder (photoClass).
+  art.className = 'hero-art photo ' + photoClass(bottle.type);
+  art.style.backgroundImage = bottle.image_url ? 'none' : '';
+  art.classList.toggle('has-product', !!bottle.image_url);
+  product.onload = () => {
+    // Vivino's cut-out bottles are tall and narrow: shown whole (contain);
+    // a photo of the label fills the thumbnail (cover).
+    art.classList.toggle('cutout', product.naturalWidth / product.naturalHeight < 0.5);
+  };
   if (bottle.image_url) product.src = bottle.image_url;
   else product.removeAttribute('src');
   document.querySelector('#detail-overlay .info .name').textContent = bottle.name;
-  document.querySelector('#detail-overlay .info .sub').textContent =
-    `${bottle.producer} · ${bottle.region ?? bottle.country}${bottle.vintage ? ' · ' + bottle.vintage : ''}`;
-  const badge = document.querySelector('#detail-overlay .badge-score');
+  document.getElementById('detail-bar-name').textContent = bottle.name;
+  document.querySelector('#detail-overlay .info .sub').textContent = `${bottle.producer} · ${bottle.region ?? bottle.country}`;
+  const chips = document.querySelector('#detail-overlay .hero-chips');
+  const facts = [TYPE_LABEL[bottle.type], bottle.denomination, bottle.vintage ? String(bottle.vintage) : null];
+  chips.replaceChildren(...facts.filter(Boolean).map((t) => Object.assign(document.createElement('span'), { textContent: t })));
   if (bottle.score != null) {
-    badge.textContent = Number(bottle.score).toFixed(1);
-    badge.style.display = '';
-  } else {
-    badge.style.display = 'none';
+    const score = Number(bottle.score).toFixed(1).replace('.', ',');
+    chips.append(Object.assign(document.createElement('span'), { textContent: `★ ${score}`, ariaLabel: `Valutazione media ${score}` }));
   }
   document.getElementById('loc-value').textContent = locationLabel(bottle) || 'Non assegnata';
 }
+
+// The small name in the top bar appears once the big one has scrolled under it.
+const detailSheet = document.querySelector('#detail-overlay .detail-sheet');
+detailSheet?.addEventListener('scroll', () => {
+  const name = detailSheet.querySelector('.detail-hero .name');
+  const top = detailSheet.getBoundingClientRect().top;
+  detailSheet.classList.toggle('compact', name.getBoundingClientRect().bottom < top + 52);
+}, { passive: true });
 
 let undoTimer = null;
 
@@ -170,6 +182,9 @@ export async function openDetail(bottle, me) {
   currentBottleId = bottle.id;
   currentBottle = bottle;
   currentMeId = me.id;
+  const sheet = document.querySelector('#detail-overlay .detail-sheet');
+  sheet.scrollTop = 0;
+  sheet.classList.remove('compact');
   document.getElementById('detail-overlay').classList.add('open');
   hideUndo();
   resetNoteComposer();

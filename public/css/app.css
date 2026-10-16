@@ -262,26 +262,30 @@
   .detail-overlay.open .detail-sheet{transform:translateY(0);}
   /* min-height + the name in normal flow (not absolutely positioned): at large
      Dynamic Type sizes a long name grows the hero instead of overflowing it. */
-  .detail-hero{position:relative; min-height:190px; flex-shrink:0; display:flex; align-items:flex-end; padding:56px 18px 14px;}
-  .detail-hero .close{ position:absolute; top:14px; right:14px; width:30px; height:30px; border-radius:50%; background:rgba(247,245,240,.92); display:flex; align-items:center; justify-content:center; cursor:pointer; }
-  .detail-hero .scrim2{position:absolute; inset:0; background:linear-gradient(180deg, rgba(20,15,12,.05) 0%, rgba(20,15,12,.6) 100%);}
-  .detail-hero .info{position:relative; flex:1; min-width:0; color:#fff; overflow-wrap:anywhere;}
-  .detail-hero .info .name{font-family:'Newsreader',serif; font-weight:500; font-size:calc(20rem/17);}
-  .detail-hero .info .sub{font-size:calc(12rem/17); opacity:.85; margin-top:2px;}
-  .detail-hero .badge-score{top:14px; left:18px; right:auto;}
-  /* A product photo from the web search (Vivino) is a bottle cut-out, tall
-     and narrow: stretched with cover across the wide hero it showed only a
-     zoomed patch of glass, never the label. Shown whole instead, on the right
-     over a light backdrop, with the text in dark ink on the left. */
-  /* Foto del prodotto: un'immagine accanto al nome (non lo sfondo, che finiva
-     sotto il testo con le foto larghe). Alta fino al bordo inferiore, al
-     massimo il 45% della larghezza; il testo prende il resto e va a capo. */
-  .detail-hero.has-product{min-height:240px; background-color:#ece7de; gap:14px;}
-  .detail-hero.has-product .scrim2{display:none;}
-  .detail-hero.has-product .info{color:#241e1a; align-self:flex-end;}
-  .hero-product{display:none;}
-  .detail-hero.has-product .hero-product{display:block; position:relative; flex:0 1 auto; height:184px; width:auto; max-width:45%; margin-bottom:-14px; object-fit:contain; object-position:center bottom;}
-  .detail-hero.has-product .info .sub{color:#736a5d; opacity:1;}
+  /* Intestazione della scheda vino, stile scheda prodotto dell'App Store
+     (scelta B sui mockup): niente fascia colorata, una miniatura arrotondata
+     con ombra e accanto nome grande, produttore e dati in etichette. Le foto
+     dell'etichetta riempiono la miniatura (cover); le bottiglie scontornate di
+     Vivino, alte e strette, ci stanno intere (.cutout, contain). */
+  .detail-hero{display:flex; align-items:flex-end; gap:16px; padding:52px 18px 4px;}
+  .hero-art{position:relative; width:104px; height:140px; flex-shrink:0; border-radius:14px; overflow:hidden; background-color:#ece7de; box-shadow:0 10px 24px -12px rgba(36,30,26,.45), 0 0 0 .5px rgba(36,30,26,.12);}
+  .hero-product{display:none; width:100%; height:100%; object-fit:cover;}
+  .hero-art.has-product .hero-product{display:block;}
+  .hero-art.cutout .hero-product{object-fit:contain; padding:8px 0; box-sizing:border-box;}
+  .detail-hero .info{flex:1; min-width:0; padding-bottom:4px; overflow-wrap:anywhere;}
+  .detail-hero .info .name{margin:0; font-family:'Newsreader',serif; font-weight:500; font-size:calc(26rem/17); line-height:1.12; color:#241e1a; text-wrap:balance;}
+  .detail-hero .info .sub{font-size:calc(13.5rem/17); color:#736a5d; margin-top:4px;}
+  .hero-chips{display:flex; flex-wrap:wrap; gap:6px; margin-top:10px;}
+  .hero-chips:empty{display:none;}
+  .hero-chips span{padding:4px 10px; border-radius:999px; background:#ece7de; color:#4a423a; font-size:calc(12rem/17);}
+  /* Barra in alto, ferma mentre la scheda scorre: la X resta sempre a portata
+     e, quando il nome grande esce di vista, compare il nome in piccolo su un
+     fondo traslucido (come i titoli grandi di iOS). Alta 0: non sposta nulla. */
+  .detail-bar{position:sticky; top:0; height:0; z-index:4;}
+  .detail-bar-title{position:absolute; top:0; left:0; right:0; height:52px; display:flex; align-items:center; justify-content:center; padding:0 56px; background:rgba(247,245,240,.86); -webkit-backdrop-filter:saturate(1.6) blur(18px); backdrop-filter:saturate(1.6) blur(18px); border-bottom:1px solid rgba(36,30,26,.08); opacity:0; transition:opacity .2s ease; pointer-events:none;}
+  .detail-bar-title b{font-size:calc(14rem/17); font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .detail-sheet.compact .detail-bar-title{opacity:1;}
+  .detail-bar .close{position:absolute; top:11px; right:14px; width:30px; height:30px; border-radius:50%; background:#efece3; display:flex; align-items:center; justify-content:center; cursor:pointer;}
   .detail-body{padding:16px 18px 4px; display:flex; flex-direction:column; gap:18px;}
   .loc-row{display:flex; align-items:center; gap:10px; background:#ffffff; border:1px solid #e2e0d8; border-radius:12px; padding:12px 14px;}
   .loc-row svg{stroke:#5b2333; flex-shrink:0;}
@@ -776,8 +780,8 @@
   .cantina-switch::after, .compare-btn::after, .elements-link::after, .loc-edit::after, .search-clear::after, .home-tab-toggle::after, #find-friends-btn::after, .section-head a::after, .manual-link::after, .rev-translate::after, .bottle-popup .bgo::after, .compare-bar .cb-cancel::after, .app-credit a::after{content:''; position:absolute; inset:-16px -6px;}
   #find-friends-btn::after{inset:-20px -6px -10px;}
   #profile-follows{margin-top:4px;}
-  .detail-hero .close::after, .compare-head .close::after, .back-btn::after, .alert-dismiss::after, .icon-btn::after{content:''; position:absolute; inset:-8px;}
-  .detail-hero .close::after{inset:-7px;}
+  .detail-bar .close::after, .compare-head .close::after, .back-btn::after, .alert-dismiss::after, .icon-btn::after{content:''; position:absolute; inset:-8px;}
+  .detail-bar .close::after{inset:-7px;}
   .icon-btn::after{inset:-7px;}
   .camera-close::after{content:''; position:absolute; inset:-5px;}
   .follow-btn::after, .wish-add::after, .invite-btn::after{content:''; position:absolute; inset:-9px -4px;}
