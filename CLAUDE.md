@@ -873,6 +873,11 @@ già corretto:
   `cellar.js`), mai icone sempre visibili; e sempre un secondo accesso
   non gestuale (le stesse azioni nella scheda di dettaglio, e azioni
   raggiungibili da tastiera che aprono la riga al focus).
+- **Campi di testo e menu**: un solo stile (blocco "Campi" in fondo ad
+  `app.css`). Un nuovo campo usa `input.search`, `select.search`,
+  `.text-input`, `.num-input` o è una `textarea`, e non ridefinisce bordo,
+  raggio, font o focus: il focus è il bordo bordeaux con alone, non
+  l'outline squadrato del browser.
 - **Agenti in worktree**: il worktree può nascere da `master` invece che
   dalla punta del branch di lavoro. Ogni prompt deve cominciare con
   `git reset --hard <commit>` esplicito e chiedere di verificarlo con

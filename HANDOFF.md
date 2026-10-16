@@ -1001,6 +1001,14 @@ questo file è il riassunto "dove eravamo rimasti".
     Pulizia DB fatta su richiesta: cancellata la nota id 9 (bottiglia 10,
     15/10, scritta prima delle modifiche), resta la id 10.
 
+37. **Campi uniformi** (build 105). Su richiesta dell'utente (la nota aveva
+    un rettangolo di focus squadrato e scuro, diverso dal resto): tutti gli
+    input, le textarea e i menu hanno ora lo stesso stile, definito una volta
+    in fondo ad `app.css` (blocco "Campi"): fondo bianco, bordo sottile,
+    raggio 12px, Archivo ≥16px, segnaposto `#736a5d`, focus = bordo bordeaux
+    con alone, freccia dell'app nei `select`. La textarea della nota è un
+    campo con bordo dentro la card. Regola aggiunta in CLAUDE.md.
+
 ## Cose note, non (ancora) da rifare
 
 - `status-bar-style` è `black-translucent` (non più `default`), `.screen`

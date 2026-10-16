@@ -862,3 +862,34 @@
 .detail-action{flex:1 1 calc(120rem/17); min-height:44px; display:flex; align-items:center; justify-content:center; gap:8px; padding:0 12px; border-radius:12px; border:1px solid #e2e0d8; background:#ffffff; color:#241e1a; font-family:'Archivo',sans-serif; font-size:calc(13rem/17); font-weight:600; cursor:pointer;}
 .detail-action svg{width:16px; height:16px; flex-shrink:0;}
 .detail-action.danger{background:#f7e9ec; border-color:#ecd0d6; color:#8a3244;}
+
+/* ---- Campi: un solo stile per ogni input, textarea e menu ----
+   Prima convivevano tre forme (ricerca a 10px, pillole nelle finestre e nel
+   nuovo elemento, la nota senza bordo con il rettangolo di focus squadrato
+   del browser). Ora: fondo bianco, bordo sottile, raggio 12px, Archivo; al
+   focus il bordo diventa bordeaux con un alone, che sostituisce l'outline
+   squadrato (il focus resta sempre visibile). I menu hanno la freccia
+   dell'app. Un nuovo campo prende questo stile da solo se è input.search,
+   select.search, .text-input, .num-input o una textarea. */
+input.search, select.search, .text-input, .num-input, textarea{
+  -webkit-appearance:none; appearance:none;
+  background:#ffffff; border:1px solid #e2e0d8; border-radius:12px;
+  font-family:'Archivo',sans-serif; font-size:max(calc(16rem/17), 16px); color:#241e1a;
+  min-height:44px; box-sizing:border-box;
+  transition:border-color .15s ease, box-shadow .15s ease;
+}
+input.search, select.search, .text-input, textarea{padding:11px 14px;}
+.num-input{padding:8px 4px; font-family:'JetBrains Mono',monospace;}
+textarea{width:100%; min-height:88px; line-height:1.45; resize:none;}
+input.search::placeholder, .text-input::placeholder, textarea::placeholder{color:#736a5d; opacity:1;}
+select.search{
+  padding-right:38px; color:#241e1a; cursor:pointer;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23736a5d' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat:no-repeat; background-position:right 12px center; background-size:16px;
+}
+input.search:focus, select.search:focus, .text-input:focus, .num-input:focus, textarea:focus{
+  outline:none; border-color:#5b2333; box-shadow:0 0 0 3px rgba(91,35,51,.12);
+}
+/* The note composers: the textarea is a field of its own inside the card. */
+.add-note textarea{border:1px solid #e2e0d8; background:#ffffff; padding:11px 14px; min-height:88px;}
+
