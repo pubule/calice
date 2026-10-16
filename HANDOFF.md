@@ -1009,6 +1009,19 @@ questo file è il riassunto "dove eravamo rimasti".
     con alone, freccia dell'app nei `select`. La textarea della nota è un
     campo con bordo dentro la card. Regola aggiunta in CLAUDE.md.
 
+38. **Messaggi, focus della nota, campo visibile** (build 106).
+    - `showToast`: 2,5 s per le conferme semplici, 5 s se c'è "Annulla"
+      (si può ancora passare `duration`).
+    - La textarea della nota non prendeva il bordo bordeaux al focus:
+      `.add-note textarea` ha la stessa specificità di `textarea:focus` e
+      veniva dopo. Aggiunto `.add-note textarea:focus` con lo stesso aspetto
+      di tutti gli altri campi.
+    - Toccando un campo, `main.js` lo porta al centro della parte visibile
+      del suo contenitore che scorre (`revealField()`), una volta per focus,
+      dopo che la tastiera si è aperta (evento `resize` di visualViewport) o
+      dopo 450 ms senza tastiera; se il campo è già tutto visibile non si
+      muove niente. Provato in Chromium, **non** con la tastiera iOS vera.
+
 ## Cose note, non (ancora) da rifare
 
 - `status-bar-style` è `black-translucent` (non più `default`), `.screen`

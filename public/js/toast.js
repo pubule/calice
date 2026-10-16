@@ -22,7 +22,10 @@ function hide() {
   el?.classList.remove('show');
 }
 
-export function showToast(message, { actionLabel, onAction, duration = 5000 } = {}) {
+// A plain confirmation ("Nota salvata") only needs a glance: 2.5 s. One with
+// an action (Annulla) stays 5 s, long enough to read it and reach the button.
+export function showToast(message, { actionLabel, onAction, duration } = {}) {
+  const ms = duration ?? (actionLabel ? 5000 : 2500);
   const t = ensureEl();
   const btn = t.querySelector('.toast-action');
   t.querySelector('.toast-msg').textContent = message;
@@ -50,5 +53,5 @@ export function showToast(message, { actionLabel, onAction, duration = 5000 } = 
   };
   t.classList.add('show');
   clearTimeout(hideTimer);
-  hideTimer = setTimeout(hide, duration);
+  hideTimer = setTimeout(hide, ms);
 }

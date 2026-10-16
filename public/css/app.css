@@ -892,4 +892,7 @@ input.search:focus, select.search:focus, .text-input:focus, .num-input:focus, te
 }
 /* The note composers: the textarea is a field of its own inside the card. */
 .add-note textarea{border:1px solid #e2e0d8; background:#ffffff; padding:11px 14px; min-height:88px;}
+/* .add-note textarea is as specific as textarea:focus and comes later, so it
+   would keep the sand border on focus: restate the shared focus look. */
+.add-note textarea:focus{border-color:#5b2333; box-shadow:0 0 0 3px rgba(91,35,51,.12);}
 

@@ -51,6 +51,42 @@ function showView(id) {
 // viewport as "keyboard open" to hide the navbar, which is more reliable
 // than a single input's focus/blur (covers any field, any screen).
 const vv = window.visualViewport;
+
+// Scrolls the field's own scroll container (a .view or a sheet — never the
+// fixed .screen) so the field sits in the middle of the visible area.
+function revealField(el) {
+  let sc = el.parentElement;
+  while (sc && sc !== document.body) {
+    const oy = getComputedStyle(sc).overflowY;
+    if ((oy === 'auto' || oy === 'scroll') && sc.scrollHeight > sc.clientHeight) break;
+    sc = sc.parentElement;
+  }
+  if (!sc || sc === document.body) return;
+  const r = el.getBoundingClientRect();
+  const box = sc.getBoundingClientRect();
+  const visibleBottom = Math.min(box.bottom, vv ? vv.offsetTop + vv.height : window.innerHeight);
+  // Already fully in view (e.g. a search bar at the top): leave it alone.
+  if (r.top >= box.top + 8 && r.bottom <= visibleBottom - 8) return;
+  const room = visibleBottom - box.top;
+  const offset = r.height < room ? (room - r.height) / 2 : 16;
+  const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+  sc.scrollTo({ top: sc.scrollTop + (r.top - box.top - offset), behavior: reduce ? 'auto' : 'smooth' });
+}
+
+let pendingReveal = null;
+document.addEventListener('focusin', (e) => {
+  const el = e.target;
+  const typing = el.tagName === 'TEXTAREA' || (el.tagName === 'INPUT' && !['checkbox', 'radio', 'file', 'range'].includes(el.type));
+  if (!typing) return;
+  pendingReveal = el;
+  // No keyboard resize (desktop, hardware keyboard): reveal anyway. On iOS
+  // this may run before the keyboard is up (the field still looks visible,
+  // so nothing moves) and the resize handler below does the real work.
+  setTimeout(() => {
+    if (pendingReveal === el && document.activeElement === el) revealField(el);
+  }, 450);
+});
+document.addEventListener('focusout', (e) => { if (pendingReveal === e.target) pendingReveal = null; });
 if (vv) {
   const fullHeight = window.innerHeight;
   const applyViewportHeight = () => {
@@ -90,6 +126,17 @@ if (vv) {
   };
   vv.addEventListener('resize', applyViewportHeight);
   vv.addEventListener('scroll', applyViewportHeight);
+  // Once the keyboard has settled, bring the focused field to the middle of
+  // what is still visible — tapping the tasting note low in the bottle sheet
+  // otherwise left it hidden behind the keyboard. Once per focus, so later
+  // viewport events never fight the user's own scrolling.
+  vv.addEventListener('resize', () => {
+    const active = document.activeElement;
+    if (pendingReveal && active === pendingReveal && vv.height < fullHeight - 100) {
+      pendingReveal = null;
+      requestAnimationFrame(() => revealField(active));
+    }
+  });
   // No eager call on load — see the focus gating above; nothing is focused
   // at load anyway, so it would be a no-op.
 }
