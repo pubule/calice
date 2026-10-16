@@ -6,8 +6,12 @@
 // Used by Home's "Da bere" tab, the wine sheet and the edit sheet.
 
 // [pattern on denomination + name, type it applies to (or any), years from
-// the vintage: can drink from, until, best from, best until]. First match wins.
+// the vintage: can drink from, until, best from, best until, and optionally
+// 'vintage' = only for wines with a vintage]. First match wins.
+const CLASSIC = /franciacorta|trento|champagne|cava|metodo classico|alta langa|oltrepo|blanc de|pas dose|brut|extra brut|cremant/;
 const RULES = [
+  // Sweet and dessert wines last for decades, whatever their colour.
+  [/passito|recioto|vin santo|sauternes|porto|tokaj|sciacchetra|eiswein|icewine|marsala|moscato di pantelleria/, null, 2, 25, 5, 15],
   // Barolo comes out after ~4 years and a classic one is already good to
   // drink by then; crus and great vintages want more time (set by hand).
   [/barolo/, null, 5, 20, 8, 15],
@@ -15,10 +19,15 @@ const RULES = [
   [/amarone/, null, 5, 20, 8, 15],
   [/brunello|taurasi|sagrantino/, null, 6, 20, 10, 15],
   [/bardolino|dolcetto|novello|lambrusco|beaujolais|schiava|grignolino/, 'rosso', 0, 3, 0, 2],
+  [/pinot nero|blauburgunder|pinot noir|spatburgunder/, 'rosso', 3, 10, 4, 8],
   [/riserva|reserva|gran selezione/, 'rosso', 4, 12, 6, 10],
   [/prosecco|asti|moscato/, null, 0, 2, 0, 1],
-  [/franciacorta|trento|champagne|cava|metodo classico|alta langa|oltrepo|blanc de|pas dose|brut|extra brut/, 'bollicine', 0, 4, 1, 3],
+  // Vintage sparkling wines spend years on the lees before release and keep long.
+  [CLASSIC, 'bollicine', 3, 12, 5, 10, 'vintage'],
+  [CLASSIC, 'bollicine', 0, 4, 1, 3],
   [null, 'bollicine', 0, 3, 0, 2],
+  // Whites that age (most whites are best young).
+  [/soave classico|verdicchio|fiano|timorasso|riesling|chablis|bourgogne|borgogna|meursault|puligny|chassagne|corton|greco di tufo|trebbiano d.abruzzo|carricante|etna bianco|riserva/, 'bianco', 1, 8, 2, 5],
   [null, 'bianco', 0, 3, 0, 2],
   [null, 'rosato', 0, 2, 0, 1],
   [null, 'rosso', 2, 8, 3, 6],
@@ -29,7 +38,7 @@ const yearOf = (d) => (d ? Number(String(d).slice(0, 4)) || null : null);
 
 function estimate(b) {
   const text = fold(`${b.denomination ?? ''} ${b.name ?? ''}`);
-  const rule = RULES.find(([re, type]) => (!re || re.test(text)) && (!type || type === b.type)) ?? RULES[RULES.length - 1];
+  const rule = RULES.find(([re, type, , , , , only]) => (!re || re.test(text)) && (!type || type === b.type) && (only !== 'vintage' || b.vintage)) ?? RULES[RULES.length - 1];
   const [, , from, until, peakFrom, peakUntil] = rule;
   if (b.vintage) {
     const v = Number(b.vintage);
