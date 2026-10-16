@@ -1267,10 +1267,14 @@ questo file è il riassunto "dove eravamo rimasti".
     somiglianza col nome del vino (`nameTokens`/`matchScore`), raccoglie
     og:image, twitter:image, immagini schema.org Product e `<img>` con alt o
     nome file somiglianti (loghi/icone esclusi). Massimo 8 richieste, 6 s
-    l'una, niente salvato. In attesa dei risultati reali dall'utente
-    (Zamuner, Ambrosini, Le Lore) per decidere se fare il pulsante "Cerca
-    foto sul sito del produttore" in Modifica e il link "Scheda del
-    produttore".
+    l'una, niente salvato. Provata dall'utente: Zamuner trovato giusto
+    (pagina con punteggio 1, foto della bottiglia); Ambrosini foto giusta
+    ma pagina in pareggio a 0,33 con altre due. Migliorie possibili, **non
+    fatte**: pesare meno le parole comuni a tutto il sito (IDF) e valutare
+    le pagine dal contenuto (title/h1). **Messa da parte dall'utente**:
+    niente pulsante in Modifica; l'endpoint resta e si usa solo quando
+    l'utente chiede di aggiornare la foto di un vino preciso (scelta della
+    foto con lui, poi `wines.image_url` aggiornato a mano in D1).
 
 ## Cose note, non (ancora) da rifare
 
