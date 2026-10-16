@@ -1121,6 +1121,14 @@ questo file è il riassunto "dove eravamo rimasti".
     "Nella tua cantina" in `add.js` piega allo stesso modo. Annata minima nel
     pannello allineata al server (1900).
 
+45. **Nome sovrapposto alla foto nella scheda del vino** (build 113). La
+    foto di Vivino era lo sfondo dell'intestazione, allineato a destra, con
+    110px riservati al testo: bastava per una bottiglia scontornata, non per
+    una foto larga dell'etichetta, che finiva sotto il nome. Ora è un `<img
+    class="hero-product">` accanto al nome nella stessa riga flex (alta fino al
+    bordo, al massimo il 45% della larghezza): il testo va a capo prima, con
+    qualunque forma di foto.
+
 ## Cose note, non (ancora) da rifare
 
 - `status-bar-style` è `black-translucent` (non più `default`), `.screen`

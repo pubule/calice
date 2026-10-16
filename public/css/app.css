@@ -273,9 +273,14 @@
      and narrow: stretched with cover across the wide hero it showed only a
      zoomed patch of glass, never the label. Shown whole instead, on the right
      over a light backdrop, with the text in dark ink on the left. */
-  .detail-hero.has-product{min-height:240px; background-color:#ece7de; background-repeat:no-repeat; background-size:auto 88%; background-position:right 64px bottom 0;}
+  /* Foto del prodotto: un'immagine accanto al nome (non lo sfondo, che finiva
+     sotto il testo con le foto larghe). Alta fino al bordo inferiore, al
+     massimo il 45% della larghezza; il testo prende il resto e va a capo. */
+  .detail-hero.has-product{min-height:240px; background-color:#ece7de; gap:14px;}
   .detail-hero.has-product .scrim2{display:none;}
-  .detail-hero.has-product .info{color:#241e1a; padding-right:110px;}
+  .detail-hero.has-product .info{color:#241e1a; align-self:flex-end;}
+  .hero-product{display:none;}
+  .detail-hero.has-product .hero-product{display:block; position:relative; flex:0 1 auto; height:184px; width:auto; max-width:45%; margin-bottom:-14px; object-fit:contain; object-position:center bottom;}
   .detail-hero.has-product .info .sub{color:#736a5d; opacity:1;}
   .detail-body{padding:16px 18px 4px; display:flex; flex-direction:column; gap:18px;}
   .loc-row{display:flex; align-items:center; gap:10px; background:#ffffff; border:1px solid #e2e0d8; border-radius:12px; padding:12px 14px;}

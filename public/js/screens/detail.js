@@ -44,10 +44,15 @@ function noteHtml(n) {
 function renderHero(bottle) {
   const hero = document.querySelector('#detail-overlay .detail-hero');
   hero.className = 'detail-hero photo ' + photoClass(bottle.type);
-  // A real product photo (saved from a web-search candidate) overrides the
-  // generic type-tinted gradient set by the class above.
-  hero.style.backgroundImage = bottle.image_url ? `url('${bottle.image_url.replace(/'/g, "\\'")}')` : '';
+  // A real product photo (saved from a web-search candidate) replaces the
+  // generic type-tinted background set by the class above. It is an <img> next
+  // to the name, not the hero's background: a background sat under the text,
+  // and a wide label photo (not a slim bottle cut-out) ran right into the name.
+  const product = hero.querySelector('.hero-product');
+  hero.style.backgroundImage = bottle.image_url ? 'none' : '';
   hero.classList.toggle('has-product', !!bottle.image_url);
+  if (bottle.image_url) product.src = bottle.image_url;
+  else product.removeAttribute('src');
   document.querySelector('#detail-overlay .info .name').textContent = bottle.name;
   document.querySelector('#detail-overlay .info .sub').textContent =
     `${bottle.producer} · ${bottle.region ?? bottle.country}${bottle.vintage ? ' · ' + bottle.vintage : ''}`;
