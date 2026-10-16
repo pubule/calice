@@ -439,6 +439,7 @@ function openRecognizeSheet(suggestion, capturedPhotoDataUrl) {
   editSavedCallback = null;
   document.getElementById('recognize-title').textContent = 'Rivedi e conferma';
   document.getElementById('recognize-save').textContent = 'Salva';
+  document.getElementById('rec-note-section').classList.remove('hidden');
 
   document.getElementById('rec-name').value = suggestion.name ?? '';
   document.getElementById('rec-producer').value = suggestion.producer ?? '';
@@ -495,6 +496,9 @@ export function openEditWineSheet(bottle, onSaved) {
   editSavedCallback = onSaved ?? null;
   document.getElementById('recognize-title').textContent = 'Modifica vino';
   document.getElementById('recognize-save').textContent = 'Salva modifiche';
+  // The note belongs to the bottle sheet ("Le tue note"), which already has
+  // its own composer: editing the wine's data doesn't repeat it.
+  document.getElementById('rec-note-section').classList.add('hidden');
 
   document.getElementById('rec-name').value = bottle.name ?? '';
   document.getElementById('rec-producer').value = bottle.producer ?? '';
@@ -578,7 +582,6 @@ async function saveRecognizedWine() {
     try {
       await api.patch(`/api/wines/${editingWineId}`, { name, producer, country, region, type, vintage, grapeVariety, denomination });
       closeRecognizeSheet();
-      await maybeSaveNote(editingBottleId);
       if (pendingPhotoFile) {
         try {
           await uploadBottlePhoto(editingBottleId, pendingPhotoFile);

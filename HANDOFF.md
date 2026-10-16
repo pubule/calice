@@ -1022,6 +1022,12 @@ questo file è il riassunto "dove eravamo rimasti".
       dopo 450 ms senza tastiera; se il campo è già tutto visibile non si
       muove niente. Provato in Chromium, **non** con la tastiera iOS vera.
 
+39. **"Modifica vino" senza nota** (build 107). Il foglio condiviso
+    `#recognize-overlay` in modalità `edit` nasconde ora la sezione nota
+    (`#rec-note-section`, classe `.hidden`) e non salva più note: la nota
+    vive nella scheda della bottiglia, che ha già il suo modulo (punto 36).
+    In "Rivedi e conferma" (aggiunta di un vino nuovo) la sezione resta.
+
 ## Cose note, non (ancora) da rifare
 
 - `status-bar-style` è `black-translucent` (non più `default`), `.screen`
