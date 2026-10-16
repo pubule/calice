@@ -1089,6 +1089,28 @@ questo file è il riassunto "dove eravamo rimasti".
     35, in cantina); cancellati 33 vini di prova/vecchie ricerche e le 6
     voci di attività collegate.
 
+43. **Risultati che si aprono nella riga** (build 111). L'utente trovava
+    poco intuitivo che il "+" su un vino di Vivino aprisse un altro foglio;
+    su tre mockup (aggiunta immediata / apertura nella riga / scheda
+    anteprima) ha scelto la B.
+    - Catalogo e Vivino hanno la stessa riga, con freccia: toccandola si
+      apre un pannello (`pickPanelHtml()` in `add.js`) con i dati che
+      verranno salvati (tipo, zona, uve; da Vivino + atlante), l'annata
+      (campo solo se il vino non ne ha una), le bottiglie con −/+, il tasto
+      "Aggiungi alla cantina" e "Modifica tutti i dati" (il foglio lungo).
+      Una sola riga aperta per volta; lo stato (`expanded`) sopravvive al
+      ridisegno quando arrivano i risultati di Vivino.
+    - Per Vivino il vino si crea con `POST /api/wines` (che deduplica) e poi
+      la bottiglia; niente più finestra "Quante bottiglie?" dai risultati
+      (resta per il codice a barre e per il foglio lungo).
+    - I vini già in cantina o nel catalogo spariscono da "Da Vivino"
+      (confronto su produttore + nome, accenti ignorati).
+    - `.screen` non deve mai scorrere: scrivendo mentre il foglio sale, il
+      browser la spostava di 91px per mostrare il cursore e il titolo del
+      foglio finiva fuori schermo. Ora `main.js` la riporta a zero.
+    - La ricerca nel catalogo sul server non ignora gli accenti ("saten" non
+      trova "Satèn"): limite preesistente, non toccato.
+
 ## Cose note, non (ancora) da rifare
 
 - `status-bar-style` è `black-translucent` (non più `default`), `.screen`

@@ -18,7 +18,6 @@ let cellarBottles = []; // the user's bottles, newest first — "Dalla tua canti
 let cellarLoad = null;
 let changed = false; // something was added: the screen below re-renders on close
 
-const ICON_PLUS = '<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>';
 const ICON_CAM = '<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7l1.8-2.5h4.4L16 7"/><circle cx="12" cy="13.5" r="3.2"/></svg>';
 const ICON_BAR = '<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 6v12M7 6v12M10 6v12M14 6v12M17 6v12M20 6v12"/></svg>';
 const ICON_CLOCK = '<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg>';
@@ -27,25 +26,6 @@ function photoTag(imageUrl, type) {
   return imageUrl
     ? `<img class="result-photo photo product" src="${escapeHtml(imageUrl)}" alt="">`
     : `<div class="result-photo photo ${photoClass(type)}"></div>`;
-}
-
-// Every field here comes straight from the wines table via /api/wines/search
-// (or a barcode lookup on the same table) — including rows other users
-// created through POST /api/wines, which the backend does not validate at
-// all. Treat every field as attacker-controlled, numeric-looking ones (id,
-// vintage) included, and escape before it goes into innerHTML.
-function resultRowHtml(w) {
-  const name = escapeHtml(w.name);
-  const vintage = w.vintage ? ' ' + escapeHtml(w.vintage) : '';
-  const producer = escapeHtml(w.producer);
-  const sub = `${producer} · ${escapeHtml(w.region ?? w.country)}`;
-  const id = escapeHtml(w.id);
-  return `
-    <div class="result-row" data-wine-id="${id}" role="button" tabindex="0" aria-label="Aggiungi ${name}${vintage} alla cantina">
-      ${photoTag(w.image_url, w.type)}
-      <div class="result-body"><div class="name">${name}${vintage}</div><div class="sub">${sub}</div></div>
-      <div class="add-btn" aria-hidden="true">${ICON_PLUS}</div>
-    </div>`;
 }
 
 // A bottle already in the user's cellar: one tap on +1 adds a bottle of it.
@@ -62,24 +42,60 @@ function mineRowHtml(b) {
     </div>`;
 }
 
-// A specific product query often ranks several near-identical wines, so
-// this never auto-picks one candidate: the user taps the right one, same
-// review-before-save principle as the rest of this feature.
-function webCandidateRowHtml(candidate, i) {
-  const name = escapeHtml(candidate.title ?? '');
-  let source = 'Trovato sul web';
-  if (candidate.sourceUrl) {
-    try {
-      source = new URL(candidate.sourceUrl).hostname.replace(/^www\./, '');
-    } catch {
-      // malformed sourceUrl from an external source — keep the generic label
-    }
-  }
+const ICON_CHEV = '<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>';
+const TYPE_LABEL = { rosso: 'Rosso', bianco: 'Bianco', bollicine: 'Bollicine', rosato: 'Rosato' };
+
+// A wine the user can add, from the shared catalog or from Vivino, in one
+// shape. Catalog rows come from the wines table and Vivino rows from an
+// unofficial index: every field is attacker-controlled and escaped on output.
+function catalogPick(w) {
+  return {
+    key: `c${w.id}`, wineId: w.id, name: w.name, producer: w.producer, vintage: w.vintage,
+    type: w.type, country: w.country, region: w.region, denomination: w.denomination, grape: w.grape_variety, image: w.image_url,
+  };
+}
+function webPick(c, i) {
+  const pre = completeFromAtlas(c.prefill) ?? {};
+  return {
+    key: `w${i}`, wineId: null, name: pre.name ?? c.title ?? '', title: c.title, producer: pre.producer,
+    type: pre.type, country: pre.country, region: pre.region, denomination: pre.denomination, grape: pre.grapeVariety,
+    image: c.imageUrl, sourceUrl: c.sourceUrl, snippet: c.snippet,
+  };
+}
+
+// Tapping a result opens it in place (the user's choice among three mockups,
+// over a second sheet): what will be saved, the vintage, how many bottles,
+// one button. The long form stays behind "Modifica tutti i dati".
+let expanded = null; // { key, qty, vintage } — survives re-renders of the list
+
+function pickRowHtml(w) {
+  const open = expanded?.key === w.key;
+  const name = escapeHtml(w.name);
+  const vintage = w.vintage ? ' ' + escapeHtml(w.vintage) : '';
+  const where = w.denomination || w.region || w.country;
+  const sub = [w.producer, where].filter(Boolean).map(escapeHtml).join(' · ') || (w.wineId ? '' : 'Vivino');
   return `
-    <div class="result-row" data-candidate="${i}" role="button" tabindex="0">
-      ${photoTag(candidate.imageUrl, candidate.prefill?.type ?? 'rosso')}
-      <div class="result-body"><div class="name">${name}</div><div class="sub">${escapeHtml(source)}</div></div>
-      <div class="add-btn" aria-hidden="true">${ICON_PLUS}</div>
+    <div class="result-item${open ? ' open' : ''}" data-key="${escapeHtml(w.key)}">
+      <div class="result-row" data-expand role="button" tabindex="0" aria-expanded="${open}">
+        ${photoTag(w.image, w.type ?? 'rosso')}
+        <div class="result-body"><div class="name">${name}${vintage}</div><div class="sub">${sub}</div></div>
+        <span class="result-chev">${ICON_CHEV}</span>
+      </div>
+      ${open ? pickPanelHtml(w) : ''}
+    </div>`;
+}
+
+function pickPanelHtml(w) {
+  const facts = [TYPE_LABEL[w.type], w.denomination && w.region ? w.region : null, w.grape, w.vintage ? `Annata ${w.vintage}` : null].filter(Boolean);
+  const vintageField = w.vintage ? '' : `
+      <div class="exp-row"><label for="exp-vintage">Annata</label><input id="exp-vintage" class="num-input exp-vintage" type="number" inputmode="numeric" placeholder="Nessuna" value="${escapeHtml(expanded.vintage ?? '')}"></div>`;
+  return `
+    <div class="result-exp">
+      ${facts.length ? `<div class="exp-facts">${facts.map((f) => `<span>${escapeHtml(f)}</span>`).join('')}</div>` : '<p class="exp-note">Da Vivino arriva solo il nome: gli altri dati li puoi aggiungere con "Modifica tutti i dati".</p>'}
+      ${vintageField}
+      <div class="exp-row"><span id="exp-qty-label">Bottiglie</span><div class="qty-step" role="group" aria-labelledby="exp-qty-label"><button type="button" data-qty="-1" aria-label="Una bottiglia in meno">−</button><output>${expanded.qty}</output><button type="button" data-qty="1" aria-label="Una bottiglia in più">+</button></div></div>
+      <button type="button" class="exp-add" data-confirm>Aggiungi alla cantina</button>
+      <button type="button" class="exp-edit" data-edit>Modifica tutti i dati</button>
     </div>`;
 }
 
@@ -283,22 +299,84 @@ function rerender() {
   else renderResults(q);
 }
 
+// Same wine already listed higher up (in the cellar, or in the catalog):
+// Vivino often returns it again under "<producer> <name>".
+function wineKeys(producer, name) {
+  const keys = [foldText(`${producer ?? ''} ${name ?? ''}`)];
+  if (producer && foldText(name).startsWith(foldText(producer))) keys.push(foldText(name));
+  return keys;
+}
+
+let shownPicks = new Map(); // key -> pick currently on screen
+
 function renderResults(query) {
   const words = foldText(query).split(/\s+/).filter(Boolean);
   const mine = cellarBottles.filter((b) => matchesCellar(b, words));
-  const mineIds = new Set(mine.map((b) => String(b.wine_id)));
-  const catalog = lastCatalog?.filter((w) => !mineIds.has(String(w.id)));
+  const mineIds = new Set(cellarBottles.map((b) => String(b.wine_id)));
+  const catalog = (lastCatalog ?? []).filter((w) => !mineIds.has(String(w.id))).map(catalogPick);
+  const known = new Set([...cellarBottles, ...(lastCatalog ?? [])].flatMap((w) => wineKeys(w.producer, w.name)));
+  const web = (lastWeb ?? []).map(webPick).filter((w) => !known.has(foldText(w.title)) && !wineKeys(w.producer, w.name).some((k) => known.has(k)));
+  shownPicks = new Map([...catalog, ...web].map((w) => [w.key, w]));
+  if (expanded && !shownPicks.has(expanded.key)) expanded = null;
   let html = '';
   if (mine.length) html += `${groupLabel('Nella tua cantina', mine.length)}<div class="add-group">${mine.map(mineRowHtml).join('')}</div>`;
-  if (catalog?.length) html += `${groupLabel('Catalogo', catalog.length)}<div class="add-group">${catalog.map(resultRowHtml).join('')}</div>`;
+  if (catalog.length) html += `${groupLabel('Catalogo', catalog.length)}<div class="add-group">${catalog.map(pickRowHtml).join('')}</div>`;
   if (lastWeb === null) {
     html += `${groupLabel('Da Vivino', 'cerco…')}<div class="add-group" aria-hidden="true"><div class="add-skel"></div><div class="add-skel"></div></div>`;
-  } else if (lastWeb.length) {
-    html += `${groupLabel('Da Vivino', lastWeb.length)}<div class="add-group">${lastWeb.map(webCandidateRowHtml).join('')}</div>`;
+  } else if (web.length) {
+    html += `${groupLabel('Da Vivino', web.length)}<div class="add-group">${web.map(pickRowHtml).join('')}</div>`;
   } else {
-    html += `${groupLabel('Da Vivino', 0)}<p class="add-empty">Nessun risultato su Vivino per "${escapeHtml(query)}"</p>`;
+    html += `${groupLabel('Da Vivino', 0)}<p class="add-empty">Nessun altro risultato su Vivino per "${escapeHtml(query)}"</p>`;
   }
   results.innerHTML = html + MANUAL_HTML;
+}
+
+function validVintage(raw) {
+  const v = Number(String(raw ?? '').trim());
+  return Number.isInteger(v) && v >= 1800 && v <= new Date().getFullYear() + 1 ? v : undefined;
+}
+
+// The panel's "Aggiungi alla cantina": a catalog wine is added as it is; a
+// Vivino one is created first (POST /api/wines dedupes on name, producer and
+// vintage, so the same wine is never stored twice).
+async function confirmPick(w, button) {
+  const qty = expanded?.qty ?? 1;
+  const typed = expanded?.vintage ?? '';
+  const vintage = w.vintage ?? validVintage(typed);
+  if (!w.vintage && String(typed).trim() && vintage === undefined) {
+    await alertModal("L'annata deve essere un anno, per esempio 2019.");
+    return;
+  }
+  button.disabled = true;
+  try {
+    let wineId = w.wineId;
+    if (!wineId) {
+      const imageUrl = w.image && w.image.length <= 200 ? w.image : undefined;
+      const wine = await api.post('/api/wines', {
+        name: w.name, producer: w.producer || 'Produttore sconosciuto', country: w.country || 'Italia',
+        region: w.region || undefined, type: SHEET_TYPES.has(w.type) ? w.type : 'rosso', vintage,
+        grapeVariety: w.grape || undefined, denomination: w.denomination || undefined, imageUrl,
+      });
+      wineId = wine.id;
+    }
+    rememberSearch(currentQuery());
+    expanded = null;
+    await postBottle(wineId, qty);
+  } catch (err) {
+    console.error(err);
+    await alertModal('Impossibile aggiungere il vino, riprova.');
+  } finally {
+    button.disabled = false;
+  }
+}
+
+function editPick(w) {
+  rememberSearch(currentQuery());
+  const vintage = w.vintage ?? validVintage(expanded?.vintage);
+  openRecognizeSheet({
+    name: w.name, producer: w.producer, country: w.country, region: w.region, type: SHEET_TYPES.has(w.type) ? w.type : undefined,
+    vintage, grapeVariety: w.grape, denomination: w.denomination, imageUrl: w.image, sourceUrl: w.sourceUrl, rawText: w.snippet,
+  });
 }
 
 // Every await between the typed text and a DOM write re-checks that the text
@@ -313,6 +391,7 @@ async function runSearch() {
   }
   lastCatalog = null;
   lastWeb = null;
+  expanded = null;
   renderResults(query);
   webTimer = setTimeout(() => searchWeb(query), 600);
   try {
@@ -343,6 +422,7 @@ async function searchWeb(query) {
 export function openAddSheet({ focus = true } = {}) {
   if (!overlay) return;
   if (input) input.value = '';
+  expanded = null;
   lastCatalog = null;
   lastWeb = null;
   changed = false;
@@ -394,23 +474,40 @@ results?.addEventListener('click', (e) => {
     plusOne(plus.dataset.plus1);
     return;
   }
-  const wineRow = t.closest('[data-wine-id]');
-  if (wineRow) {
-    rememberSearch(currentQuery());
-    addWineToCellar(Number(wineRow.dataset.wineId));
+  const item = t.closest('.result-item');
+  const pick = item && shownPicks.get(item.dataset.key);
+  if (!pick) return;
+  const step = t.closest('[data-qty]');
+  if (step) {
+    expanded.qty = Math.min(99, Math.max(1, expanded.qty + Number(step.dataset.qty)));
+    item.querySelector('.qty-step output').textContent = expanded.qty;
     return;
   }
-  const cand = t.closest('[data-candidate]');
-  if (cand && lastWeb) {
-    const query = currentQuery();
-    const c = lastWeb[Number(cand.dataset.candidate)];
-    if (!c) return;
-    rememberSearch(query);
-    // Vivino candidates carry structured fields (prefill); without them
-    // the typed query stays the name.
-    const prefill = completeFromAtlas(c.prefill) ?? {};
-    openRecognizeSheet({ ...prefill, name: prefill.name ?? query, imageUrl: c.imageUrl, sourceUrl: c.sourceUrl, rawText: c.snippet });
+  if (t.closest('[data-confirm]')) {
+    confirmPick(pick, t.closest('[data-confirm]'));
+    return;
   }
+  if (t.closest('[data-edit]')) {
+    editPick(pick);
+    return;
+  }
+  if (t.closest('[data-expand]')) {
+    expanded = expanded?.key === pick.key ? null : { key: pick.key, qty: 1, vintage: '' };
+    renderResults(currentQuery());
+    const opened = expanded && results.querySelector(`.result-item[data-key="${CSS.escape(pick.key)}"]`);
+    // Scroll the results list only: scrollIntoView would also move the sheet
+    // itself (overflow:hidden is still scrollable) and hide its header.
+    if (opened) {
+      const box = results.getBoundingClientRect();
+      const r = opened.getBoundingClientRect();
+      const delta = r.bottom > box.bottom - 12 ? Math.min(r.bottom - box.bottom + 12, r.top - box.top - 8) : 0;
+      const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+      if (delta > 0) results.scrollBy({ top: delta, behavior: reduce ? 'auto' : 'smooth' });
+    }
+  }
+});
+results?.addEventListener('input', (e) => {
+  if (e.target.id === 'exp-vintage' && expanded) expanded.vintage = e.target.value;
 });
 
 // ---- viewfinder: label photo / barcode / back to typing ----

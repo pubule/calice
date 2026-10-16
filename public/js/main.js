@@ -74,6 +74,15 @@ new MutationObserver((records) => {
   }
 }).observe(document.body, { subtree: true, attributes: true, attributeFilter: ['class'], attributeOldValue: true });
 
+// .screen is the app's fixed frame: only views and sheets inside it scroll.
+// A browser can still scroll it to bring a caret into view (typing while the
+// "Aggiungi un vino" sheet is still sliding up moved the whole app 91px and
+// hid the sheet's header), so put it straight back.
+const appFrame = document.querySelector('.screen');
+appFrame?.addEventListener('scroll', () => {
+  if (appFrame.scrollTop || appFrame.scrollLeft) appFrame.scrollTo(0, 0);
+});
+
 // Scrolls the field's own scroll container (a .view or a sheet — never the
 // fixed .screen) so the field sits in the middle of the visible area.
 function revealField(el) {

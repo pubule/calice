@@ -98,6 +98,9 @@ quando la tastiera sparisce. Regole, ora in `main.js`:
   nuovo non può dimenticarlo.
 - Ricalcolo anche su `focusout` (subito, 350 ms, 800 ms), `pageshow` e
   `visibilitychange`, non solo sugli eventi del viewport.
+- `.screen` stessa non scorre mai (`overflow:hidden`, ma il browser può
+  comunque spostarla per mostrare un cursore): un listener `scroll` in
+  `main.js` la riporta a 0. Scorrono solo le viste e i fogli dentro.
 
 ### La "fascia nera in fondo": NON era canvas non dipinto — era `body` in dark mode
 

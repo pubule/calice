@@ -954,3 +954,29 @@ input.search:focus, select.search:focus, .text-input:focus, .num-input:focus, te
   .result-row, .add-skel, .camera-scanline{animation:none;}
   .camera-found, .camera-found.show{transform:none;}
 }
+
+/* Risultato che si apre nella riga (scelta B sui mockup): la card è
+   .result-item, che contiene la riga e il pannello. Mai pannello fratello
+   diretto di .result-row (vedi CLAUDE.md, righe espandibili). */
+.result-item{background:#ffffff; border:1px solid #e2e0d8; border-radius:12px; overflow:hidden; animation:add-row-in .22s ease both; transition:border-color .2s ease;}
+.result-item.open{border-color:#cdb9be;}
+.result-item > .result-row{border:0; border-radius:0; background:transparent; animation:none;}
+.result-chev{width:28px; height:28px; display:flex; align-items:center; justify-content:center; color:#736a5d; flex-shrink:0; transition:transform .2s ease;}
+.result-chev svg{width:18px; height:18px;}
+.result-item.open .result-chev{transform:rotate(180deg);}
+.result-exp{display:flex; flex-direction:column; gap:12px; padding:2px 12px 12px; animation:add-row-in .2s ease both;}
+.exp-facts{display:flex; flex-wrap:wrap; gap:6px;}
+.exp-facts span{padding:4px 10px; border-radius:999px; background:#f3f0e9; color:#4a423a; font-size:calc(12rem/17);}
+.exp-note{margin:0; font-size:calc(12rem/17); color:#736a5d; line-height:1.4;}
+.exp-row{display:flex; align-items:center; justify-content:space-between; gap:12px; font-size:calc(13rem/17); color:#736a5d;}
+.exp-vintage{width:110px; text-align:center;}
+.qty-step{display:flex; align-items:center; border:1px solid #e2e0d8; border-radius:999px; overflow:hidden; background:#ffffff;}
+.qty-step button{width:44px; height:40px; border:0; background:transparent; color:#5b2333; font-size:calc(18rem/17); cursor:pointer;}
+.qty-step output{min-width:28px; text-align:center; font-family:'JetBrains Mono',monospace; font-size:calc(14rem/17); color:#241e1a;}
+.exp-add{min-height:46px; border:0; border-radius:999px; background:#5b2333; color:#ffffff; font-family:inherit; font-size:calc(14rem/17); font-weight:600; cursor:pointer;}
+.exp-add:disabled{opacity:.6;}
+.exp-edit{align-self:center; min-height:44px; padding:0 8px; border:0; background:none; color:#5b2333; font-family:inherit; font-size:calc(13rem/17); font-weight:600; text-decoration:underline; text-underline-offset:3px; cursor:pointer;}
+@media (prefers-reduced-motion: reduce){
+  .result-item, .result-exp{animation:none;}
+  .result-chev{transition:none;}
+}
