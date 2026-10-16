@@ -3,13 +3,14 @@ import { escapeHtml, photoClass } from '../util.js';
 import { openLocationPicker, locationLabel, refreshCellarList, editBottle, deleteBottle } from './cellar.js';
 import { confirmModal, alertModal } from '../modal.js';
 import { showToast } from '../toast.js';
-import { tastingProfileHtml, wireTastingProfile, resetTastingProfile, readTastingProfile, isTastingProfileEmpty, tasteSummary } from '../tasting-profile.js';
+import { tastingProfileHtml, wireTastingProfile, resetTastingProfile, readTastingProfile, setTastingProfile, isTastingProfileEmpty, tasteSummary } from '../tasting-profile.js';
 
 let currentBottleId = null;
 let currentBottle = null; // same object reference cellar.js's currentBottles holds, mutated in place on save
 let currentMeId = null;
-// The note saved from the composer since the sheet was opened: saving again
-// updates it instead of adding a near-identical one. Cleared on every open.
+// The user's own note on this bottle, edited in place: the composer opens
+// filled with it (one note per bottle and person) and saving updates it.
+// Null when there is none yet — the first save creates it.
 let savedNoteId = null;
 
 function noteHtml(n) {
@@ -119,13 +120,22 @@ async function uncorkOne() {
   }
 }
 
+// Own notes are not listed under the composer: the latest one IS the
+// composer. Any older own notes (from before notes were edited in place) are
+// still shown, as "Note precedenti", so nothing written is hidden.
 async function loadNotes(bottleId) {
   const notes = await api.get(`/api/bottles/${bottleId}/notes`);
-  document.getElementById('notes-mine').innerHTML =
-    notes.filter((n) => n.user_id === currentMeId).map(noteHtml).join('') || '<p>Nessuna nota ancora.</p>';
+  const mine = notes.filter((n) => n.user_id === currentMeId);
+  const older = mine.filter((n) => n.id !== savedNoteId);
+  document.getElementById('notes-mine').innerHTML = older.length
+    ? `<div class="field-label">Note precedenti</div>${older.map(noteHtml).join('')}`
+    : '';
   document.getElementById('notes-others').innerHTML =
     notes.filter((n) => n.user_id !== currentMeId).map(noteHtml).join('') || '<p>Nessuna nota ancora da chi condivide o segui.</p>';
+  return mine;
 }
+
+let fillNoteComposerFn = () => {};
 
 async function loadPhotos(bottleId) {
   const photos = await api.get(`/api/bottles/${bottleId}/photos`);
@@ -160,7 +170,12 @@ export async function openDetail(bottle, me) {
   resetNoteComposer();
   renderQuantity();
   renderHero(bottle);
-  await Promise.all([loadNotes(currentBottleId), loadPhotos(currentBottleId)]);
+  // Notes are fetched once to find the user's own (newest first from the
+  // API), fill the composer with it, then listed without it.
+  const [mine] = await Promise.all([api.get(`/api/bottles/${currentBottleId}/notes`), loadPhotos(currentBottleId)]);
+  const own = mine.filter((n) => n.user_id === currentMeId)[0];
+  if (own) fillNoteComposerFn(own);
+  await loadNotes(currentBottleId);
 }
 
 // The gallery add-tile and file input are re-created on every loadPhotos()
@@ -235,6 +250,17 @@ function wireStaticControls() {
     document.getElementById('note-text').value = '';
     document.querySelectorAll('#detail-overlay .stars-input span').forEach((s) => { s.classList.remove('on'); s.setAttribute('aria-checked', 'false'); });
     resetTastingProfile(detailTaste);
+  };
+  fillNoteComposerFn = (note) => {
+    savedNoteId = note.id;
+    noteSubmit.textContent = 'Aggiorna nota';
+    document.getElementById('note-text').value = note.text ?? '';
+    const rating = Math.min(5, Math.max(0, Math.round(Number(note.rating)) || 0));
+    document.querySelectorAll('#detail-overlay .add-note .stars-input span').forEach((s, i) => {
+      s.classList.toggle('on', i < rating);
+      s.setAttribute('aria-checked', String(i < rating));
+    });
+    setTastingProfile(detailTaste, note);
   };
   noteSubmit?.addEventListener('click', async () => {
     if (currentBottleId == null || noteSubmit.disabled) return;

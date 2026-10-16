@@ -248,6 +248,32 @@ export function resetTastingProfile(root) {
   });
 }
 
+// Loads a saved note into the widget (the inverse of readTastingProfile): the
+// bottle sheet opens with the user's own note already filled in, ready to be
+// updated. Axes the note never set stay at the untouched middle.
+export function setTastingProfile(root, note) {
+  resetTastingProfile(root);
+  const flavor = new Set(Array.isArray(note.flavor_tags) ? note.flavor_tags : []);
+  const pairings = new Set(Array.isArray(note.food_pairings) ? note.food_pairings : []);
+  root.querySelectorAll('.flavor-chip-panel .chip[data-toggle]').forEach((chip) => {
+    if (flavor.has(chip.textContent)) { chip.classList.add('active'); chip.setAttribute('aria-pressed', 'true'); }
+  });
+  root.querySelectorAll('.chip-row .chip[data-toggle]').forEach((chip) => {
+    if (pairings.has(chip.textContent)) { chip.classList.add('active'); chip.setAttribute('aria-pressed', 'true'); }
+  });
+  // Open the family of the first chosen aroma, so what was picked is visible.
+  const first = FLAVOR_CATEGORIES.find((c) => c.tags.some((t) => flavor.has(t)));
+  if (first) {
+    root.querySelectorAll('.flavor-card').forEach((c) => { const on = c.dataset.cat === first.id; c.classList.toggle('active', on); c.setAttribute('aria-pressed', String(on)); });
+    root.querySelectorAll('.flavor-chip-panel').forEach((p) => p.classList.toggle('hidden', p.dataset.cat !== first.id));
+  }
+  root.querySelectorAll('.taste-slider').forEach((slider) => {
+    const v = note[`taste_${slider.dataset.axis}`];
+    slider.dataset.value = String(v == null ? DEFAULT_VALUE : fromStep(toStep(v)));
+    positionThumb(slider);
+  });
+}
+
 export function readTastingProfile(root) {
   const flavorTags = Array.from(root.querySelectorAll('.flavor-chip-panel .chip.active[data-toggle]')).map((c) => c.textContent);
   const foodPairings = Array.from(root.querySelectorAll('.chip-row .chip.active[data-toggle]')).map((c) => c.textContent);

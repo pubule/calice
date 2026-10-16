@@ -990,6 +990,17 @@ questo file è il riassunto "dove eravamo rimasti".
     Stato in `cellar.js`: `slotSel`, `movingBottle`, `elemView`, azzerati
     tornando all'elenco degli elementi o chiudendo il foglio.
 
+36. **La tua nota è il modulo stesso** (build 104). Su richiesta
+    dell'utente: aprendo la scheda di una bottiglia, se hai già una nota il
+    modulo si apre compilato con quella (testo, stelle, aromi, abbinamenti,
+    cursori; `setTastingProfile()` in `tasting-profile.js`, la famiglia del
+    primo aroma scelto è quella aperta) e il pulsante è "Aggiorna nota": una
+    nota per persona e bottiglia, modificata sul posto. Sotto non si ripete
+    più; eventuali note proprie più vecchie (di prima della modifica sul
+    posto) restano visibili come "Note precedenti".
+    Pulizia DB fatta su richiesta: cancellata la nota id 9 (bottiglia 10,
+    15/10, scritta prima delle modifiche), resta la id 10.
+
 ## Cose note, non (ancora) da rifare
 
 - `status-bar-style` è `black-translucent` (non più `default`), `.screen`
