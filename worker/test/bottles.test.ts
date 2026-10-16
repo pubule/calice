@@ -234,6 +234,17 @@ describe('bottles', () => {
     expect((await app.request(`/api/bottles/${bottleId}/vintage`, json(auth, 'POST', { vintage: 2018, quantity: 5 }), env)).status).toBe(400);
   });
 
+  it('sets and clears the disgorgement month', async () => {
+    const { auth, bottleId } = await setup('b14@b.com', 1);
+    const set = await (await app.request(`/api/bottles/${bottleId}`, json(auth, 'PATCH', { disgorgedAt: '2026-01' }), env)).json<any>();
+    expect(set.disgorged_at).toBe('2026-01');
+    expect((await app.request(`/api/bottles/${bottleId}`, json(auth, 'PATCH', { disgorgedAt: '2026-13' }), env)).status).toBe(400);
+    const kept = await (await app.request(`/api/bottles/${bottleId}`, json(auth, 'PATCH', { pricePaid: 10 }), env)).json<any>();
+    expect(kept.disgorged_at).toBe('2026-01');
+    const cleared = await (await app.request(`/api/bottles/${bottleId}`, json(auth, 'PATCH', { disgorgedAt: null }), env)).json<any>();
+    expect(cleared.disgorged_at).toBeNull();
+  });
+
   it('frees the latest places when the number of bottles goes down', async () => {
     const { auth, bottleId, elementId } = await setup('b10@b.com', 2);
     await app.request(`/api/bottles/${bottleId}/places`, json(auth, 'POST', { elementId, tier: 1, col: 0, depth: 1 }), env);

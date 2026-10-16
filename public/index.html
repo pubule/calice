@@ -222,7 +222,7 @@
     </div>
     <div class="logout" role="button" tabindex="0">Esci</div>
     <div class="app-footer">
-      <div class="app-build">build 143</div>
+      <div class="app-build">build 144</div>
       <div class="app-credit"><a href="https://www.flaticon.com/free-icons/wine" target="_blank" rel="noopener">Wine icons created by iconixar - Flaticon</a></div>
       <div class="app-credit">Foto dei paesaggi da <a href="https://commons.wikimedia.org/" target="_blank" rel="noopener">Wikimedia Commons</a>, autori e licenze nella scheda di ogni vino</div>
     </div>
@@ -457,6 +457,10 @@
         </div>
         <!-- Edit only: the drinking window. Empty = the app's estimate (shown
              as placeholders and in the note below); years typed = the user's. -->
+        <!-- Edit only, sparkling wines: disgorgement month from the label. -->
+        <div class="form-field hidden" id="rec-disgorged-field"><label for="rec-disgorged">Sboccatura</label>
+          <input id="rec-disgorged" class="search" type="month" aria-describedby="rec-disgorged-hint">
+          <p class="drink-est" id="rec-disgorged-hint">Mese e anno scritti in etichetta, per i metodo classico. Da qui parte la stima di quando berlo.</p></div>
         <div class="form-field hidden" id="rec-drink-field"><label for="rec-drink-from">Da bere</label>
           <div class="form-pair"><div class="affix-field prefix"><span aria-hidden="true">dal</span><input id="rec-drink-from" type="text" inputmode="numeric" autocomplete="off" aria-label="Da bere dal (anno)"></div><div class="affix-field prefix"><span aria-hidden="true">al</span><input id="rec-drink-until" type="text" inputmode="numeric" autocomplete="off" aria-label="Da bere fino al (anno)"></div></div>
           <p class="drink-est" id="rec-drink-est"></p></div>

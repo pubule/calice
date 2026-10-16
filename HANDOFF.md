@@ -1459,6 +1459,18 @@ questo file è il riassunto "dove eravamo rimasti".
     parte (stessa cantina, prezzo e finestra) e scala l'originale, che tiene
     note e posizioni.
 
+65. **Sboccatura delle bollicine** (build 144, migrazione 0016,
+    `bottles.disgorged_at` YYYY-MM, per riga di bottiglie perché i lotti
+    sono sboccati in mesi diversi). Ordine della stima "Da bere": anni
+    scritti a mano > sboccatura (solo `bollicine`) > annata > data di
+    inserimento. Dalla sboccatura (`AFTER_DISGORGING` in `drink-window.js`):
+    pas dosé/dosaggio zero 0-2 anni (meglio 0-1), riserva/millesimati 0-5
+    (1-3), altri 0-3 (0-2). In Modifica campo "Sboccatura" (`input
+    type=month`) visibile solo se il tipo è Bollicine; PATCH bottles
+    `disgorgedAt` (null cancella). Le Macine dell'utente aveva 2026 come
+    annata: era la sboccatura (gennaio 2026), annata tolta e sboccatura
+    inserita a mano in D1.
+
 ## Cose note, non (ancora) da rifare
 
 - `status-bar-style` è `black-translucent` (non più `default`), `.screen`

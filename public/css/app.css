@@ -1080,7 +1080,7 @@ input.search:focus, select.search:focus, .text-input:focus, .num-input:focus, te
 .affix-field span{color:#736a5d; font-size:calc(14rem/17); white-space:nowrap;}
 .affix-field .affix-star{color:#b08a2e;}
 /* "Da bere" nel foglio Modifica (solo in modifica) e nella scheda del vino. */
-#rec-drink-field.hidden{display:none;}
+#rec-drink-field.hidden, #rec-disgorged-field.hidden{display:none;}
 .drink-est{margin:6px 0 0; font-size:calc(12rem/17); line-height:1.4; color:#736a5d;}
 .drink-est a{color:#5b2333; font-weight:600; text-decoration:underline; text-underline-offset:2px; cursor:pointer;}
 .drink-card .loc-text span{display:block;}

@@ -968,12 +968,17 @@ let editingDrinkBottle = null; // the bottle being edited, for the drink estimat
 function renderDrinkEstimate() {
   if (!editingDrinkBottle) return;
   const vintage = Number(document.getElementById('rec-vintage').value) || null;
+  const type = document.getElementById('rec-type').value;
+  // Disgorgement only matters for sparkling wines.
+  document.getElementById('rec-disgorged-field').classList.toggle('hidden', type !== 'bollicine');
+  const disgorged = type === 'bollicine' ? document.getElementById('rec-disgorged').value || null : null;
   const w = estimatedWindow({
     ...editingDrinkBottle,
     name: document.getElementById('rec-name').value,
-    type: document.getElementById('rec-type').value,
+    type,
     denomination: document.getElementById('rec-denomination').value,
     vintage,
+    disgorged_at: disgorged,
   });
   const from = document.getElementById('rec-drink-from');
   const until = document.getElementById('rec-drink-until');
@@ -981,7 +986,8 @@ function renderDrinkEstimate() {
   until.placeholder = String(w.until);
   const est = document.getElementById('rec-drink-est');
   const best = w.peakFrom === w.peakUntil ? `nel ${w.peakFrom}` : `tra il ${w.peakFrom} e il ${w.peakUntil}`;
-  const base = vintage ? `dall'annata ${vintage}` : 'da quando l\'hai aggiunto (con l\'annata è più precisa)';
+  const base = w.basis === 'disgorged' ? 'dalla sboccatura'
+    : vintage ? `dall'annata ${vintage}` : 'da quando l\'hai aggiunto (con l\'annata è più precisa)';
   est.textContent = `Stima ${base}: dal ${w.from} al ${w.until}, al meglio ${best}. Scrivi gli anni per cambiarla.`;
   if (from.value || until.value) {
     const reset = Object.assign(document.createElement('a'), { textContent: 'Usa la stima', role: 'button', tabIndex: 0 });
@@ -989,8 +995,9 @@ function renderDrinkEstimate() {
     est.append(' ', reset);
   }
 }
-for (const id of ['rec-drink-from', 'rec-drink-until', 'rec-vintage', 'rec-type', 'rec-denomination', 'rec-name']) {
+for (const id of ['rec-drink-from', 'rec-drink-until', 'rec-vintage', 'rec-type', 'rec-denomination', 'rec-name', 'rec-disgorged']) {
   document.getElementById(id)?.addEventListener('input', renderDrinkEstimate);
+  document.getElementById(id)?.addEventListener('change', renderDrinkEstimate);
 }
 let editSavedCallback = null;
 
@@ -1025,6 +1032,7 @@ function openRecognizeSheet(suggestion, capturedPhotoDataUrl) {
   document.getElementById('recognize-save').textContent = 'Salva';
   document.getElementById('rec-note-section').classList.remove('hidden');
   document.getElementById('rec-drink-field').classList.add('hidden');
+  document.getElementById('rec-disgorged-field').classList.add('hidden');
   editingDrinkBottle = null;
 
   document.getElementById('rec-name').value = suggestion.name ?? '';
@@ -1097,6 +1105,7 @@ export function openEditWineSheet(bottle, onSaved) {
   document.getElementById('rec-drink-from').value = bottle.drink_from ? String(bottle.drink_from).slice(0, 4) : '';
   document.getElementById('rec-drink-until').value = bottle.drink_until ? String(bottle.drink_until).slice(0, 4) : '';
   document.getElementById('rec-drink-field').classList.remove('hidden');
+  document.getElementById('rec-disgorged').value = bottle.disgorged_at ?? '';
   renderDrinkEstimate();
   pendingVivino = bottle.vivino_rating != null ? { rating: { average: Number(bottle.vivino_rating), count: bottle.vivino_ratings_count ?? null } } : null;
   fillVivinoFields({ alcohol: bottle.alcohol, producerUrl: bottle.producer_url, rating: pendingVivino?.rating });
@@ -1186,12 +1195,16 @@ async function saveRecognizedWine() {
     const f = document.getElementById('rec-drink-from').value.trim();
     const u = document.getElementById('rec-drink-until').value.trim();
     const year = (v) => (/^\d{4}$/.test(v) && Number(v) >= 1900 && Number(v) <= 2200 ? Number(v) : null);
+    // Disgorgement (sparkling only; cleared if the type changed).
+    const dis = document.getElementById('rec-disgorged').value;
+    const disgorgedAt = type === 'bollicine' && /^\d{4}-\d{2}$/.test(dis) ? dis : null;
     if (!f && !u) drink = { drinkFrom: null, drinkUntil: null };
     else if (year(f) && year(u) && year(f) <= year(u)) drink = { drinkFrom: `${f}-01-01`, drinkUntil: `${u}-12-31` };
     else {
       await alertModal('Scrivi due anni, per esempio dal 2028 al 2040, oppure lasciali vuoti per usare la stima.');
       return;
     }
+    drink.disgorgedAt = disgorgedAt;
   }
 
   if (sheetMode === 'edit') {

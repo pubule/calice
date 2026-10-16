@@ -1,8 +1,8 @@
 // When to open a bottle: a drinking window (from/until year) and its best
-// years (peak), estimated from the wine's denomination or type and its
-// vintage, unless the user set the years themselves in the edit sheet
-// (bottles.drink_from / drink_until). Without a vintage the estimate counts
-// from the day the wine was added, assuming it was bought ready to drink.
+// years (peak). In order: the years the user set in the edit sheet
+// (bottles.drink_from / drink_until); for a sparkling wine, its
+// disgorgement (bottles.disgorged_at); the vintage, by denomination or type;
+// without a vintage, the day the wine was added (assumed bought ready).
 // Used by Home's "Da bere" tab, the wine sheet and the edit sheet.
 
 // [pattern on denomination + name, type it applies to (or any), years from
@@ -36,8 +36,22 @@ const RULES = [
 const fold = (t) => String(t ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 const yearOf = (d) => (d ? Number(String(d).slice(0, 4)) || null : null);
 
+// After disgorgement a sparkling wine keeps its freshness for a while:
+// zero-dosage ones the shortest, vintage and riserva ones the longest.
+// [pattern, can drink until, best from, best until] in years from it.
+const AFTER_DISGORGING = [
+  [/pas dose|dosaggio zero|dosage zero|nature|non dose/, 2, 0, 1],
+  [/riserva|millesimato|millesime|vintage/, 5, 1, 3],
+  [null, 3, 0, 2],
+];
+
 function estimate(b) {
   const text = fold(`${b.denomination ?? ''} ${b.name ?? ''}`);
+  const disgorged = yearOf(b.disgorged_at);
+  if (disgorged && b.type === 'bollicine') {
+    const [, until, peakFrom, peakUntil] = AFTER_DISGORGING.find(([re]) => !re || re.test(text) || (re.source.includes('millesimato') && b.vintage));
+    return { from: disgorged, until: disgorged + until, peakFrom: disgorged + peakFrom, peakUntil: disgorged + peakUntil, basis: 'disgorged' };
+  }
   const rule = RULES.find(([re, type, , , , , only]) => (!re || re.test(text)) && (!type || type === b.type) && (only !== 'vintage' || b.vintage)) ?? RULES[RULES.length - 1];
   const [, , from, until, peakFrom, peakUntil] = rule;
   if (b.vintage) {

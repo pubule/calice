@@ -139,7 +139,11 @@ function renderHero(bottle) {
   const value = document.getElementById('drink-value');
   value.replaceChildren(Object.assign(document.createElement('b'), { textContent: sum.title }), ` · ${sum.text}`);
   value.firstChild.style.cssText = 'display:inline; color:#241e1a; font-size:inherit; margin:0;';
-  document.getElementById('drink-note').textContent = w.basis === 'added'
+  const MONTHS = ['gennaio', 'febbraio', 'marzo', 'aprile', 'maggio', 'giugno', 'luglio', 'agosto', 'settembre', 'ottobre', 'novembre', 'dicembre'];
+  const dis = /^(\d{4})-(\d{2})$/.exec(bottle.disgorged_at ?? '');
+  document.getElementById('drink-note').textContent = w.basis === 'disgorged' && dis
+    ? `Stima dalla sboccatura (${MONTHS[Number(dis[2]) - 1]} ${dis[1]}).`
+    : w.basis === 'added'
     ? 'Stima da quando l\'hai aggiunto: con l\'annata (in Modifica) è più precisa.'
     : w.basis === 'manual' ? 'Anni scelti da te.' : '';
 }
