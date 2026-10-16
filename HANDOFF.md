@@ -1178,6 +1178,18 @@ questo file è il riassunto "dove eravamo rimasti".
     avere i dati di Vivino); l'arricchimento automatico dei vini esistenti
     era stato iniziato e poi abbandonato, non è nel codice.
 
+49. **Modulo vino con etichette fisse** (build 118). Segnalato dall'utente:
+    a campo pieno il placeholder sparisce e "12,5" o "3,8" non dicono cosa
+    siano. Due mockup (righe raggruppate stile iOS / etichetta sopra): scelta
+    la **B**. Nel foglio "Rivedi e conferma" / "Modifica vino" ogni campo è
+    un `.form-field` con `<label>` vero; tre gruppi `.form-sec` (Vino,
+    Origine, Da Vivino); coppie in `.form-pair` (tipo+annata,
+    gradazione+voto) che vanno a capo da sole col testo grande (griglia
+    `auto-fit` con minimo in rem). I placeholder sono solo esempi ("es.
+    2019", "Facoltativo"). Unità dentro il campo con `.affix-field` ("% vol",
+    ★), stesso aspetto e focus del blocco "Campi". Il sito si mostra senza
+    `https://` e senza `/` finale; salvando torna identico.
+
 ## Cose note, non (ancora) da rifare
 
 - `status-bar-style` è `black-translucent` (non più `default`), `.screen`

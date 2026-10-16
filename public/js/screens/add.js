@@ -826,7 +826,9 @@ async function readVivinoFields(vintage) {
 
 function fillVivinoFields({ alcohol, producerUrl, rating }) {
   document.getElementById('rec-alcohol').value = decimalText(alcohol);
-  document.getElementById('rec-site').value = producerUrl ?? '';
+  // Shown without "https://" and the trailing slash ("www.tenutambrosini.it");
+  // saving adds https:// back (readVivinoFields). An http:// site keeps it.
+  document.getElementById('rec-site').value = (producerUrl ?? '').replace(/^https:\/\//i, '').replace(/\/$/, '');
   vivinoFieldStart = rating?.average ? decimalText(rating.average) : '';
   document.getElementById('rec-vivino').value = vivinoFieldStart;
 }

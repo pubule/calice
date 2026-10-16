@@ -991,3 +991,24 @@ input.search:focus, select.search:focus, .text-input:focus, .num-input:focus, te
   .result-item, .result-exp{animation:none;}
   .result-chev{transition:none;}
 }
+
+/* "Rivedi e conferma" / "Modifica vino": ogni campo ha un'etichetta fissa
+   (il placeholder sparisce proprio quando il campo è pieno, e "12,5" da solo
+   non dice cosa sia); il placeholder resta solo come esempio. Tre gruppi,
+   coppie brevi affiancate (scelta B sui mockup). */
+.form-sec{display:flex; flex-direction:column; gap:12px;}
+.form-sec-title{margin:4px 0 -2px 4px; font-family:'JetBrains Mono',monospace; font-size:calc(11rem/17); letter-spacing:.08em; text-transform:uppercase; color:#736a5d;}
+.form-field{display:flex; flex-direction:column; gap:5px; min-width:0;}
+.form-field > label{margin-left:4px; font-size:calc(13rem/17); font-weight:600; color:#4a423a;}
+.form-field > .search{width:100%;}
+/* Due colonne finché ognuna resta larga almeno ~9rem: con il testo grande
+   (Dimensioni testo, che scala i rem) le coppie vanno una sotto l'altra. */
+.form-pair{display:grid; grid-template-columns:repeat(auto-fit, minmax(min(100%, 9rem), 1fr)); gap:10px;}
+/* Campo con unità o simbolo dentro ("12,5 % vol", "★ 3,8"): stesso aspetto
+   dei campi del blocco "Campi", il focus è sul contenitore. */
+.affix-field{display:flex; align-items:center; gap:6px; min-height:44px; padding:0 14px; box-sizing:border-box; background:#ffffff; border:1px solid #e2e0d8; border-radius:12px; transition:border-color .15s ease, box-shadow .15s ease;}
+.affix-field:focus-within{border-color:#5b2333; box-shadow:0 0 0 3px rgba(91,35,51,.12);}
+.affix-field input{flex:1; width:100%; min-width:0; border:0; outline:none; background:transparent; padding:11px 0; font-family:'Archivo',sans-serif; font-size:max(calc(16rem/17), 16px); color:#241e1a; -webkit-appearance:none; appearance:none;}
+.affix-field input::placeholder{color:#736a5d; opacity:1;}
+.affix-field span{color:#736a5d; font-size:calc(14rem/17); white-space:nowrap;}
+.affix-field .affix-star{color:#b08a2e;}
