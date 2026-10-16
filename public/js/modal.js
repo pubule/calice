@@ -59,6 +59,9 @@ function showModal({ title, message, confirmLabel, cancelLabel, showInput, input
 
   return new Promise((resolve) => {
     const finish = (value) => {
+      // Never leave the (now invisible) field focused: iOS would keep the
+      // keyboard state, and main.js would keep the app shortened for it.
+      if (overlay.contains(document.activeElement)) document.activeElement.blur();
       overlay.classList.remove('open');
       resolve(value);
     };

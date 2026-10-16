@@ -52,6 +52,28 @@ function showView(id) {
 // than a single input's focus/blur (covers any field, any screen).
 const vv = window.visualViewport;
 
+// A text field the user can actually be typing in: focused, on screen, and
+// not inside a sheet that has been closed (closed sheets stay in the DOM, so
+// a field in one can keep the focus while invisible).
+const CLOSED_LAYER = '.compare-overlay:not(.open), .detail-overlay:not(.open), .camera-overlay:not(.open)';
+function isLiveField(el) {
+  if (!el || !(el.tagName === 'TEXTAREA' || (el.tagName === 'INPUT' && !['checkbox', 'radio', 'file', 'range', 'button', 'submit'].includes(el.type)))) return false;
+  return !el.closest(CLOSED_LAYER) && el.getClientRects().length > 0;
+}
+
+// Closing a sheet takes the focus out of it: a field left focused inside a
+// closed sheet keeps iOS in "typing" mode with nothing visible to type in.
+// One observer for every sheet, so a new one can't forget it.
+new MutationObserver((records) => {
+  for (const r of records) {
+    const el = r.target;
+    const wasOpen = /(^|\s)open(\s|$)/.test(r.oldValue ?? '');
+    if (wasOpen && !el.classList.contains('open') && el.contains(document.activeElement)) {
+      document.activeElement.blur();
+    }
+  }
+}).observe(document.body, { subtree: true, attributes: true, attributeFilter: ['class'], attributeOldValue: true });
+
 // Scrolls the field's own scroll container (a .view or a sheet — never the
 // fixed .screen) so the field sits in the middle of the visible area.
 function revealField(el) {
@@ -109,9 +131,7 @@ if (vv) {
     // .screen's own correct CSS default (stretched top:0/bottom:0) instead
     // of sometimes latching onto a bad transient value.
     const screen = document.querySelector('.screen');
-    const active = document.activeElement;
-    const editing = active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA');
-    const shrunk = editing && vv.height < fullHeight - 100;
+    const shrunk = isLiveField(document.activeElement) && vv.height < fullHeight - 100;
     if (shrunk) {
       // Setting top AND height over-constrains the box, so the stylesheet's
       // bottom:0 is dropped for the duration — exactly the intent. Removing
@@ -126,6 +146,16 @@ if (vv) {
   };
   vv.addEventListener('resize', applyViewportHeight);
   vv.addEventListener('scroll', applyViewportHeight);
+  // The override must never outlive the keyboard. iOS doesn't always send a
+  // last resize when the keyboard goes away (seen in build 109: after adding
+  // a wine the app stayed cut at the keyboard's height, tab bar mid-screen),
+  // so re-check whenever a field loses focus — once the keyboard has had
+  // time to close — and when the app comes back to the foreground.
+  document.addEventListener('focusout', () => {
+    [0, 350, 800].forEach((ms) => setTimeout(applyViewportHeight, ms));
+  });
+  window.addEventListener('pageshow', applyViewportHeight);
+  document.addEventListener('visibilitychange', applyViewportHeight);
   // Once the keyboard has settled, bring the focused field to the middle of
   // what is still visible — tapping the tasting note low in the bottle sheet
   // otherwise left it hidden behind the keyboard. Once per focus, so later

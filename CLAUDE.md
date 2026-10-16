@@ -82,6 +82,23 @@ resume da background, rotazione: nessuno di questi ha un input attivo,
 quindi cadono sempre nel ramo che lascia `.screen` sul suo default CSS
 (`top:0`/`bottom:0`, vedi sezione sotto).
 
+### L'override per tastiera non deve mai sopravvivere alla tastiera
+
+Build 109: dopo aver aggiunto un vino l'app è rimasta tagliata
+all'altezza della tastiera, con il menu a metà schermo. Due cause
+sovrapposte: (1) la finestra "Quante bottiglie?" (`modal.js`) si chiudeva
+lasciando a fuoco il suo campo, ormai invisibile, quindi per `main.js`
+"si stava ancora scrivendo"; (2) l'override si ricalcolava **solo** sugli
+eventi di `visualViewport`, e iOS non garantisce un ultimo `resize`
+quando la tastiera sparisce. Regole, ora in `main.js`:
+- "Sto scrivendo" = `isLiveField()`: campo a fuoco, visibile, **non dentro
+  un foglio chiuso** (i fogli restano nel DOM).
+- Chiudere un foglio toglie il fuoco ai suoi campi: lo fa un unico
+  `MutationObserver` su ogni perdita della classe `open`, così un foglio
+  nuovo non può dimenticarlo.
+- Ricalcolo anche su `focusout` (subito, 350 ms, 800 ms), `pageshow` e
+  `visibilitychange`, non solo sugli eventi del viewport.
+
 ### La "fascia nera in fondo": NON era canvas non dipinto — era `body` in dark mode
 
 Questa è stata diagnosticata male per settimane (dal 2 settembre in poi),

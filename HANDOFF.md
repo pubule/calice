@@ -1075,6 +1075,20 @@ questo file è il riassunto "dove eravamo rimasti".
       finta di Chromium; da verificare su iPhone: tastiera all'apertura,
       permesso fotocamera, lettura dei codici col polyfill.
 
+42. **Menu a metà schermo dopo un'aggiunta** (build 110). Segnalato con
+    screenshot dopo aver aggiunto uno Zamuner: l'override di `.screen` per la
+    tastiera era rimasto attivo a tastiera chiusa. Corretto in `modal.js`
+    (il campo perde il fuoco alla chiusura) e in `main.js` (campo "vivo" solo
+    se visibile e fuori dai fogli chiusi, blur automatico alla chiusura di
+    ogni foglio, ricalcolo su `focusout`/`pageshow`/`visibilitychange`).
+    Dettagli in CLAUDE.md. Non riproducibile in Chromium (niente tastiera
+    virtuale): provato simulando l'altezza bloccata, che ora si ripristina
+    da sola; da confermare su iPhone.
+    Nella stessa sessione, su richiesta, il catalogo `wines` di produzione è
+    stato ripulito: restano solo i due vini aggiunti questa settimana (id 34,
+    35, in cantina); cancellati 33 vini di prova/vecchie ricerche e le 6
+    voci di attività collegate.
+
 ## Cose note, non (ancora) da rifare
 
 - `status-bar-style` è `black-translucent` (non più `default`), `.screen`
