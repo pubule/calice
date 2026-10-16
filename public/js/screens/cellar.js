@@ -96,8 +96,11 @@ function rowHtml(b) {
 
 function wishRowHtml(w) {
   const photo = photoClass(w.type);
-  const name = escapeHtml(w.name);
-  const price = w.target_price ? ' · €' + escapeHtml(w.target_price) : '';
+  const name = escapeHtml(w.name) + (w.vintage ? ' ' + escapeHtml(w.vintage) : '');
+  const p = Number(w.target_price);
+  const price = w.target_price != null && Number.isFinite(p)
+    ? ` · Obiettivo ${p.toLocaleString('it-IT', { minimumFractionDigits: Number.isInteger(p) ? 0 : 2, maximumFractionDigits: 2 })} €`
+    : '';
   const sub = `${escapeHtml(w.producer)} · ${escapeHtml(w.region ?? w.country)}${price}`;
   return `
     <div class="wish-row" data-id="${w.id}">

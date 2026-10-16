@@ -86,7 +86,8 @@ function pickRowHtml(w) {
   const name = escapeHtml(w.name);
   const vintage = w.vintage ? ' ' + escapeHtml(w.vintage) : '';
   const where = w.denomination || w.region || w.country;
-  const sub = [w.producer, where].filter(Boolean).map(escapeHtml).join(' · ') || (w.wineId ? '' : 'Vivino');
+  const base = [w.producer, where].filter(Boolean).map(escapeHtml).join(' · ') || (w.wineId ? '' : 'Vivino');
+  const sub = isWished(w) ? `${base}${base ? ' · ' : ''}♡ nei desideri` : base;
   return `
     <div class="result-item${open ? ' open' : ''}" data-key="${escapeHtml(w.key)}">
       <div class="result-row" data-expand role="button" tabindex="0" aria-expanded="${open}">
@@ -113,9 +114,14 @@ function pickPanelHtml(w) {
     <div class="result-exp">
       ${facts.length || vivino ? `<div class="exp-facts">${facts.map((f) => `<span>${escapeHtml(f)}</span>`).join('')}${vivino ? `<span data-vivino>${escapeHtml(vivino)}</span>` : ''}</div>` : '<p class="exp-note">Da Vivino arriva solo il nome: gli altri dati li puoi aggiungere con "Modifica tutti i dati".</p>'}
       ${vintageField}
+      ${expanded.mode === 'wish' ? `
+      <div class="exp-row"><label for="exp-price">Prezzo obiettivo</label><div class="affix-field exp-price"><input id="exp-price" type="text" inputmode="decimal" autocomplete="off" placeholder="Facoltativo" value="${escapeHtml(expanded.price ?? '')}"><span aria-hidden="true">€</span></div></div>
+      <p class="exp-hint">A quanto vale la pena comprarlo.</p>
+      <button type="button" class="exp-add" data-wish>Aggiungi ai desideri</button>
+      <button type="button" class="exp-edit" data-tocellar>Aggiungi alla cantina invece</button>` : `
       <div class="exp-row"><span id="exp-qty-label">Bottiglie</span><div class="qty-step" role="group" aria-labelledby="exp-qty-label"><button type="button" data-qty="-1" aria-label="Una bottiglia in meno">−</button><output>${expanded.qty}</output><button type="button" data-qty="1" aria-label="Una bottiglia in più">+</button></div></div>
       <button type="button" class="exp-add" data-confirm>Aggiungi alla cantina</button>
-      <button type="button" class="exp-edit" data-edit>Modifica tutti i dati</button>
+      <div class="exp-links"><button type="button" class="exp-edit" data-towish>${isWished(w) ? '♡ Cambia il prezzo obiettivo' : '♡ Metti nei desideri'}</button><button type="button" class="exp-edit" data-edit>Modifica tutti i dati</button></div>`}
     </div>`;
 }
 
@@ -372,24 +378,78 @@ async function confirmPick(w, button) {
   }
   button.disabled = true;
   try {
-    let wineId = w.wineId;
-    if (!wineId) {
-      const imageUrl = w.image && w.image.length <= 200 ? w.image : undefined;
-      const wine = await api.post('/api/wines', {
-        name: w.name, producer: w.producer || 'Produttore sconosciuto', country: w.country || 'Italia',
-        region: w.region || undefined, type: SHEET_TYPES.has(w.type) ? w.type : 'rosso', vintage,
-        grapeVariety: w.grape || undefined, denomination: w.denomination || undefined, imageUrl,
-        vivinoRating: ratingFor(w, vintage)?.average, vivinoRatingsCount: ratingFor(w, vintage)?.count,
-        alcohol: w.alcohol || undefined, producerUrl: w.producerUrl || undefined,
-      });
-      wineId = wine.id;
-    }
+    const wineId = await ensureWine(w, vintage);
     rememberSearch(currentQuery());
     expanded = null;
     await postBottle(wineId, qty);
   } catch (err) {
     console.error(err);
     await alertModal('Impossibile aggiungere il vino, riprova.');
+  } finally {
+    button.disabled = false;
+  }
+}
+
+// The wine's id in the catalog, creating it first for a Vivino result
+// (POST /api/wines dedupes, so the same wine is never stored twice).
+async function ensureWine(w, vintage) {
+  if (w.wineId) return w.wineId;
+  const imageUrl = w.image && w.image.length <= 200 ? w.image : undefined;
+  const wine = await api.post('/api/wines', {
+    name: w.name, producer: w.producer || 'Produttore sconosciuto', country: w.country || 'Italia',
+    region: w.region || undefined, type: SHEET_TYPES.has(w.type) ? w.type : 'rosso', vintage,
+    grapeVariety: w.grape || undefined, denomination: w.denomination || undefined, imageUrl,
+    vivinoRating: ratingFor(w, vintage)?.average, vivinoRatingsCount: ratingFor(w, vintage)?.count,
+    alcohol: w.alcohol || undefined, producerUrl: w.producerUrl || undefined,
+  });
+  return wine.id;
+}
+
+// ---- wishlist: "Metti nei desideri" from an opened result ----
+let wishedWineIds = new Set(); // wines already in this cellar's wishlist
+let wishedKeys = new Set(); // results wished during this sheet session (Vivino ones have no id yet)
+const isWished = (w) => wishedKeys.has(w.key) || (w.wineId != null && wishedWineIds.has(Number(w.wineId)));
+
+async function loadWishlist() {
+  try {
+    if (!currentCellarId) await (cellarLoad ?? loadCellar());
+    const list = await api.get(`/api/cellars/${currentCellarId}/wishlist`);
+    wishedWineIds = new Set(list.map((x) => Number(x.wine_id)));
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+// The sheet stays open (the user may go on searching); the row shows it.
+async function confirmWish(w, button) {
+  const typed = expanded?.vintage ?? '';
+  const vintage = w.vintage ?? validVintage(typed);
+  if (!w.vintage && String(typed).trim() && vintage === undefined) {
+    await alertModal("L'annata deve essere un anno, per esempio 2019.");
+    return;
+  }
+  const rawPrice = String(expanded?.price ?? '').trim().replace(/\s*€$/, '');
+  const price = rawPrice ? Number(rawPrice.replace(',', '.')) : null;
+  if (rawPrice && !(Number.isFinite(price) && price >= 0 && price <= 100000)) {
+    await alertModal('Il prezzo obiettivo deve essere un numero, per esempio 45 o 45,50.');
+    return;
+  }
+  button.disabled = true;
+  try {
+    if (!currentCellarId) await (cellarLoad ?? loadCellar());
+    const wineId = await ensureWine(w, vintage);
+    await api.post(`/api/cellars/${currentCellarId}/wishlist`, { wineId, targetPrice: price ?? undefined });
+    wishedKeys.add(w.key);
+    wishedWineIds.add(Number(wineId));
+    changed = true;
+    rememberSearch(currentQuery());
+    expanded = null;
+    renderResults(currentQuery());
+    const euro = price != null ? price.toLocaleString('it-IT', { minimumFractionDigits: Number.isInteger(price) ? 0 : 2, maximumFractionDigits: 2 }) : null;
+    showToast(euro ? `Nei desideri, obiettivo ${euro} €` : 'Aggiunto ai desideri');
+  } catch (err) {
+    console.error(err);
+    await alertModal('Impossibile aggiungere ai desideri, riprova.');
   } finally {
     button.disabled = false;
   }
@@ -449,6 +509,7 @@ export function openAddSheet({ focus = true } = {}) {
   if (!overlay) return;
   if (input) input.value = '';
   expanded = null;
+  wishedKeys = new Set();
   lastCatalog = null;
   lastWeb = null;
   changed = false;
@@ -458,6 +519,7 @@ export function openAddSheet({ focus = true } = {}) {
   // that happens in the user's own gesture.
   if (focus) input?.focus({ preventScroll: true });
   loadCellar().then(() => { if (overlay.classList.contains('open') && !currentQuery()) renderIdle(); }, () => {});
+  loadWishlist();
 }
 
 function closeAddSheet() {
@@ -513,12 +575,24 @@ results?.addEventListener('click', (e) => {
     confirmPick(pick, t.closest('[data-confirm]'));
     return;
   }
+  if (t.closest('[data-wish]')) {
+    confirmWish(pick, t.closest('[data-wish]'));
+    return;
+  }
+  const modeSwitch = t.closest('[data-towish], [data-tocellar]');
+  if (modeSwitch) {
+    expanded.mode = modeSwitch.hasAttribute('data-towish') ? 'wish' : 'cellar';
+    // No automatic focus on the price: it is optional, and the keyboard would
+    // cover the button.
+    renderResults(currentQuery());
+    return;
+  }
   if (t.closest('[data-edit]')) {
     editPick(pick);
     return;
   }
   if (t.closest('[data-expand]')) {
-    expanded = expanded?.key === pick.key ? null : { key: pick.key, qty: 1, vintage: '' };
+    expanded = expanded?.key === pick.key ? null : { key: pick.key, qty: 1, vintage: '', mode: 'cellar', price: '' };
     renderResults(currentQuery());
     const opened = expanded && results.querySelector(`.result-item[data-key="${CSS.escape(pick.key)}"]`);
     // Scroll the results list only: scrollIntoView would also move the sheet
@@ -533,6 +607,10 @@ results?.addEventListener('click', (e) => {
   }
 });
 results?.addEventListener('input', (e) => {
+  if (e.target.id === 'exp-price' && expanded) {
+    expanded.price = e.target.value;
+    return;
+  }
   if (e.target.id !== 'exp-vintage' || !expanded) return;
   expanded.vintage = e.target.value;
   // The Vivino chip follows the typed year (that vintage's rating, if any).

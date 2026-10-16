@@ -1190,6 +1190,20 @@ questo file è il riassunto "dove eravamo rimasti".
     ★), stesso aspetto e focus del blocco "Campi". Il sito si mostra senza
     `https://` e senza `/` finale; salvando torna identico.
 
+50. **Desideri dalla ricerca** (build 119). Prima non c'era modo di
+    aggiungere ai desideri (solo rimuovere). Su due mockup (pulsante nella
+    lista Desideri / dalla ricerca) l'utente ha scelto **solo la 2**: nella
+    riga aperta di "Aggiungi un vino" c'è "♡ Metti nei desideri", che porta
+    il pannello in modalità desideri (`expanded.mode = 'wish'`): annata se
+    serve, prezzo obiettivo facoltativo, "Aggiungi ai desideri", "Aggiungi
+    alla cantina invece". Il foglio resta aperto e la riga mostra "♡ nei
+    desideri" (anche riaprendolo: `loadWishlist()` all'apertura). `ensureWine()`
+    crea il vino Vivino come per la cantina. Server: `POST
+    /api/cellars/:id/wishlist` ora valida vino e prezzo e non duplica (lo
+    stesso vino aggiorna il prezzo obiettivo). Lista Desideri: annata nel
+    nome e "Obiettivo 45,50 €". **Non fatti** (non scelti): pulsante nella
+    lista Desideri e "L'ho preso" per spostare in cantina.
+
 ## Cose note, non (ancora) da rifare
 
 - `status-bar-style` è `black-translucent` (non più `default`), `.screen`

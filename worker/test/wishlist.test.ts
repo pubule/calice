@@ -45,6 +45,22 @@ describe('wishlist', () => {
     expect(listAfter).toHaveLength(0);
   });
 
+  it('keeps one wish per wine (a second add updates the target price) and validates the input', async () => {
+    const auth = signup('w2@b.com');
+    const cellarId = await myCellarId(auth);
+    const post = (body: object) => app.request(`/api/cellars/${cellarId}/wishlist`, { method: 'POST', body: JSON.stringify(body), headers: { ...auth, 'content-type': 'application/json' } }, env);
+    const first = await (await post({ wineId })).json<any>();
+    const again = await (await post({ wineId, targetPrice: 45.5 })).json<any>();
+    expect(again.id).toBe(first.id);
+    expect(again.target_price).toBe(45.5);
+    const list = await (await app.request(`/api/cellars/${cellarId}/wishlist`, { headers: auth }, env)).json<any[]>();
+    expect(list).toHaveLength(1);
+    expect((await post({ wineId: 999999 })).status).toBe(404);
+    for (const bad of [{}, { wineId: 'x' }, { wineId, targetPrice: -1 }, { wineId, targetPrice: 'tanto' }]) {
+      expect((await post(bad)).status, JSON.stringify(bad)).toBe(400);
+    }
+  });
+
   it('rejects a non-member with 403 on GET, POST, and 404 on DELETE', async () => {
     const authA = await signup('owner10@b.com');
     const cellarId = await myCellarId(authA);
