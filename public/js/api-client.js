@@ -15,9 +15,47 @@ async function request(method, path, body) {
   return res.status === 204 ? null : res.json();
 }
 
+// Reads are kept in memory so moving around the app never waits on the
+// network (the start-up loader, js/warmup.js, fills this up front). An answer
+// younger than FRESH_MS is reused as is; an older one is still answered at
+// once, and fetched again behind the scenes for the next time. Any write
+// empties the whole memory, so what the user just changed is always read
+// fresh. Searches are never kept: they depend on what is being typed.
+const FRESH_MS = 30_000;
+const NO_CACHE = /\/search|\/lookup|\/recognize|debug/;
+const cache = new Map(); // path → { at, promise, ok, refreshing }
+
+function get(path) {
+  if (NO_CACHE.test(path)) return request('GET', path);
+  const hit = cache.get(path);
+  if (hit && (Date.now() - hit.at < FRESH_MS || hit.refreshing)) return hit.promise;
+  const fresh = request('GET', path);
+  if (hit?.ok) {
+    hit.refreshing = true;
+    fresh.then(
+      (data) => { if (cache.get(path) === hit) cache.set(path, { at: Date.now(), promise: Promise.resolve(data), ok: true }); },
+      () => { hit.refreshing = false; },
+    );
+    return hit.promise;
+  }
+  const entry = { at: Date.now(), promise: fresh, ok: false };
+  cache.set(path, entry);
+  fresh.then(() => { entry.ok = true; }, () => { if (cache.get(path) === entry) cache.delete(path); });
+  return fresh;
+}
+
+async function write(method, path, body) {
+  cache.clear();
+  try {
+    return await request(method, path, body);
+  } finally {
+    cache.clear(); // a read that started meanwhile may hold the old data
+  }
+}
+
 export const api = {
-  get: (path) => request('GET', path),
-  post: (path, body) => request('POST', path, body),
-  patch: (path, body) => request('PATCH', path, body),
-  del: (path) => request('DELETE', path),
+  get,
+  post: (path, body) => write('POST', path, body),
+  patch: (path, body) => write('PATCH', path, body),
+  del: (path) => write('DELETE', path),
 };

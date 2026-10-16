@@ -1,8 +1,8 @@
-const CACHE = 'calice-shell-v126';
+const CACHE = 'calice-shell-v127';
 const SHELL_FILES = [
   '/', '/index.html', '/css/app.css',
   '/js/main.js', '/js/api-client.js', '/js/router.js', '/js/auth.js', '/js/util.js', '/js/modal.js',
-  '/js/tasting-profile.js', '/js/toast.js', '/js/sheet-gestures.js',
+  '/js/tasting-profile.js', '/js/toast.js', '/js/sheet-gestures.js', '/js/warmup.js', '/js/landscape.js',
   '/js/screens/home.js', '/js/screens/cellar.js', '/js/screens/add.js',
   '/js/screens/stats.js', '/js/screens/profile.js', '/js/screens/detail.js', '/js/screens/invite.js',
   '/js/screens/explore.js', '/js/screens/aromas.js', '/js/screens/tasting.js', '/js/wine-expectation.js', '/js/data/wine-atlas.js', '/js/data/aroma-guide.js',
@@ -21,14 +21,33 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches
       .keys()
-      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))))
+      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE && k !== IMAGES).map((k) => caches.delete(k))))
       // Take over the already-open page too, rather than only pages opened later.
       .then(() => self.clients.claim()),
   );
 });
 
+// Landscape photos (Wikimedia Commons, see worker/src/lib/landscape.ts) never
+// change once chosen: kept in their own cache, served from it first, so a
+// wine's sheet shows its photo at once even after iOS empties the HTTP
+// cache. Fetched in CORS mode (Commons allows it) so the stored copy is a
+// normal response, not an opaque one that Safari counts as megabytes.
+const IMAGES = 'calice-landscapes-v1';
+
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
+  if (url.hostname === 'upload.wikimedia.org' && event.request.method === 'GET') {
+    event.respondWith(
+      caches.open(IMAGES).then(async (cache) => {
+        const hit = await cache.match(url.href);
+        if (hit) return hit;
+        const res = await fetch(url.href, { mode: 'cors', credentials: 'omit' });
+        if (res.ok) cache.put(url.href, res.clone()).catch(() => {});
+        return res;
+      }).catch(() => fetch(event.request)),
+    );
+    return;
+  }
   if (url.pathname.startsWith('/api/')) return; // never cache API calls
   // Network-first with cache fallback: an online user always gets the latest
   // deployed shell files (a cache-first strategy would pin whoever already

@@ -824,3 +824,16 @@ già corretto:
   dalla punta del branch di lavoro. Ogni prompt deve cominciare con
   `git reset --hard <commit>` esplicito e chiedere di verificarlo con
   `git log --oneline -1` prima di qualsiasi modifica.
+
+## Letture in memoria (`api-client.js`): una nuova GET che deve essere sempre fresca va esclusa
+
+Dalla build 127 `api.get` tiene le risposte in memoria (riuso entro 30 s,
+poi risposta vecchia subito + riscaricamento dietro) e il caricamento
+iniziale (`js/warmup.js`) le riempie tutte: è quello che rende l'app fluida.
+Ogni `post`/`patch`/`del` svuota la memoria, quindi dopo una modifica fatta
+dall'app si legge sempre il dato nuovo. Regole:
+- una nuova lettura che dipende da cosa si sta digitando o che deve essere
+  sempre in tempo reale va aggiunta a `NO_CACHE`;
+- una nuova schermata o scheda che legge dati va aggiunta anche a
+  `warmUp()`, altrimenti alla prima apertura aspetta la rete;
+- non modificare dati sul server con una GET: la memoria non lo saprebbe.

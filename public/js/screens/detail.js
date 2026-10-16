@@ -3,6 +3,7 @@ import { escapeHtml, photoClass, priceText } from '../util.js';
 import { openLocationPicker, locationLabel, refreshCellarList, editBottle, deleteBottle } from './cellar.js';
 import { confirmModal, alertModal } from '../modal.js';
 import { showToast } from '../toast.js';
+import { landscapeFor, knownLandscape } from '../landscape.js';
 import { tastingProfileHtml, wireTastingProfile, resetTastingProfile, readTastingProfile, setTastingProfile, isTastingProfileEmpty, tasteSummary } from '../tasting-profile.js';
 
 let currentBottleId = null;
@@ -55,8 +56,12 @@ function renderHero(bottle) {
     // landscape without a frame; a photo of the label stays a thumbnail.
     art.classList.toggle('cutout', product.naturalWidth / product.naturalHeight < 0.5);
   };
-  if (bottle.image_url) product.src = bottle.image_url;
-  else product.removeAttribute('src');
+  if (bottle.image_url) {
+    product.src = bottle.image_url;
+    // Already in the cache (start-up loader): decide now, so the sheet does
+    // not open on the thumbnail and then jump to the standing bottle.
+    if (product.complete && product.naturalWidth) product.onload();
+  } else product.removeAttribute('src');
   const hero = document.querySelector('#detail-overlay .detail-hero');
   const type = hero.querySelector('.hero-type');
   type.className = 'hero-type ' + (TYPE_LABEL[bottle.type] ? bottle.type : 'rosso');
@@ -109,9 +114,8 @@ function renderHero(bottle) {
 }
 
 // The vineyard photo behind the bottle, for the wine's denomination, region
-// or country (found once per area by the server, see /api/landscape). Asked
-// per area, not per wine, and remembered for the session.
-const landscapeCache = new Map();
+// or country (see js/landscape.js). Usually already known and in the image
+// cache thanks to the start-up loader: then it shows at once, without a fade.
 async function loadLandscape(bottle) {
   const land = document.querySelector('#detail-overlay .hero-land');
   const img = land.querySelector('.hero-land-img');
@@ -120,15 +124,10 @@ async function loadLandscape(bottle) {
   land.classList.remove('loaded');
   img.removeAttribute('src');
   credit.classList.add('hidden');
-  const params = new URLSearchParams();
-  for (const k of ['denomination', 'region', 'country']) if (bottle[k]) params.set(k, bottle[k]);
-  const key = params.toString();
-  if (!key) return;
-  let l = landscapeCache.get(key);
+  let l = knownLandscape(bottle);
   if (l === undefined) {
     try {
-      l = (await api.get(`/api/landscape?${key}`)).landscape ?? null;
-      landscapeCache.set(key, l);
+      l = await landscapeFor(bottle);
     } catch {
       return; // no photo this time: the plain background stays
     }
@@ -137,6 +136,7 @@ async function loadLandscape(bottle) {
   if (currentBottle?.id !== id || !l) return;
   img.onload = () => { if (currentBottle?.id === id) land.classList.add('loaded'); };
   img.src = l.url;
+  if (img.complete && img.naturalWidth) land.classList.add('loaded');
   const a = Object.assign(document.createElement('a'), { href: l.pageUrl, target: '_blank', rel: 'noopener', textContent: l.author });
   credit.replaceChildren('Foto del paesaggio: ', a, ` · ${l.license} · Wikimedia Commons`);
   credit.classList.remove('hidden');

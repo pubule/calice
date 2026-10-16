@@ -7,7 +7,12 @@ import { fetchWithTimeout } from './fetch-timeout';
 // ("Barolo"), then the region ("Piemonte"), then the country.
 
 const TIMEOUT_MS = 6000;
-const THUMB_WIDTH = 1100;
+// One of Wikimedia's standard thumbnail widths: those are already generated
+// and cached at the edge, so they arrive fast (other widths are rendered on
+// demand, slowly, and may be refused). Enough for a phone at 2-3x.
+const THUMB_WIDTH = 960;
+// Rows saved with another width are served at this one.
+const atWidth = (url: string) => url.replace(/\/\d+px-([^/]+)$/, `/${THUMB_WIDTH}px-$1`);
 const RETRY_DAYS = 30; // an area with nothing usable is searched again after this
 const API = 'https://commons.wikimedia.org/w/api.php';
 // Wikimedia asks API clients to identify themselves.
@@ -115,7 +120,7 @@ export async function findLandscape(db: D1Database, area: Area, fetchImpl: typeo
       .bind(`-${RETRY_DAYS} days`, key)
       .first<Row>();
     if (row?.file && row.url) {
-      return { file: row.file, url: row.url, pageUrl: row.page_url ?? '', author: row.author ?? '', license: row.license ?? '', licenseUrl: row.license_url };
+      return { file: row.file, url: atWidth(row.url), pageUrl: row.page_url ?? '', author: row.author ?? '', license: row.license ?? '', licenseUrl: row.license_url };
     }
     if (row && row.fresh) continue;
     const pages = await searchCommons(query, fetchImpl);

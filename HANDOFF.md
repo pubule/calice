@@ -1304,6 +1304,27 @@ questo file è il riassunto "dove eravamo rimasti".
     (file, url = thumb 1100px, page_url, author, license) — il server
     restituisce sempre la riga salvata.
 
+57. **Caricamento all'avvio, poi niente attese** (build 127). Richiesta
+    utente: "un loader a inizio app ma poi tutta l'esperienza fluida senza
+    caricamenti se non per le ricerche web". Tre pezzi:
+    - `js/warmup.js` + `#app-loader` in `index.html`: schermata con icona,
+      "Calice" e barra; scarica cantine, bottiglie/desideri/elementi di ogni
+      cantina, attività, seguiti, assaggi, palato, note e foto di ogni
+      bottiglia, il paesaggio di ogni zona (e ne decodifica la foto), le
+      foto delle bottiglie. Massimo 9 s, poi il resto continua dietro. Solo
+      all'avvio a freddo, non al ritorno dall'app switcher.
+    - `api-client.js`: le letture restano in memoria. Più giovani di 30 s
+      si riusano, più vecchie si rispondono subito e si riscaricano dietro
+      per la volta dopo; **ogni scrittura (post/patch/del) svuota tutta la
+      memoria**. Mai in memoria: `/search`, `/lookup`, `/recognize`,
+      `debug`. Provato in locale: dopo il caricamento, navigare fra tutte le
+      schede e aprire un vino fa zero chiamate `/api`.
+    - Paesaggi: miniature a 960px (larghezza standard di Wikimedia, già
+      pronta in cache; le righe salvate a 1100 vengono servite a 960) e
+      cache dedicata nel service worker (`calice-landscapes-v1`, CORS, mai
+      cancellata dagli aggiornamenti); `js/landscape.js` li ricorda per
+      tutta la sessione.
+
 ## Cose note, non (ancora) da rifare
 
 - `status-bar-style` è `black-translucent` (non più `default`), `.screen`

@@ -10,6 +10,7 @@ import { mountExplore } from './screens/explore.js';
 import { mountAromas } from './screens/aromas.js';
 import { mountTasting } from './screens/tasting.js';
 import './sheet-gestures.js';
+import { warmUp } from './warmup.js';
 
 // Views without a tab of their own light the tab they are reached from.
 // Esplora is a sub-section opened from Home, so it keeps Home lit. The raised
@@ -212,9 +213,22 @@ document.querySelector('.nav-add')?.addEventListener('click', () => openAddSheet
 // first cellar on their very first visit). A failure here is a transient
 // hiccup, not a logged-out state — there's no login screen to send anyone
 // to anymore.
+// The start-up loader stays up while warmUp() fetches what every screen
+// needs; the first screen renders underneath, then the loader fades away.
+const loader = document.getElementById('app-loader');
+const hideLoader = () => {
+  loader?.classList.add('done');
+  setTimeout(() => loader?.remove(), 400);
+};
 me()
+  .then(() => warmUp((p) => {
+    const fill = document.getElementById('app-loader-fill');
+    if (fill) fill.style.width = `${Math.round(p * 100)}%`;
+  }))
   .then(() => startRouter())
+  .then(() => requestAnimationFrame(hideLoader))
   .catch((err) => {
+    hideLoader();
     console.error('bootstrap failed', err);
     const shell = document.querySelector('.screen');
     if (!shell) return;
