@@ -1405,7 +1405,9 @@ questo file è il riassunto "dove eravamo rimasti".
     Prima la sezione era sempre vuota: dipendeva da `drink_from/drink_until`
     che nessun foglio permetteva di inserire. Ora `js/drink-window.js` stima
     per ogni vino quando si può bere e gli anni migliori, da denominazione o
-    tipo (tabella `RULES`: Barolo/Barbaresco 8-20, Amarone/Brunello 6-20,
+    tipo (tabella `RULES`: Barolo 5-20 (era 8-20: l'utente ha fatto notare
+    che un Barolo classico 2020 si beve già), Barbaresco 4-18, Amarone 5-20,
+    Brunello/Taurasi 6-20,
     rossi giovani 0-3, Riserva 4-12, Prosecco 0-2, metodo classico 0-4,
     bollicine 0-3, bianchi 0-3, rosati 0-2, altri rossi 2-8) contati
     dall'annata; **senza annata** dalla data in cui il vino è stato aggiunto

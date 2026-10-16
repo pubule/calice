@@ -8,8 +8,12 @@
 // [pattern on denomination + name, type it applies to (or any), years from
 // the vintage: can drink from, until, best from, best until]. First match wins.
 const RULES = [
-  [/barolo|barbaresco/, null, 8, 20, 12, 16],
-  [/amarone|brunello|taurasi|sagrantino/, null, 6, 20, 10, 15],
+  // Barolo comes out after ~4 years and a classic one is already good to
+  // drink by then; crus and great vintages want more time (set by hand).
+  [/barolo/, null, 5, 20, 8, 15],
+  [/barbaresco/, null, 4, 18, 7, 13],
+  [/amarone/, null, 5, 20, 8, 15],
+  [/brunello|taurasi|sagrantino/, null, 6, 20, 10, 15],
   [/bardolino|dolcetto|novello|lambrusco|beaujolais|schiava|grignolino/, 'rosso', 0, 3, 0, 2],
   [/riserva|reserva|gran selezione/, 'rosso', 4, 12, 6, 10],
   [/prosecco|asti|moscato/, null, 0, 2, 0, 1],
