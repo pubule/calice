@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { env } from 'cloudflare:test';
 import { app } from '../src/index';
-import { runNotificationScan, checkPhotoStorageUsage, checkSearchUsage } from '../src/cron';
+import { runNotificationScan, checkPhotoStorageUsage } from '../src/cron';
 
 async function signup(email: string) {
   const auth = { 'X-Calice-Dev-Email': email };
@@ -11,7 +11,7 @@ async function signup(email: string) {
 
 beforeEach(async () => {
   await env.DB.exec(
-    'DELETE FROM push_subscriptions; DELETE FROM bottles; DELETE FROM wines; DELETE FROM cellar_members; DELETE FROM cellars; DELETE FROM users; DELETE FROM tavily_usage;',
+    'DELETE FROM push_subscriptions; DELETE FROM bottles; DELETE FROM wines; DELETE FROM cellar_members; DELETE FROM cellars; DELETE FROM users;',
   );
 });
 
@@ -117,43 +117,5 @@ describe('checkPhotoStorageUsage', () => {
     const [subscription, payload] = sendFn.mock.calls[0];
     expect(subscription.endpoint).toBe('https://push.example/storage');
     expect(JSON.parse(payload).body).toContain('9.0 GB');
-  });
-});
-
-describe('checkSearchUsage', () => {
-  it('does nothing when usage is below the 80% warning threshold', async () => {
-    await env.DB.prepare('insert into tavily_usage (credits) values (?)').bind(100).run();
-    const sendFn = vi.fn();
-    const result = await checkSearchUsage(env as any, sendFn);
-    expect(result.warned).toBe(false);
-    expect(sendFn).not.toHaveBeenCalled();
-  });
-
-  it('warns every subscriber once usage crosses 80% of the 1000 free monthly credits', async () => {
-    const user = await signup('search@b.com');
-    await app.request(
-      '/api/push/subscribe',
-      { method: 'POST', body: JSON.stringify({ endpoint: 'https://push.example/search', keys: { p256dh: 'k', auth: 'a' } }), headers: { ...user.auth, 'content-type': 'application/json' } },
-      env,
-    );
-    await env.DB.prepare('insert into tavily_usage (credits) values (?)').bind(850).run();
-
-    const sendFn = vi.fn().mockResolvedValue(undefined);
-    const result = await checkSearchUsage(env as any, sendFn);
-
-    expect(result.warned).toBe(true);
-    expect(sendFn).toHaveBeenCalledTimes(1);
-    const [subscription, payload] = sendFn.mock.calls[0];
-    expect(subscription.endpoint).toBe('https://push.example/search');
-    expect(JSON.parse(payload).body).toContain('850');
-  });
-
-  it('ignores credits logged before the start of the current month', async () => {
-    await env.DB.prepare(`insert into tavily_usage (credits, created_at) values (?, date('now', 'start of month', '-1 day'))`).bind(900).run();
-    const sendFn = vi.fn();
-    const result = await checkSearchUsage(env as any, sendFn);
-    expect(result.totalCredits).toBe(0);
-    expect(result.warned).toBe(false);
-    expect(sendFn).not.toHaveBeenCalled();
   });
 });

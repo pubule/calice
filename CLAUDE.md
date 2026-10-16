@@ -656,114 +656,23 @@ risposta prima di cancellare non riproduce nulla: è l'errore in cui sono
 cascato al primo tentativo). Senza guardia la lista torna popolata,
 con guardia resta vuota.
 
-## Ricerca web dei vini (Tavily): tre filtri diversi, non confonderli
+## Costo zero: niente servizi a pagamento, tetti sui servizi gratuiti
 
-**Aggiornamento (ottobre): la fonte principale non è più Tavily.** La
-ricerca per nome interroga prima la ricerca interna di Vivino
-(`worker/src/lib/vivino-search.ts`: l'indice Algolia che alimenta la
-casella di ricerca del sito, con la chiave pubblica di sola lettura che usa
-il loro frontend). Restituisce gli stessi risultati che l'utente vede su
-vivino.com e la foto vera di ogni vino. **Non è un'API ufficiale**: ogni
-errore restituisce `null` e si ricade su Tavily, quindi la ricerca non si
-rompe se Vivino cambia chiave o indice. Per controllare cosa riceve il
-Worker in produzione: `GET /api/wines/recognize/debug?q=…` (non chiama
-Tavily, non consuma crediti). Il codice barre resta solo su Tavily.
-Nella riserva Tavily sono cambiate tre cose rispetto a quanto scritto sotto:
-**tutte** le parole significative devono comparire nel titolo o
-nell'URL (non solo la più lunga: su "ambrosini batud" passavano tutti i
-vini Ambrosini); le parole generiche (tenuta, cantina, DOCG…) non contano;
-**niente immagini**, perché Tavily non lega un'immagine a un risultato e
-l'abbinamento per posizione metteva la stessa foto sbagliata su ogni riga,
-che poi finiva salvata in cantina.
-
-`worker/src/lib/tavily-search.ts` restringe la ricerca a `vivino.com`, ma
-essere su Vivino non basta: ci sono **tre** problemi distinti, con tre
-rimedi distinti, e confonderli porta a "sistemare" quello sbagliato.
-
-0. **Non è nemmeno una bottiglia.** Vivino posiziona bene anche le schede
-   cantina e le pagine di ricerca ("Ambrosini Winery | Vivino", "Zamuner
-   Winery - Vivino" sono arrivate entrambe nel selettore in produzione).
-   Toccarle avrebbe salvato un vino chiamato "Ambrosini Winery", perché
-   il foglio di aggiunta precompila il nome dal **titolo**. `isWinePage()`
-   tiene solo le pagine con un id `/w/<id>`: se un domani sparisce un
-   vino legittimo, è il primo posto dove guardare, ma le pagine senza id
-   non erano comunque aggiungibili.
-
-1. **Stesso vino, più lingue.** Vivino serve la stessa scheda in più
-   lingue sullo stesso host, e `include_domains` di Tavily filtra per
-   host, non per path.
-
-   **Gli URL hanno due forme, verificate su link reali** — e questo ha
-   già prodotto un bug: `/en/zamuner-brut/w/8800805` (solo lingua) ma
-   anche `/IT/it/ambrosini-franciacorta-batude/w/2667819` e
-   `/BR/pt-BR/…` (paese + lingua, con eventuale suffisso di regione).
-   `isItalianVivinoUrl()` faceva `pathname.startsWith('/it/')` e quindi
-   **non riconosceva `/IT/it/`**, cioè proprio il caso che conta di più:
-   la preferenza per l'italiano in produzione non è mai scattata. Ora la
-   lingua si estrae per segmenti (se il primo è un codice paese di due
-   lettere maiuscole, la lingua è il secondo). Mai assumere una sola
-   forma di URL Vivino. `ITALIAN_PATH_BOOST` (0.05)
-   **riordina soltanto**: per mesi ha lasciato le copie spagnole e
-   inglesi in lista, che è ciò che l'utente vedeva come "record di
-   Vivino Spagna". A rimuoverle è `dedupeKey()`, che raggruppa per l'id
-   in `/w/<id>` — stabile fra le lingue — e tiene una sola copia.
-   L'`?year=` fa parte della chiave perché Vivino appende le annate allo
-   stesso id e due annate sono due bottiglie diverse.
-
-   **Posizione e lingua sono due decisioni separate, non confonderle.**
-   La deduplica gira dopo l'ordinamento, quindi un vino occupa la
-   posizione guadagnata dalla sua copia con la score migliore — ma
-   *quale* copia resta è deciso **solo dalla lingua**, mai dalla score.
-
-   **`ITALIAN_PATH_BOOST` non esiste più, non reintrodurlo.** Era un
-   +0.05 sulle pagine `/it/`, ed è stato sbagliato due volte: si
-   limitava a riordinare i duplicati (che quindi restavano in lista), e
-   quando la deduplica ha cominciato a eliminarli un margine di 0.05 non
-   bastava — con 0.78 (ES) contro 0.72 (IT) sopravviveva la spagnola e
-   diventava l'**unica** riga mostrata, cioè peggio di prima. Risolta la
-   lingua dentro la deduplica e scartate le pagine senza id, al boost non
-   restava che fare l'unica cosa che il suo stesso commento diceva di
-   voler evitare: riordinare vini **diversi**. Osservato in una lista
-   reale, una pagina italiana da 0.84 sopra una da 0.88. Quindi: la
-   score ordina i vini, la deduplica sceglie la lingua, e non si somma
-   niente alla score.
-2. **Vino diverso che sembra pertinente.** `isRelevant()` chiede che
-   **una sola** parola della query — la più lunga — compaia nel titolo o
-   nell'URL. Un vino spagnolo con lo stesso vitigno passa (caso reale
-   documentato nel file: "Don de Dar … Sauvignon Blanc" su "Zamuner
-   blanc"). Se un domani serve stringere, la strada è chiedere che
-   matchino **almeno due** parole distintive — ma è l'unica modifica di
-   questa zona che può ridurre il recall, quindi va misurata, non
-   applicata a occhio.
-
-   **Il rovescio della stessa euristica**: la parola più lunga non è
-   sempre quella giusta. Su `"batude di tenuta Ambrosini"` la distintiva
-   è `ambrosini` (9 lettere), non `batude` — quindi se Vivino intitola e
-   slugga la scheda col solo nome del vino (`Batude 2019`,
-   `/it/batude/w/...`) il vino **giusto** viene scartato e l'utente
-   legge "nessun risultato" per una bottiglia che Tavily aveva
-   restituito. C'è un test che fissa questo comportamento. Rimedio
-   pratico intanto: cercare il solo nome del vino, senza il produttore.
-   **Gli accenti vanno ripiegati su entrambi i lati** (`fold()`): i nomi
-   italiani ne sono pieni — Batudè, Satèn, Rosé — ma lo slug che Vivino
-   costruisce dallo stesso nome li toglie
-   (`…/ambrosini-franciacorta-batude` per un vino intitolato "Batudè").
-   Senza folding chi scrive "Batude" aggancia lo slug ma non il titolo e
-   chi scrive "Batudè" il contrario: in entrambi i casi si perde metà
-   del segnale, e un risultato in cui il nome compare **solo** nel
-   titolo viene scartato.
-3. **Rumore nel titolo.** Vivino chiude i titoli con un suffisso che
-   cambia per lingua — "| Vivino English", "| Vivino Italiano",
-   "- Vivino", tutti e tre visti in una stessa lista. `cleanTitle()` lo
-   toglie: non è solo cosmesi, il titolo è ciò da cui il foglio di
-   aggiunta precompila il nome del vino, quindi finirebbe salvato in
-   cantina.
-
-**Mai rimettere un suffisso alla query** (c'era un `` `${query} vino` ``):
-con la ricerca già ristretta a Vivino ogni pagina è di vini, quindi non
-aggiunge nulla, e "vino" è spagnolo quanto italiano — semmai aiutava le
-copie spagnole a posizionarsi. Il recall misurato (15/15 bottiglie
-Zamuner reali) era comunque quello **senza** suffisso.
+Richiesta esplicita dell'utente: l'app non deve **mai** far pagare nulla.
+- **Tavily è stato tolto** (era la ricerca web a crediti, usata come riserva
+  e per il codice a barre). Non reintrodurlo, né un'altra API a consumo, senza
+  che sia l'utente a chiederlo. La ricerca per nome usa solo l'indice di
+  Vivino (`worker/src/lib/vivino-search.ts`, non ufficiale e gratuito: se
+  fallisce resta il nome digitato); il codice a barre usa catalogo locale e
+  Open Food Facts; Wikidata per le uve. `GET /api/wines/recognize/debug?q=…`
+  mostra cosa riceve il Worker da Vivino in produzione.
+- **Workers AI** (lettura etichetta) ha un tetto in codice:
+  `OCR_DAILY_LIMIT` foto al giorno (tabella `ai_usage`, `recognize.ts`), ben
+  dentro l'allocazione gratuita; oltre, il foglio si apre da compilare a mano
+  con un avviso. Qualunque nuova chiamata a un servizio a consumo va
+  protetta allo stesso modo.
+- Il resto (Workers, D1, R2, Access, GitHub Actions) è nei piani gratuiti;
+  l'utente controlla da sé il piano Cloudflare (Billing).
 
 ## Icone della schermata Home iOS: opache, quadrate, arte al ~74%
 

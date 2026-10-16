@@ -11,7 +11,7 @@ import { photoRoutes, photoFileRoutes } from './routes/photos';
 import { followRoutes, activityRoutes } from './routes/follows';
 import { pushRoutes } from './routes/push';
 import { tastingRoutes } from './routes/tastings';
-import { runNotificationScan, checkPhotoStorageUsage, checkSearchUsage } from './cron';
+import { runNotificationScan, checkPhotoStorageUsage } from './cron';
 
 export type Env = {
   DB: D1Database;
@@ -19,7 +19,6 @@ export type Env = {
   AI: Ai;
   VAPID_PUBLIC_KEY: string;
   VAPID_PRIVATE_KEY: string;
-  TAVILY_API_KEY: string;
   ACCESS_TEAM: string;
   ACCESS_AUD: string;
   CALICE_DEV_EMAIL?: string;
@@ -53,7 +52,6 @@ export default {
   scheduled: async (_event: ScheduledEvent, env: Env) => {
     await runNotificationScan(env);
     await checkPhotoStorageUsage(env);
-    await checkSearchUsage(env);
   },
 };
 

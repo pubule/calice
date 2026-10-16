@@ -1028,6 +1028,21 @@ questo file è il riassunto "dove eravamo rimasti".
     vive nella scheda della bottiglia, che ha già il suo modulo (punto 36).
     In "Rivedi e conferma" (aggiunta di un vino nuovo) la sezione resta.
 
+40. **Costo zero** (build 108). L'utente non vuole pagare mai nulla.
+    - **Tavily tolto**: codice (`tavily-search.ts` e test), avviso mensile
+      sui crediti in `cron.ts`, secret `TAVILY_API_KEY` dal tipo `Env`,
+      tabella `tavily_usage` (migrazione 0010). Uso reale prima della
+      rimozione: 68 crediti a settembre, 6 a ottobre, su 1.000 gratuiti.
+      Effetti: ricerca per nome solo Vivino (se Vivino non risponde resta il
+      nome digitato); il codice a barre non cerca più sul web dopo Open Food
+      Facts, apre il foglio con il solo codice. Il secret `TAVILY_API_KEY`
+      resta su Cloudflare finché l'utente non lo cancella (innocuo).
+    - **Tetto Workers AI**: massimo `OCR_DAILY_LIMIT` = 50 letture di
+      etichetta al giorno (tabella `ai_usage`); oltre, avviso e foglio da
+      compilare a mano.
+    - La sezione di CLAUDE.md sui filtri Tavily è stata sostituita da
+      "Costo zero".
+
 ## Cose note, non (ancora) da rifare
 
 - `status-bar-style` è `black-translucent` (non più `default`), `.screen`

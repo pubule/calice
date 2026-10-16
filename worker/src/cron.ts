@@ -88,35 +88,3 @@ export async function checkPhotoStorageUsage(env: Env, sendFn?: SendFn) {
   }
   return { totalBytes, warned: true };
 }
-
-const TAVILY_FREE_TIER_CREDITS = 1000; // credits/month free, resets 1st of the month
-const TAVILY_WARN_RATIO = 0.8; // warn at 800, before requests start failing
-
-// ponytail: same re-warn-every-day tradeoff as checkPhotoStorageUsage above.
-export async function checkSearchUsage(env: Env, sendFn?: SendFn) {
-  const row = await env.DB
-    .prepare(`select coalesce(sum(credits), 0) as total from tavily_usage where created_at >= date('now', 'start of month')`)
-    .first<{ total: number }>();
-  const totalCredits = row?.total ?? 0;
-
-  if (totalCredits < TAVILY_FREE_TIER_CREDITS * TAVILY_WARN_RATIO) return { totalCredits, warned: false };
-
-  const send = sendFn ?? (await defaultSendFn());
-  const rows = await env.DB.prepare('select endpoint, p256dh, auth from push_subscriptions').all<{ endpoint: string; p256dh: string; auth: string }>();
-  for (const row of rows.results) {
-    try {
-      await send(
-        { endpoint: row.endpoint, keys: { p256dh: row.p256dh, auth: row.auth } },
-        JSON.stringify({
-          title: 'Crediti ricerca vini quasi esauriti',
-          body: `Hai usato ${totalCredits} di 1000 crediti gratuiti Tavily questo mese. Oltre, la ricerca web si ferma fino al mese prossimo (o passa a un piano a pagamento).`,
-        }),
-        { vapidDetails: { subject: 'mailto:fabio.stocco85@gmail.com', publicKey: env.VAPID_PUBLIC_KEY, privateKey: env.VAPID_PRIVATE_KEY } },
-      );
-    } catch (err) {
-      console.error('push send failed, removing subscription', row.endpoint, err);
-      await env.DB.prepare('delete from push_subscriptions where endpoint = ?').bind(row.endpoint).run();
-    }
-  }
-  return { totalCredits, warned: true };
-}

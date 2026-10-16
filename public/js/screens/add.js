@@ -107,9 +107,9 @@ function webCandidateRowHtml(candidate, i) {
     </div>`;
 }
 
-// Debounced separately from the local (free, instant) catalog search below:
-// the web fallback spends from Tavily's 1000-credit/month budget, so it must
-// not fire on every keystroke while the user is still typing.
+// Debounced separately from the local (instant) catalog search below: the
+// web search (Vivino, vivino-search.ts on the Worker) should not fire on
+// every keystroke while the user is still typing.
 let webSearchTimer;
 
 function currentQuery() {
@@ -166,8 +166,8 @@ async function searchWeb(query) {
   results.querySelectorAll('[data-candidate]').forEach((row) => {
     row.addEventListener('click', () => {
       const c = candidates[Number(row.dataset.candidate)];
-      // Vivino candidates carry structured fields (prefill); a Tavily page
-      // doesn't, so the typed query stays the name, as before.
+      // Vivino candidates carry structured fields (prefill); without them
+      // the typed query stays the name.
       const prefill = completeFromAtlas(c.prefill) ?? {};
       openRecognizeSheet({ ...prefill, name: prefill.name ?? query, imageUrl: c.imageUrl, sourceUrl: c.sourceUrl, rawText: c.snippet });
     });
@@ -208,8 +208,8 @@ async function runSearch(query) {
     });
     return;
   }
-  // Local catalog miss: search the web (Tavily) for a real bottle photo,
-  // debounced so a still-typing user doesn't spend credits on every
+  // Local catalog miss: search the web (Vivino) for the real bottle and its
+  // photo, debounced so a still-typing user doesn't fire a request on every
   // intermediate substring.
   results.innerHTML = `<p class="sub">Cerco "${escapeHtml(query)}" sul web <span class="loading-dots"><span></span><span></span><span></span></span></p>`;
   webSearchTimer = setTimeout(() => searchWeb(query), 600);
@@ -328,26 +328,9 @@ async function runBarcodeScan() {
     const suggestion = await api.post('/api/wines/recognize', { barcode: barcodeValue });
     closeCamera();
 
-    // Local + Open Food Facts both missed: no trustworthy name to prefill
-    // (a barcode number isn't one) — fall back to Tavily candidates, same
-    // review-before-save picker as the text-search miss, keeping the
-    // barcode attached so it still gets saved once the user confirms.
-    const candidates = suggestion.candidates ?? [];
-    if (!suggestion.name && candidates.length) {
-      if (results) {
-        results.innerHTML = candidates.map((c, i) => webCandidateRowHtml(c, i)).join('');
-        results.querySelectorAll('[data-candidate]').forEach((row) => {
-          row.addEventListener('click', () => {
-            const c = candidates[Number(row.dataset.candidate)];
-            openRecognizeSheet({ name: c.title, imageUrl: c.imageUrl, sourceUrl: c.sourceUrl, rawText: c.snippet, barcode: barcodeValue });
-          });
-        });
-        const countEl = document.getElementById('add-results-count');
-        if (countEl) countEl.textContent = `Risultati (${candidates.length})`;
-      }
-      return;
-    }
-
+    // Whatever Open Food Facts found prefills the sheet; when it found
+    // nothing, the sheet opens with just the barcode, to be filled by hand.
+    // The barcode is saved with the wine, so next time it's a local hit.
     openRecognizeSheet(suggestion);
   } catch (err) {
     console.error(err);
@@ -386,6 +369,11 @@ async function runLabelScan() {
   try {
     const suggestion = await api.post('/api/wines/recognize', { photoBase64 });
     closeCamera();
+    // Label reading is capped per day to stay in Cloudflare's free tier
+    // (OCR_DAILY_LIMIT in recognize.ts): say so, then let the user type.
+    if (suggestion.ocrLimited) {
+      await alertModal("Per oggi è stato raggiunto il limite di etichette lette in automatico. Compila i dati a mano: domani la lettura torna disponibile.", { title: 'Lettura etichetta non disponibile' });
+    }
     openRecognizeSheet(suggestion, photoBase64);
   } catch (err) {
     console.error(err);

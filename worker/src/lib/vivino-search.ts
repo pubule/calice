@@ -1,17 +1,17 @@
 import { fetchWithTimeout } from './fetch-timeout';
-import type { WineCandidate, WinePrefill } from './tavily-search';
+export type WinePrefill = { name?: string; producer?: string; country?: string; type?: string; denomination?: string; grapeVariety?: string };
+export type WineCandidate = { title?: string; snippet?: string; sourceUrl?: string; imageUrl?: string; prefill?: WinePrefill };
 
 // Vivino's own wine search — the index behind the search box on
 // vivino.com (Algolia, queried by the site's frontend with a public,
-// search-only key). Tavily searches the open web restricted to vivino.com,
-// which ranks pages like a web engine does: on "ambrosini batud" it returned
-// every Ambrosini wine plus a Brazilian copy, while the site's own search
-// returns the Batudè first. This is what the user compares against, so it is
-// the primary source; Tavily stays as the fallback (recognize.ts).
+// search-only key). It returns the same results the user sees on
+// vivino.com (on "ambrosini batud", the Batudè first), with each wine's real
+// photo. It is the only web source: the paid web search used before (Tavily)
+// was removed so the app never risks a bill.
 //
 // NOT an official API: Vivino can rotate the key or rename the index at any
 // time. Every failure — network, non-200, unexpected shape, zero usable hits
-// — returns null so the caller falls back to Tavily instead of showing an
+// — returns null and the caller keeps just the typed name instead of an
 // empty list. GET /api/wines/recognize/debug?q=… reports what this call
 // actually receives, to check it from the deployed Worker.
 export const VIVINO_ALGOLIA = {
@@ -66,7 +66,7 @@ export function hitToCandidate(hit: any): WineCandidate | null {
   const title = winery && !name.toLowerCase().includes(winery.toLowerCase()) ? `${winery} ${name}` : name;
 
   const slug = [str(hit?.winery?.seo_name), str(hit?.seo_name)].filter(Boolean).join('-');
-  // The /w/<id> marker is what tavily-search's dedupe/isWinePage key on and
+  // The /w/<id> marker is the stable wine id across languages and
   // what Vivino resolves the page by; the slug is cosmetic.
   const sourceUrl = slug ? `https://www.vivino.com/IT/it/${slug}/w/${id}` : `https://www.vivino.com/IT/it/w/${id}`;
 

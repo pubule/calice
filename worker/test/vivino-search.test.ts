@@ -58,7 +58,7 @@ describe('searchVivino', () => {
     expect(JSON.parse(String(seen.init?.body)).params).toContain('query=ambrosini+batud');
   });
 
-  it('returns null — so the caller falls back to Tavily — on a non-200, invalid JSON, a network error or no usable hits', async () => {
+  it('returns null on a non-200, invalid JSON, a network error or no usable hits', async () => {
     expect(await searchVivino('x', fakeFetch(403, { message: 'Invalid API key' }))).toBeNull();
     expect(await searchVivino('x', fakeFetch(200, 'not json'))).toBeNull();
     expect(await searchVivino('x', (async () => { throw new Error('down'); }) as typeof fetch)).toBeNull();

@@ -3,12 +3,11 @@ import { requireAuth } from '../lib/session';
 import { lookupBarcode as defaultLookupBarcode } from '../lib/open-food-facts';
 import { enrichFromWikidata as defaultEnrichFromWikidata } from '../lib/wikidata';
 import { runVisionOcr as defaultRunVisionOcr } from '../lib/vision-ocr';
-import { searchWine as defaultSearchWine } from '../lib/tavily-search';
 import { searchVivino as defaultSearchVivino, queryVivino } from '../lib/vivino-search';
 import type { Env } from '../index';
 
-export type { WineCandidate } from '../lib/tavily-search';
-import type { WineCandidate } from '../lib/tavily-search';
+export type { WineCandidate } from '../lib/vivino-search';
+import type { WineCandidate } from '../lib/vivino-search';
 
 export type Suggestion = {
   name?: string; producer?: string; country?: string; region?: string;
@@ -16,13 +15,13 @@ export type Suggestion = {
   grapeVariety?: string; denomination?: string;
   imageUrl?: string; rawText?: string; sourceUrl?: string;
   candidates?: WineCandidate[];
+  ocrLimited?: boolean;
 };
 
 export type RecognizeDeps = {
   lookupBarcode: typeof defaultLookupBarcode;
   enrichFromWikidata: typeof defaultEnrichFromWikidata;
   runVisionOcr: (photoBase64: string) => ReturnType<typeof defaultRunVisionOcr>;
-  searchWine: (query: string) => ReturnType<typeof defaultSearchWine>;
   // Optional so callers (and tests) that only exercise other paths can omit it.
   searchVivino?: (query: string) => ReturnType<typeof defaultSearchVivino>;
 };
@@ -32,7 +31,6 @@ function defaultDeps(env: Env): RecognizeDeps {
     lookupBarcode: defaultLookupBarcode,
     enrichFromWikidata: defaultEnrichFromWikidata,
     runVisionOcr: (photoBase64) => defaultRunVisionOcr(env.AI, photoBase64),
-    searchWine: (query) => defaultSearchWine(query, env.TAVILY_API_KEY),
     searchVivino: (query) => defaultSearchVivino(query),
   };
 }
@@ -42,15 +40,21 @@ type WineRow = {
   barcode: string | null; grape_variety: string | null; denomination: string | null; image_url: string | null;
 };
 
-// Best-effort usage logging for the monthly-quota warning (cron.ts) — never
-// let a logging failure take down the actual suggestion.
-async function logTavilyUsage(env: Env, credits: number | undefined) {
-  if (!credits) return;
-  try {
-    await env.DB.prepare('insert into tavily_usage (credits) values (?)').bind(credits).run();
-  } catch (err) {
-    console.error('failed to log tavily usage', err);
-  }
+// Label reading runs on Workers AI, free up to a daily allocation (10,000
+// "neurons"; Cloudflare bills beyond it only on a paid plan). The app stops
+// well before: at most OCR_DAILY_LIMIT label photos a day (UTC), counted in
+// ai_usage. Over the cap the photo is simply not read and the sheet opens to
+// be filled by hand (suggestion.ocrLimited). The user asked for "never pay".
+export const OCR_DAILY_LIMIT = 50;
+
+async function takeOcrSlot(env: Env): Promise<boolean> {
+  const row = await env.DB
+    .prepare(`insert into ai_usage (day, calls) values (date('now'), 1)
+              on conflict(day) do update set calls = calls + 1
+              where calls < ? returning calls`)
+    .bind(OCR_DAILY_LIMIT)
+    .first<{ calls: number }>();
+  return row != null;
 }
 
 export async function buildSuggestion(
@@ -79,19 +83,13 @@ export async function buildSuggestion(
       if (off.imageUrl) suggestion.imageUrl = off.imageUrl;
     }
 
-    // Open Food Facts barely covers wine — when it comes up empty, try a web
-    // search on the barcode itself. Many retailer/wine-database pages index
-    // products by EAN, so a bare barcode number is often a real, working
-    // query. Never auto-fills name (a barcode number is not a wine name) —
-    // same candidates-not-a-guess pattern as the text-search fallback below.
-    if (!suggestion.name) {
-      const web = await deps.searchWine(body.barcode);
-      if (web?.candidates.length) suggestion.candidates = web.candidates;
-      await logTavilyUsage(env, web?.creditsUsed);
-    }
+    // Open Food Facts barely covers wine; when it misses, the sheet opens with
+    // just the barcode attached, to be filled by hand (there used to be a paid
+    // web search here, removed so the app never risks a bill).
   }
 
   if (body.photoBase64 && !suggestion.name) {
+    if (!(await takeOcrSlot(env))) return { ...suggestion, ocrLimited: true };
     const ocr = await deps.runVisionOcr(body.photoBase64);
     if (ocr?.parsed) {
       if (ocr.parsed.name) suggestion.name = ocr.parsed.name;
@@ -104,25 +102,13 @@ export async function buildSuggestion(
   }
 
   // Text search miss: the user already typed a real name, so trust it as-is
-  // (no OCR/barcode noise to second-guess) and ask Tavily for what we can't
-  // invent — real candidate photos/snippets. A specific product query often
-  // ranks a retailer's page above the producer's own site, so this doesn't
-  // guess which one is "right" — it hands back a few and the frontend lets
-  // the user pick, same review-before-save principle as everywhere else.
-  //
-  // Vivino's own search first — the same results the user sees on
-  // vivino.com, with each wine's real photo, and no Tavily credit spent.
-  // Tavily only when Vivino fails or finds nothing (vivino-search.ts).
+  // and ask Vivino's own search (vivino-search.ts) for real candidates with
+  // their photos; the frontend lets the user pick. When Vivino fails or finds
+  // nothing, just the typed name comes back.
   if (body.query && !suggestion.name) {
     suggestion.name = body.query;
     const vivino = await deps.searchVivino?.(body.query);
-    if (vivino?.length) {
-      suggestion.candidates = vivino;
-    } else {
-      const web = await deps.searchWine(body.query);
-      if (web?.candidates.length) suggestion.candidates = web.candidates;
-      await logTavilyUsage(env, web?.creditsUsed);
-    }
+    if (vivino?.length) suggestion.candidates = vivino;
   }
 
   if (suggestion.name && !suggestion.grapeVariety) {
@@ -138,7 +124,7 @@ recognizeRoutes.use('*', requireAuth);
 
 // Reports what the Vivino search actually receives from the deployed Worker
 // (status, hit count, field names, mapped candidates) — it is an unofficial
-// endpoint that can't be exercised from the dev sandbox. Never calls Tavily.
+// endpoint that can't be exercised from the dev sandbox.
 recognizeRoutes.get('/debug', async (c) => {
   const q = c.req.query('q')?.trim();
   if (!q) return c.json({ error: 'q required' }, 400);
