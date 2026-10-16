@@ -1108,8 +1108,18 @@ questo file è il riassunto "dove eravamo rimasti".
     - `.screen` non deve mai scorrere: scrivendo mentre il foglio sale, il
       browser la spostava di 91px per mostrare il cursore e il titolo del
       foglio finiva fuori schermo. Ora `main.js` la riporta a zero.
-    - La ricerca nel catalogo sul server non ignora gli accenti ("saten" non
-      trova "Satèn"): limite preesistente, non toccato.
+
+44. **Ricerca nel catalogo senza accenti** (build 112, migrazione 0011).
+    `LIKE` di SQLite ignora maiuscole solo in ASCII e mai gli accenti
+    ("saten" non trovava "Satèn"). Nuova colonna `wines.search_text`: nome,
+    produttore, regione, denominazione e uve piegati in JS (`foldSearch()` in
+    `wines.ts`: senza accenti, minuscolo, apostrofi tipografici dritti). Ogni
+    scrittura del vino la rimette a NULL e `GET /api/wines/search` ricalcola le
+    righe NULL prima di cercare, così nessun percorso di scrittura può
+    dimenticarla. La ricerca ora vuole tutte le parole in qualsiasi ordine
+    ("bosco saten") e tratta `%`/`_` digitati come caratteri normali. Il filtro
+    "Nella tua cantina" in `add.js` piega allo stesso modo. Annata minima nel
+    pannello allineata al server (1900).
 
 ## Cose note, non (ancora) da rifare
 

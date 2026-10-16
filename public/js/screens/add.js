@@ -215,7 +215,8 @@ function rememberSearch(term) {
 }
 
 const SHEET_TYPES = new Set(['rosso', 'bianco', 'bollicine', 'rosato']);
-const foldText = (t) => String(t ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+// Same folding as the catalog search on the Worker (foldSearch in wines.ts).
+const foldText = (t) => String(t ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[’‘`´]/g, "'").toLowerCase().trim();
 
 // Vivino's "region" for a wine is usually its appellation ("Franciacorta",
 // "Barolo"). When it names one of Esplora's atlas wines exactly, the atlas
@@ -333,7 +334,7 @@ function renderResults(query) {
 
 function validVintage(raw) {
   const v = Number(String(raw ?? '').trim());
-  return Number.isInteger(v) && v >= 1800 && v <= new Date().getFullYear() + 1 ? v : undefined;
+  return Number.isInteger(v) && v >= 1900 && v <= new Date().getFullYear() + 1 ? v : undefined;
 }
 
 // The panel's "Aggiungi alla cantina": a catalog wine is added as it is; a

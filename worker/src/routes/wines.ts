@@ -12,6 +12,30 @@ function isNonEmptyShortString(v: unknown): v is string {
   return typeof v === 'string' && v.trim().length > 0 && v.length <= MAX_TEXT_LEN;
 }
 
+// SQLite's LIKE ignores case only for ASCII and never ignores accents, so
+// "saten" missed "Satèn". Search runs on wines.search_text instead: the
+// searchable fields folded here (accents stripped, lowercase, curly
+// apostrophes made straight). Exported for the tests.
+export function foldSearch(text: string): string {
+  return text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[’‘`´]/g, "'").toLowerCase().replace(/\s+/g, ' ').trim();
+}
+
+type SearchRow = { id: number; name: string; producer: string; region: string | null; denomination: string | null; grape_variety: string | null };
+
+// Every write to a wine sets search_text back to NULL (no write path can
+// forget to keep it current); this refills the NULL rows before a search.
+// After the first run it touches only wines added or edited since.
+async function refreshSearchText(db: D1Database) {
+  const stale = await db
+    .prepare('select id, name, producer, region, denomination, grape_variety from wines where search_text is null limit 500')
+    .all<SearchRow>();
+  if (!stale.results.length) return;
+  await db.batch(stale.results.map((w) =>
+    db.prepare('update wines set search_text = ? where id = ?')
+      .bind(foldSearch([w.name, w.producer, w.region, w.denomination, w.grape_variety].filter(Boolean).join(' ')), w.id),
+  ));
+}
+
 wineRoutes.get('/search', async (c) => {
   const barcode = c.req.query('barcode');
   if (barcode) {
@@ -21,14 +45,16 @@ wineRoutes.get('/search', async (c) => {
   // An empty q must not fall through to `like '%%'`, which matches every
   // row and hands back the whole catalogue as if it were a result set. The
   // caller asked for nothing, so nothing comes back.
-  const term = (c.req.query('q') ?? '').trim();
-  if (!term) return c.json([]);
-  const q = `%${term}%`;
+  // Every word must appear, in any order ("zamuner brut"), accents ignored.
+  // LIKE wildcards typed by the user are escaped, so they match literally.
+  const words = foldSearch(c.req.query('q') ?? '').split(' ').filter(Boolean).slice(0, 6);
+  if (!words.length) return c.json([]);
+  await refreshSearchText(c.env.DB);
   const rows = await c.env.DB
-    .prepare('select * from wines where name like ? or producer like ? or region like ? limit 20')
-    .bind(q, q, q)
-    .all();
-  return c.json(rows.results);
+    .prepare(`select * from wines where ${words.map(() => "search_text like ? escape '\\'").join(' and ')} order by name limit 20`)
+    .bind(...words.map((w) => `%${w.replace(/[\\%_]/g, (ch) => '\\' + ch)}%`))
+    .all<Record<string, unknown>>();
+  return c.json(rows.results.map(({ search_text: _, ...wine }) => wine));
 });
 
 wineRoutes.post('/', async (c) => {
@@ -83,7 +109,7 @@ wineRoutes.post('/', async (c) => {
     const wine = await c.env.DB
       .prepare(
         `update wines set region = coalesce(region, ?), barcode = coalesce(barcode, ?), grape_variety = coalesce(grape_variety, ?),
-           denomination = coalesce(denomination, ?), image_url = coalesce(image_url, ?)
+           denomination = coalesce(denomination, ?), image_url = coalesce(image_url, ?), search_text = null
          where id = ? returning *`,
       )
       .bind(body.region ?? null, body.barcode ?? null, body.grapeVariety ?? null, body.denomination ?? null, body.imageUrl ?? null, existing.id)
@@ -145,7 +171,8 @@ wineRoutes.patch('/:id', async (c) => {
 
   const wine = await c.env.DB
     .prepare(
-      `update wines set name = ?, producer = ?, region = ?, country = ?, type = ?, vintage = ?, grape_variety = ?, denomination = ?
+      `update wines set name = ?, producer = ?, region = ?, country = ?, type = ?, vintage = ?, grape_variety = ?, denomination = ?,
+         search_text = null
        where id = ? returning *`,
     )
     .bind(

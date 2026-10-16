@@ -667,6 +667,12 @@ casella vuota.
    `await` fra un input dell'utente e una scrittura nel DOM deve
    ricontrollare, dopo l'await, che l'input non sia cambiato.**
 
+3. **Accenti.** `LIKE` di SQLite non li ignora: si cerca su
+   `wines.search_text` (testo già piegato da `foldSearch()` in `wines.ts`).
+   Qualunque nuova scrittura su `wines` deve rimettere `search_text = null`
+   (la ricerca la ricalcola); una nuova ricerca testuale su altre tabelle
+   deve piegare allo stesso modo, non affidarsi a `LIKE` da solo.
+
 **Come riprodurlo** (serve, perché a mano è questione di millisecondi):
 Playwright con `page.route('**/api/**')` che stubba la ricerca con un
 ritardo artificiale (~900 ms), servendo `public/` con

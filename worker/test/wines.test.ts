@@ -30,6 +30,39 @@ describe('GET /api/wines/search', () => {
     expect(results).toHaveLength(1);
   });
 
+  it('ignores accents both ways, and matches every word in any order', async () => {
+    await env.DB
+      .prepare(`insert into wines (name, producer, region, country, type, source)
+                 values ('Franciacorta Satèn', 'Ca’ del Bosco', 'Lombardia', 'Italia', 'bollicine', 'custom')`)
+      .run();
+    const auth = signup('s4@b.com');
+    for (const q of ['saten', 'SATÈN', 'satén', 'bosco franciacorta', "ca' del", 'lombardia saten']) {
+      const res = await app.request(`/api/wines/search?q=${encodeURIComponent(q)}`, { headers: auth }, env);
+      const names = (await res.json<any[]>()).map((w) => w.name);
+      expect(names, q).toEqual(['Franciacorta Satèn']);
+    }
+    const none = await app.request('/api/wines/search?q=saten%20barolo', { headers: auth }, env);
+    expect(await none.json<any[]>()).toEqual([]);
+  });
+
+  it('treats % and _ typed by the user as plain characters', async () => {
+    const auth = signup('s5@b.com');
+    for (const q of ['%', '_', 'bar%lo']) {
+      const res = await app.request(`/api/wines/search?q=${encodeURIComponent(q)}`, { headers: auth }, env);
+      expect(await res.json<any[]>(), q).toEqual([]);
+    }
+  });
+
+  it('finds a wine by its new name right after an edit', async () => {
+    const auth = signup('s6@b.com');
+    await app.request('/api/wines/search?q=barolo', { headers: auth }, env); // fills search_text
+    await env.DB.exec("UPDATE wines SET name = 'Barbaresco Rabajà', search_text = NULL;");
+    const res = await app.request('/api/wines/search?q=rabaja', { headers: auth }, env);
+    const results = await res.json<any[]>();
+    expect(results.map((w) => w.name)).toEqual(['Barbaresco Rabajà']);
+    expect(results[0]).not.toHaveProperty('search_text');
+  });
+
   it('returns nothing for an empty or whitespace q instead of the whole catalogue', async () => {
     // `%${''}%` is `'%%'`, which matches every row — so clearing the search
     // box used to answer with the entire wines table.
