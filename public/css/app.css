@@ -600,9 +600,6 @@
   /* Wheel: wine filter and "Cosa aspettarti" (shared with Assaggio guidato) */
   .aroma-filters{display:grid; grid-template-columns:1fr 1.5fr; gap:8px;}
   .aroma-filters select{width:100%;}
-  .aroma-chips .chip.lit{border-color:currentColor; font-weight:600;}
-  .aroma-chips .chip.dim{opacity:.5;}
-  .aroma-filter-note{color:#736a5d; font-size:calc(12rem/17);}
   .expect-bars{display:flex; flex-direction:column; gap:8px;}
   .expect-row{display:grid; grid-template-columns:calc(78rem/17) 1fr calc(86rem/17); align-items:center; gap:8px; font-size:calc(12rem/17); color:#736a5d;}
   .expect-name{color:#241e1a;}
@@ -612,6 +609,7 @@
   .expect-group{display:flex; flex-direction:column; gap:6px;}
   .expect-fam{font-size:calc(12rem/17); font-weight:600;}
   .expect-group .chip-row{flex-wrap:wrap;}
+  .expect-group.current{background:#f7f5f0; border-radius:12px; padding:8px 10px; margin:0 -10px; box-shadow:inset 3px 0 0 var(--fam);}
 
   /* Assaggio guidato (#/assaggio) */
   .tasting-body{display:flex; flex-direction:column; gap:12px;}

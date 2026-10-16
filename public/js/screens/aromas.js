@@ -119,22 +119,16 @@ function goTo(i) {
 function familyCardHtml(f) {
   const guide = AROMA_GUIDE[f.id];
   const wines = familyWines(f);
-  const wineTags = filterWine ? WINE_AROMAS_BY_NAME(filterWine) : null;
   const chips = f.tags
-    .map((t) => {
-      const lit = wineTags?.includes(t);
-      const cls = t === selectedTag ? ' active' : lit ? ' lit' : wineTags ? ' dim' : '';
-      return `<div class="chip${cls}" data-tag="${escapeHtml(t)}" role="button" tabindex="0" aria-pressed="${t === selectedTag}"${lit && t !== selectedTag ? ` style="color:${f.fg}"` : ''}>${escapeHtml(t)}</div>`;
-    })
+    .map((t) => `<div class="chip${t === selectedTag ? ' active' : ''}" data-tag="${escapeHtml(t)}" role="button" tabindex="0" aria-pressed="${t === selectedTag}">${escapeHtml(t)}</div>`)
     .join('');
   return `
     <div class="aroma-card">
       <span class="aroma-pill" style="background:${f.bg};color:${f.fg}">${escapeHtml(guide.origin)}</span>
       <div class="aroma-card-title">${escapeHtml(f.label)}</div>
       <p class="aroma-card-desc">${escapeHtml(guide.desc)}</p>
-      ${wineTags ? `<p class="aroma-card-desc aroma-filter-note">${wineTags.some((t) => f.tags.includes(t)) ? `In evidenza gli aromi tipici di ${escapeHtml(filterWine)}.` : `${escapeHtml(filterWine)} non ha aromi tipici in questa famiglia.`}</p>` : ''}
       <div class="chip-row aroma-chips">${chips}</div>
-      ${wines.length && !filterWine ? `<div class="field-label">Dove lo trovi</div>${wineRowsHtml(wines)}` : ''}
+      ${wines.length ? `<div class="field-label">Dove lo trovi</div>${wineRowsHtml(wines)}` : ''}
     </div>`;
 }
 
@@ -181,10 +175,12 @@ function renderWheelPane() {
   document.querySelector('.aroma-hint').textContent = filterWine
     ? (n ? `${n} ${n === 1 ? 'aroma tipico' : 'aromi tipici'} di ${filterWine} in questa famiglia` : `Nessun aroma tipico di ${filterWine} qui`)
     : 'Trascina la ruota o usa le frecce';
-  const expect = filterWine
-    ? `<div class="aroma-card">${expectationHtml(filterWine, { selectedTag })}</div>`
-    : '';
-  document.getElementById('aroma-card').innerHTML = expect + (selectedTag ? tagCardHtml(selectedTag) : '') + familyCardHtml(f);
+  // With a wine chosen, "Cosa aspettarti" already lists its aromas family by
+  // family, so the family card would only repeat them: the dial highlights
+  // the matching group there instead.
+  document.getElementById('aroma-card').innerHTML = filterWine
+    ? (selectedTag ? tagCardHtml(selectedTag) : '') + `<div class="aroma-card">${expectationHtml(filterWine, { selectedTag, currentFamily: f.id })}</div>`
+    : (selectedTag ? tagCardHtml(selectedTag) : '') + familyCardHtml(f);
 }
 
 // ---- Il mio palato ----

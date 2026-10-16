@@ -35,7 +35,9 @@ export function wineOptionsHtml(type, placeholder) {
 
 // Expected palate as compact read-only bars plus the typical aromas grouped
 // by family (each a tappable [data-tag] chip).
-export function expectationHtml(wine, { selectedTag = null } = {}) {
+// `currentFamily` (a family id) highlights that family's group: the wheel's
+// dial points at it.
+export function expectationHtml(wine, { selectedTag = null, currentFamily = null } = {}) {
   const taste = expectedTaste(wine);
   const bars = TASTE_AXES.map((axis, i) => {
     const v = taste[i];
@@ -53,7 +55,7 @@ export function expectationHtml(wine, { selectedTag = null } = {}) {
     <div class="expect-bars">${bars}</div>
     <div class="field-label">Aromi tipici</div>
     ${groups.map(([f, ts]) => `
-      <div class="expect-group">
+      <div class="expect-group${f.id === currentFamily ? ' current' : ''}" style="--fam:${f.fg}">
         <span class="expect-fam" style="color:${f.fg}">${escapeHtml(f.label)}</span>
         <div class="chip-row">${ts.map((t) => `<div class="chip${t === selectedTag ? ' active' : ''}" data-tag="${escapeHtml(t)}" role="button" tabindex="0" aria-pressed="${t === selectedTag}">${escapeHtml(t)}</div>`).join('')}</div>
       </div>`).join('')}`;

@@ -939,6 +939,10 @@ questo file è il riassunto "dove eravamo rimasti".
       trova" (mostravano altri vini, fuori contesto) e niente pulsante
       "Assaggio guidato" (ridondante con la sezione in Home, chiesto
       dall'utente). Senza filtro restano come prima.
+    - Build 99: con un vino filtrato sparisce anche la scheda della famiglia
+      (ripeteva gli aromi già elencati in "Cosa aspettarti"); la ruota
+      evidenzia invece il gruppo della famiglia puntata dentro "Cosa
+      aspettarti" (`currentFamily` in `expectationHtml`).
 
 ## Cose note, non (ancora) da rifare
 
