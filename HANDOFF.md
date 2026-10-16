@@ -1204,6 +1204,20 @@ questo file è il riassunto "dove eravamo rimasti".
     nome e "Obiettivo 45,50 €". **Non fatti** (non scelti): pulsante nella
     lista Desideri e "L'ho preso" per spostare in cantina.
 
+51. **"Aggiungi ai desideri" che non fa nulla su iPhone** (build 120,
+    causa NON confermata). Sulla build 119 il tocco non produceva niente:
+    nessuna richiesta al server (verificato su D1: né vino né desiderio
+    creati), nessun errore visibile; in Chromium, anche emulando un iPhone
+    con tocchi veri, funziona. Ipotesi scartate: tastiera aperta (il prezzo
+    era vuoto negli screenshot), `suppressClick` di `sheet-gestures.js` (dura
+    0 ms). Rimedi in `add.js`: i pulsanti del pannello agiscono anche sul
+    `pointerup` del tocco (una sola azione per tocco: il click che segue
+    viene ignorato in cattura per 800 ms; uno scroll dà `pointercancel`, mai
+    `pointerup`); il pulsante mostra subito "Aggiungo…"; `confirmWish()` ha
+    tutto dentro il try e mostra il motivo di qualsiasi errore. Se il
+    problema resta, la scritta "Aggiungo…" (presente o no) dice se il tocco
+    arriva: è il prossimo dato da chiedere all'utente.
+
 ## Cose note, non (ancora) da rifare
 
 - `status-bar-style` è `black-translucent` (non più `default`), `.screen`

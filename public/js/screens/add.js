@@ -422,20 +422,22 @@ async function loadWishlist() {
 
 // The sheet stays open (the user may go on searching); the row shows it.
 async function confirmWish(w, button) {
-  const typed = expanded?.vintage ?? '';
-  const vintage = w.vintage ?? validVintage(typed);
-  if (!w.vintage && String(typed).trim() && vintage === undefined) {
-    await alertModal("L'annata deve essere un anno, per esempio 2019.");
-    return;
-  }
-  const rawPrice = String(expanded?.price ?? '').trim().replace(/\s*€$/, '');
-  const price = rawPrice ? Number(rawPrice.replace(',', '.')) : null;
-  if (rawPrice && !(Number.isFinite(price) && price >= 0 && price <= 100000)) {
-    await alertModal('Il prezzo obiettivo deve essere un numero, per esempio 45 o 45,50.');
-    return;
-  }
+  const label = button.textContent;
   button.disabled = true;
+  button.textContent = 'Aggiungo…';
   try {
+    const typed = expanded?.vintage ?? '';
+    const vintage = w.vintage ?? validVintage(typed);
+    if (!w.vintage && String(typed).trim() && vintage === undefined) {
+      await alertModal("L'annata deve essere un anno, per esempio 2019.");
+      return;
+    }
+    const rawPrice = String(expanded?.price ?? '').trim().replace(/\s*€$/, '');
+    const price = rawPrice ? Number(rawPrice.replace(',', '.')) : null;
+    if (rawPrice && !(Number.isFinite(price) && price >= 0 && price <= 100000)) {
+      await alertModal('Il prezzo obiettivo deve essere un numero, per esempio 45 o 45,50.');
+      return;
+    }
     if (!currentCellarId) await (cellarLoad ?? loadCellar());
     const wineId = await ensureWine(w, vintage);
     await api.post(`/api/cellars/${currentCellarId}/wishlist`, { wineId, targetPrice: price ?? undefined });
@@ -449,9 +451,14 @@ async function confirmWish(w, button) {
     showToast(euro ? `Nei desideri, obiettivo ${euro} €` : 'Aggiunto ai desideri');
   } catch (err) {
     console.error(err);
-    await alertModal('Impossibile aggiungere ai desideri, riprova.');
+    // The reason is shown, not only "riprova": a silent failure here once
+    // could not be told apart from a tap that never arrived.
+    await alertModal(`Impossibile aggiungere ai desideri, riprova.\n(${err?.message ?? err})`);
   } finally {
-    button.disabled = false;
+    if (button.isConnected) {
+      button.disabled = false;
+      button.textContent = label;
+    }
   }
 }
 
@@ -540,8 +547,9 @@ input?.addEventListener('keydown', (e) => { if (e.key === 'Enter') input.blur();
 document.getElementById('add-close')?.addEventListener('click', closeAddSheet);
 document.getElementById('add-camera-btn')?.addEventListener('click', () => openViewfinder('label'));
 
-results?.addEventListener('click', (e) => {
-  const t = e.target;
+results?.addEventListener('click', (e) => handleResultsTap(e.target));
+
+function handleResultsTap(t) {
   const recent = t.closest('[data-recent]');
   if (recent) {
     input.value = recent.dataset.recent;
@@ -604,6 +612,49 @@ results?.addEventListener('click', (e) => {
       const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
       if (delta > 0) results.scrollBy({ top: delta, behavior: reduce ? 'auto' : 'smooth' });
     }
+  }
+}
+
+// Panel buttons act on the touch itself (pointerup) as well as on the click
+// Safari synthesizes after it: on the iPhone a tap on "Aggiungi ai desideri"
+// produced no click at all (build 119; Chromium fine). One action per tap:
+// the click that follows a handled touch is ignored. A touch that turned into
+// a scroll gets pointercancel, never pointerup, so scrolling never triggers.
+let lastTouchAction = 0;
+let touchStart = null;
+results?.addEventListener('pointerdown', (e) => {
+  touchStart = e.pointerType === 'touch' ? { x: e.clientX, y: e.clientY } : null;
+});
+results?.addEventListener('pointerup', (e) => {
+  if (e.pointerType !== 'touch' || !touchStart) return;
+  const moved = Math.hypot(e.clientX - touchStart.x, e.clientY - touchStart.y);
+  touchStart = null;
+  if (moved > 10 || !e.target.closest('.result-exp button')) return;
+  lastTouchAction = Date.now();
+  handleResultsTap(e.target);
+  const field = document.activeElement;
+  if (field?.closest?.('.result-exp') && field.matches('input')) setTimeout(() => field.blur(), 0);
+});
+results?.addEventListener('click', (e) => {
+  if (e.target.closest('.result-exp button') && Date.now() - lastTouchAction < 800) {
+    e.stopImmediatePropagation();
+  }
+}, true);
+
+// A tap on a panel button while its field still has the keyboard up (the
+// price, the vintage): on iOS the tap first takes the focus away, the keyboard
+// closes and the sheet changes height, so the button moves before the click
+// lands and nothing happens (seen on build 119 with "Aggiungi ai desideri").
+// Keeping the focus where it is during the tap keeps the layout still; the
+// keyboard is closed right after, once the click has been delivered.
+results?.addEventListener('mousedown', (e) => {
+  const field = document.activeElement;
+  if (field?.closest?.('.result-exp') && e.target.closest('.result-exp button')) e.preventDefault();
+});
+results?.addEventListener('click', (e) => {
+  if (e.target.closest('.result-exp button')) {
+    const field = document.activeElement;
+    if (field?.closest?.('.result-exp') && field.matches('input')) setTimeout(() => field.blur(), 0);
   }
 });
 results?.addEventListener('input', (e) => {
