@@ -11,7 +11,7 @@ async function signup(email: string) {
 
 beforeEach(async () => {
   await env.DB.exec(
-    'DELETE FROM push_subscriptions; DELETE FROM bottles; DELETE FROM wines; DELETE FROM cellar_members; DELETE FROM cellars; DELETE FROM users;',
+    'DELETE FROM push_subscriptions; DELETE FROM bottle_places; DELETE FROM bottles; DELETE FROM wines; DELETE FROM cellar_members; DELETE FROM cellars; DELETE FROM users;',
   );
 });
 

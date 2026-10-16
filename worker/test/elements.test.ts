@@ -13,7 +13,7 @@ async function myCellarId(auth: Record<string, string>) {
 
 beforeEach(async () => {
   await env.DB.exec(
-    'DELETE FROM bottles; DELETE FROM cellar_elements; DELETE FROM cellar_members; DELETE FROM cellars; DELETE FROM users;',
+    'DELETE FROM bottle_places; DELETE FROM bottles; DELETE FROM cellar_elements; DELETE FROM cellar_members; DELETE FROM cellars; DELETE FROM users;',
   );
 });
 
@@ -85,8 +85,8 @@ describe('cellar elements', () => {
       )
     ).json<{ id: number }>();
     await app.request(
-      `/api/bottles/${bottle.id}/location`,
-      { method: 'PATCH', body: JSON.stringify({ elementId: element.id, tier: 1, col: 0, depth: 1 }), headers: { ...auth, 'content-type': 'application/json' } },
+      `/api/bottles/${bottle.id}/places`,
+      { method: 'POST', body: JSON.stringify({ elementId: element.id, tier: 1, col: 0, depth: 1 }), headers: { ...auth, 'content-type': 'application/json' } },
       env,
     );
 
@@ -94,7 +94,7 @@ describe('cellar elements', () => {
     expect(delRes.status).toBe(200);
 
     const bottles = await (await app.request(`/api/cellars/${cellarId}/bottles`, { headers: auth }, env)).json<any[]>();
-    expect(bottles[0].element_id).toBeNull();
+    expect(bottles[0].places).toEqual([]);
   });
 
   it('rejects an unknown kind and a non-integer dimension', async () => {

@@ -166,11 +166,20 @@ function hideUndo() {
 // Quantity changes go through PATCH /api/bottles/:id ({ quantity } only). The
 // bottle object is shared with cellar.js's list, so mutating it and asking
 // the list to re-render is all the list needs.
+// Fewer bottles than places frees the most recently placed ones (server
+// side): the sheet shows the new positions, and returns the freed ones so
+// an undo can put them back.
 async function setQuantity(bottle, quantity) {
-  await api.patch(`/api/bottles/${bottle.id}`, { quantity });
+  const before = bottle.places ?? [];
+  const updated = await api.patch(`/api/bottles/${bottle.id}`, { quantity });
   bottle.quantity = quantity;
-  if (currentBottle === bottle) renderQuantity();
+  bottle.places = updated.places ?? [];
+  if (currentBottle === bottle) {
+    renderQuantity();
+    document.getElementById('loc-value').textContent = locationLabel(bottle) || 'Non assegnata';
+  }
   refreshCellarList();
+  return before.filter((p) => !bottle.places.some((q) => q.id === p.id));
 }
 
 async function uncorkOne() {
@@ -193,13 +202,21 @@ async function uncorkOne() {
       refreshCellarList(bottle.id);
       return;
     }
-    await setQuantity(bottle, before - 1);
+    const freed = await setQuantity(bottle, before - 1);
     clearTimeout(undoTimer);
     const undo = document.getElementById('uncork-undo');
+    const spot = (p) => (p.slot_tier == null ? p.element_name : `${p.element_name} · L${p.slot_tier} ${String.fromCharCode(65 + p.slot_col)}.${p.slot_depth}`);
+    undo.querySelector('span').textContent = freed.length ? `Bottiglia stappata · liberato ${freed.map(spot).join(', ')}` : 'Bottiglia stappata';
     undo.classList.remove('hidden');
     document.getElementById('uncork-undo-btn').onclick = async () => {
       hideUndo();
       await setQuantity(bottle, before);
+      for (const p of freed) {
+        const res = await api.post(`/api/bottles/${bottle.id}/places`, { elementId: p.element_id, tier: p.slot_tier, col: p.slot_col, depth: p.slot_depth }).catch(() => null);
+        if (res) bottle.places = res.places;
+      }
+      if (currentBottle === bottle) document.getElementById('loc-value').textContent = locationLabel(bottle) || 'Non assegnata';
+      refreshCellarList();
     };
     undoTimer = setTimeout(hideUndo, 5000);
   } catch (err) {

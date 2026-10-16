@@ -1325,6 +1325,23 @@ questo file è il riassunto "dove eravamo rimasti".
       cancellata dagli aggiornamenti); `js/landscape.js` li ricorda per
       tutta la sessione.
 
+58. **Un posto per ogni bottiglia** (build 128, migrazione 0015). Bug
+    segnalato: 2 Campofiorin non si potevano mettere in due slot. La
+    posizione era una sola per riga di `bottles` (cioè per vino, con la sua
+    quantità). Ora c'è `bottle_places` (una riga per bottiglia posizionata,
+    al massimo `quantity`), con i dati vecchi copiati; le colonne
+    `bottles.element_id/slot_*` restano ma non si leggono né scrivono più
+    (e la lista non le restituisce). API: `POST /api/bottles/:id/places`
+    (409 se tutte hanno già un posto o lo slot è occupato, 400 fuori
+    griglia), `PATCH`/`DELETE /api/places/:id`; la lista bottiglie ha
+    `places: [...]`. Quando la quantità scende (stappa, modifica) il server
+    libera i posti più recenti; "Stappa" da uno slot libera proprio quello.
+    In Cantina e nella scheda: "Cella · L1 B.1, C.1 · 1 senza posto". Nel
+    selettore "scegli la bottiglia" compaiono solo i vini con bottiglie
+    ancora senza posto. Dalla scheda ("modifica" posizione): se c'è una
+    bottiglia senza posto la mette lì; se il vino ha un solo posto lo
+    sposta; con più posti chiede di usare Sposta sullo slot.
+
 ## Cose note, non (ancora) da rifare
 
 - `status-bar-style` è `black-translucent` (non più `default`), `.screen`

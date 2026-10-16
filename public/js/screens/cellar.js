@@ -43,8 +43,8 @@ let elementsMode = 'list'; // 'list' | 'detail' | 'create'
 let currentElementId = null;
 // Element grid: the bottle whose slot card is open, the bottle being moved
 // (free slots become targets), and grid vs list view.
-let slotSel = null;
-let movingBottle = null;
+let slotSel = null; // id of the selected place
+let movingPlace = null; // { place, bottle } being moved
 let elemView = 'grid';
 
 function colLetter(i) {
@@ -59,10 +59,37 @@ function photoHtml(b, className) {
     : `<div class="${className} photo ${photoClass(b.type)}"></div>`;
 }
 
+// Where the bottles of a wine sit: one place per physical bottle
+// (b.places, from bottle_places), so two bottles of the same wine can be in
+// two slots. Bottles without a place are counted at the end.
 export function locationLabel(b) {
-  if (!b.element_name) return '';
-  if (b.slot_tier == null) return b.element_name;
-  return `${b.element_name} · Livello ${b.slot_tier} · ${colLetter(b.slot_col)}.${b.slot_depth}`;
+  const places = b.places ?? [];
+  if (!places.length) return '';
+  if (places.length === 1 && !freeCount(b)) {
+    const p = places[0];
+    return p.slot_tier == null ? p.element_name : `${p.element_name} · Livello ${p.slot_tier} · ${colLetter(p.slot_col)}.${p.slot_depth}`;
+  }
+  const groups = new Map();
+  for (const p of places) {
+    if (!groups.has(p.element_name)) groups.set(p.element_name, []);
+    groups.get(p.element_name).push(p.slot_tier == null ? null : `L${p.slot_tier} ${colLetter(p.slot_col)}.${p.slot_depth}`);
+  }
+  const text = [...groups].map(([name, spots]) => {
+    const slots = spots.filter(Boolean);
+    return slots.length ? `${name} · ${slots.join(', ')}` : `${name} (${spots.length})`;
+  }).join(' · ');
+  const free = freeCount(b);
+  return free ? `${text} · ${free} senza posto` : text;
+}
+
+// Bottles of this wine that have no place yet.
+function freeCount(b) {
+  return Math.max(0, (Number(b.quantity) || 0) - (b.places?.length ?? 0));
+}
+
+// Every placed bottle of the cellar, as { place, bottle }.
+function occupants() {
+  return currentBottles.flatMap((bottle) => (bottle.places ?? []).map((place) => ({ place, bottle })));
 }
 
 const ICON_SWIPE_EDIT = '<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>';
@@ -528,7 +555,7 @@ function elemCapacity(el) {
   return el.kind === 'Scatolone' ? null : el.tiers * el.cols * el.depth;
 }
 function elemCount(el) {
-  return currentBottles.filter((b) => b.element_id === el.id).length;
+  return occupants().filter((o) => o.place.element_id === el.id).length;
 }
 function elemSub(el) {
   if (el.kind === 'Scatolone') return 'Nessuno slot — solo elenco';
@@ -546,13 +573,13 @@ function closeElementsOverlay() {
   closeSheet('elements-overlay');
   picker = null;
   slotSel = null;
-  movingBottle = null;
+  movingPlace = null;
 }
 
 function renderElementsList() {
   elementsMode = 'list';
   slotSel = null;
-  movingBottle = null;
+  movingPlace = null;
   document.getElementById('elements-back-btn').style.visibility = 'hidden';
   const cellarName = cellars.find((c) => c.id === currentCellarId)?.name ?? '';
   document.getElementById('elements-title').textContent = picker ? 'Scegli dove riporla' : `Elementi — ${cellarName}`;
@@ -666,13 +693,16 @@ function renderElementDetail(id) {
   const body = document.getElementById('elements-body');
 
   if (el.kind === 'Scatolone') {
-    const items = currentBottles.filter((b) => b.element_id === id);
+    // One line per wine, with how many of its bottles are in the box.
+    const counts = new Map();
+    for (const o of occupants()) if (o.place.element_id === id) counts.set(o.bottle, (counts.get(o.bottle) ?? 0) + 1);
+    const items = [...counts];
     body.innerHTML = `
       <div class="icon-btn danger" id="delete-element-btn" title="Elimina elemento" role="button" tabindex="0" aria-label="Elimina elemento" style="align-self:flex-end; margin-bottom:10px;"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"/><path d="M6 7l1 13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-13"/><path d="M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3"/></svg></div>
       <p class="box-note">Gli scatoloni non hanno slot: è solo un elenco di cosa c'è dentro.</p>
       <div class="box-contents">${
         items.length
-          ? items.map((b) => `<div class="box-item">${photoHtml(b, 'bphoto')}<div class="bname">${escapeHtml(b.name)}</div><div class="elem-count">×${b.quantity}</div></div>`).join('')
+          ? items.map(([b, n]) => `<div class="box-item">${photoHtml(b, 'bphoto')}<div class="bname">${escapeHtml(b.name)}</div><div class="elem-count">×${n}</div></div>`).join('')
           : '<div class="empty-note">Scatolone vuoto.</div>'
       }</div>
       <div class="primary-btn" id="assign-box-btn" style="margin-top:14px;" role="button" tabindex="0">${picker ? `Metti "${escapeHtml(picker.bottle.name)}" qui` : 'Aggiungi bottiglia'}</div>`;
@@ -683,10 +713,11 @@ function renderElementDetail(id) {
 
   const occupied = elemCount(el);
   const capacity = elemCapacity(el);
-  const bottleAt = (t, c, d) => currentBottles.find((b) => b.element_id === id && b.slot_tier === t && b.slot_col === c && b.slot_depth === d);
-  const selected = slotSel ? currentBottles.find((b) => b.id === slotSel) : null;
+  const here = occupants().filter((o) => o.place.element_id === id);
+  const bottleAt = (t, c, d) => here.find((o) => o.place.slot_tier === t && o.place.slot_col === c && o.place.slot_depth === d);
+  const selected = slotSel ? here.find((o) => o.place.id === slotSel) : null;
   // Moving only makes sense in the grid: the free slots are the targets.
-  if (movingBottle) elemView = 'grid';
+  if (movingPlace) elemView = 'grid';
 
   let html = `
     <div class="icon-btn danger" id="delete-element-btn" title="Elimina elemento" role="button" tabindex="0" aria-label="Elimina elemento" style="align-self:flex-end; margin-bottom:10px;"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"/><path d="M6 7l1 13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-13"/><path d="M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3"/></svg></div>
@@ -700,18 +731,16 @@ function renderElementDetail(id) {
       <button type="button" data-view="grid" class="${elemView === 'grid' ? 'active' : ''}" aria-pressed="${elemView === 'grid'}">Griglia</button>
       <button type="button" data-view="list" class="${elemView === 'list' ? 'active' : ''}" aria-pressed="${elemView === 'list'}">Elenco</button>
     </div>
-    ${movingBottle ? `<div class="slot-move-banner"><span>Tocca uno slot libero per spostare <b>${escapeHtml(movingBottle.name)}</b></span><button type="button" id="slot-move-cancel">Annulla</button></div>` : ''}`;
+    ${movingPlace ? `<div class="slot-move-banner"><span>Tocca uno slot libero per spostare <b>${escapeHtml(movingPlace.bottle.name)}</b></span><button type="button" id="slot-move-cancel">Annulla</button></div>` : ''}`;
 
   if (elemView === 'list') {
-    const rows = currentBottles
-      .filter((b) => b.element_id === id)
-      .sort((a, b) => a.slot_tier - b.slot_tier || a.slot_depth - b.slot_depth || a.slot_col - b.slot_col);
-    html += `<div class="slot-list">${rows.map((b) => `
-      <div class="elem-row slot-list-row${selected?.id === b.id ? ' sel' : ''}" data-bottle="${b.id}" role="button" tabindex="0" aria-expanded="${selected?.id === b.id}">
-        ${photoHtml(b, 'cphoto')}
-        <div class="elem-body"><div class="elem-name">${escapeHtml(b.name)}</div><div class="elem-sub">${escapeHtml(b.producer)}${b.quantity > 1 ? ` · ×${b.quantity}` : ''}</div></div>
-        <span class="slot-pos">${colLetter(b.slot_col)}.${b.slot_depth} · L${b.slot_tier}</span>
-      </div>${selected?.id === b.id ? slotCardHtml(b, { compact: true }) : ''}`).join('')}
+    const rows = [...here].sort((a, b) => a.place.slot_tier - b.place.slot_tier || a.place.slot_depth - b.place.slot_depth || a.place.slot_col - b.place.slot_col);
+    html += `<div class="slot-list">${rows.map((o) => `
+      <div class="elem-row slot-list-row${selected === o ? ' sel' : ''}" data-place="${o.place.id}" role="button" tabindex="0" aria-expanded="${selected === o}">
+        ${photoHtml(o.bottle, 'cphoto')}
+        <div class="elem-body"><div class="elem-name">${escapeHtml(o.bottle.name)}</div><div class="elem-sub">${escapeHtml(o.bottle.producer)}${o.bottle.vintage ? ' · ' + o.bottle.vintage : ''}</div></div>
+        <span class="slot-pos">${colLetter(o.place.slot_col)}.${o.place.slot_depth} · L${o.place.slot_tier}</span>
+      </div>${selected === o ? slotCardHtml(o, { compact: true }) : ''}`).join('')}
       ${capacity - occupied > 0 ? `<div class="slot-list-free">${capacity - occupied} ${capacity - occupied === 1 ? 'slot libero' : 'slot liberi'}: passa alla griglia per riempirli</div>` : ''}
     </div>`;
   } else {
@@ -721,18 +750,18 @@ function renderElementDetail(id) {
         html += `<div class="slot-row">`;
         for (let c = 0; c < el.cols; c++) {
           const occ = bottleAt(t, c, d);
-          const cls = occ ? ` filled ${slotTypeClass(occ)}${selected?.id === occ.id ? ' sel' : ''}` : ` empty${movingBottle ? ' target' : ''}`;
-          html += `<div class="slot-circle${cls}" data-t="${t}" data-c="${c}" data-d="${d}" role="button" tabindex="0" aria-label="Livello ${t}, ${colLetter(c)}.${d}, ${occ ? escapeHtml(occ.name) : 'libero'}"${occ ? ` aria-expanded="${selected?.id === occ.id}"` : ''}><span class="slabel">${colLetter(c)}.${d}</span></div>`;
+          const cls = occ ? ` filled ${slotTypeClass(occ.bottle)}${selected === occ ? ' sel' : ''}` : ` empty${movingPlace ? ' target' : ''}`;
+          html += `<div class="slot-circle${cls}" data-t="${t}" data-c="${c}" data-d="${d}" role="button" tabindex="0" aria-label="Livello ${t}, ${colLetter(c)}.${d}, ${occ ? escapeHtml(occ.bottle.name) : 'libero'}"${occ ? ` aria-expanded="${selected === occ}"` : ''}><span class="slabel">${colLetter(c)}.${d}</span></div>`;
         }
         html += '</div>';
       }
       html += '</div></div>';
       // The selected bottle's card opens right under its own level, with an
       // arrow pointing at the slot (placed after render, see below).
-      if (selected && selected.slot_tier === t && !movingBottle) html += slotCardHtml(selected);
+      if (selected && selected.place.slot_tier === t && !movingPlace) html += slotCardHtml(selected);
     }
     html += `<div class="slot-legend"><span><i class="lg rosso"></i>Rosso</span><span><i class="lg bianco"></i>Bianco</span><span><i class="lg bollicine"></i>Bollicine</span><span><i class="lg rosato"></i>Rosato</span><span><i class="lg libero"></i>Libero</span></div>`;
-    if (!movingBottle) html += `<p class="page-sub" style="margin:0; font-size:calc(11.5rem/17); color:#736a5d; text-align:center;">Tocca uno slot vuoto per posizionarci ${picker ? '"' + escapeHtml(picker.bottle.name) + '"' : 'una bottiglia'}. Tocca uno slot pieno per vederne il contenuto.</p>`;
+    if (!movingPlace) html += `<p class="page-sub" style="margin:0; font-size:calc(11.5rem/17); color:#736a5d; text-align:center;">Tocca uno slot vuoto per posizionarci ${picker ? '"' + escapeHtml(picker.bottle.name) + '"' : 'una bottiglia'}. Tocca uno slot pieno per vederne il contenuto.</p>`;
   }
   html += '</div>';
   body.innerHTML = html;
@@ -742,22 +771,22 @@ function renderElementDetail(id) {
     elemView = btn.dataset.view;
     renderElementDetail(id);
   }));
-  document.getElementById('slot-move-cancel')?.addEventListener('click', () => { movingBottle = null; renderElementDetail(id); });
+  document.getElementById('slot-move-cancel')?.addEventListener('click', () => { movingPlace = null; renderElementDetail(id); });
   body.querySelectorAll('.slot-circle').forEach((cell) => {
     const t = Number(cell.dataset.t), c = Number(cell.dataset.c), d = Number(cell.dataset.d);
     const occ = bottleAt(t, c, d);
     cell.addEventListener('click', () => {
-      if (movingBottle) {
-        if (!occ) moveBottleTo(movingBottle, id, t, c, d);
+      if (movingPlace) {
+        if (!occ) moveBottleTo(movingPlace, id, t, c, d);
         return;
       }
-      if (occ) { slotSel = slotSel === occ.id ? null : occ.id; renderElementDetail(id); }
+      if (occ) { slotSel = slotSel === occ.place.id ? null : occ.place.id; renderElementDetail(id); }
       else placeBottle(id, t, c, d);
     });
   });
   body.querySelectorAll('.slot-list-row').forEach((row) => row.addEventListener('click', () => {
-    const bid = Number(row.dataset.bottle);
-    slotSel = slotSel === bid ? null : bid;
+    const pid = Number(row.dataset.place);
+    slotSel = slotSel === pid ? null : pid;
     renderElementDetail(id);
   }));
   if (selected) wireSlotCard(selected, id);
@@ -775,20 +804,24 @@ const SLOT_ICON = {
   free: '<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>',
 };
 
+const spotText = (p) => `Livello ${p.slot_tier} · ${colLetter(p.slot_col)}.${p.slot_depth}`;
+
 // Card for an occupied slot, opened under its level (grid) or its row (list):
 // the bottle and its position, then Apri / Stappa / Sposta / Libera. While
 // picking a slot for another bottle it also offers to swap them.
 // In the list the row above already shows the bottle and its position, so
 // the compact card is just the actions.
-function slotCardHtml(b, { compact = false } = {}) {
+function slotCardHtml(o, { compact = false } = {}) {
+  const b = o.bottle;
   const canSwap = picker && picker.bottle.id !== b.id;
+  const others = (Number(b.quantity) || 0) - 1;
   return `
     <div class="slot-card${compact ? ' compact' : ''}" id="slot-card">
       ${compact ? '' : `<div class="slot-card-main">
         ${photoHtml(b, 'cphoto')}
-        <div class="elem-body"><div class="elem-name">${escapeHtml(b.name)}</div><div class="elem-sub">${escapeHtml(b.producer)}${b.vintage ? ' · ' + b.vintage : ''} · ${b.quantity} ${Number(b.quantity) === 1 ? 'bottiglia' : 'bottiglie'}</div></div>
+        <div class="elem-body"><div class="elem-name">${escapeHtml(b.name)}</div><div class="elem-sub">${escapeHtml(b.producer)}${b.vintage ? ' · ' + b.vintage : ''}${others > 0 ? ` · altre ${others} in cantina` : ''}</div></div>
       </div>
-      <span class="slot-pos">Livello ${b.slot_tier} · ${colLetter(b.slot_col)}.${b.slot_depth}</span>`}
+      <span class="slot-pos">${spotText(o.place)}</span>`}
       ${canSwap ? `<div class="primary-btn" id="slot-swap-btn" role="button" tabindex="0">Sostituisci con "${escapeHtml(picker.bottle.name)}"</div>` : ''}
       <div class="slot-actions">
         <button type="button" class="slot-act" id="slot-open-btn">${SLOT_ICON.open}Apri</button>
@@ -799,9 +832,10 @@ function slotCardHtml(b, { compact = false } = {}) {
     </div>`;
 }
 
-function wireSlotCard(b, elId) {
+function wireSlotCard(o, elId) {
   const card = document.getElementById('slot-card');
   if (!card) return;
+  const b = o.bottle;
   // Point the card's arrow at the selected slot (grid only).
   const circle = document.querySelector('#elements-body .slot-circle.sel');
   if (circle) {
@@ -815,41 +849,39 @@ function wireSlotCard(b, elId) {
   });
   document.getElementById('slot-swap-btn')?.addEventListener('click', async () => {
     const { bottle, onPicked } = picker;
-    const tier = b.slot_tier, col = b.slot_col, depth = b.slot_depth;
-    // Free the current occupant first — otherwise two bottles would
-    // briefly (and, if the second call failed, permanently) claim the
-    // same slot server-side.
-    await assignBottleToSlot(b, null, null, null, null);
-    await assignBottleToSlot(bottle, elId, tier, col, depth);
+    const { slot_tier: tier, slot_col: col, slot_depth: depth } = o.place;
+    // Free the current occupant first, so the slot is empty for the new one.
+    await freePlace(o);
+    if (!(await putPickerBottle(bottle, elId, tier, col, depth))) return;
     closeElementsOverlay();
     onPicked?.(bottle);
   });
   document.getElementById('slot-move-btn').addEventListener('click', () => {
-    movingBottle = b;
+    movingPlace = o;
     slotSel = null;
     renderElementDetail(elId);
   });
   document.getElementById('slot-free-btn').addEventListener('click', async () => {
-    const prev = [b.element_id, b.slot_tier, b.slot_col, b.slot_depth];
-    const where = `Livello ${b.slot_tier} · ${colLetter(b.slot_col)}.${b.slot_depth}`;
-    await assignBottleToSlot(b, null, null, null, null);
+    const { element_id, slot_tier, slot_col, slot_depth } = o.place;
+    await freePlace(o);
     slotSel = null;
     renderElementDetail(elId);
-    showToast(`${where} liberato`, {
+    showToast(`${spotText(o.place)} liberato`, {
       actionLabel: 'Annulla',
       onAction: async () => {
-        await assignBottleToSlot(b, ...prev);
+        await addPlace(b, element_id, slot_tier, slot_col, slot_depth);
         if (currentElementId === elId && elementsMode === 'detail') renderElementDetail(elId);
       },
     });
   });
-  document.getElementById('slot-uncork-btn').addEventListener('click', () => uncorkFromSlot(b, elId));
+  document.getElementById('slot-uncork-btn').addEventListener('click', () => uncorkFromSlot(o, elId));
 }
 
 // Same rules as "Stappa una bottiglia" in the wine's detail sheet: one fewer,
-// with Annulla; the last one asks before removing the wine from the cellar,
-// which also frees its slot.
-async function uncorkFromSlot(b, elId) {
+// with Annulla; the last one asks before removing the wine from the cellar.
+// The bottle taken is the one in this slot, so this slot is the one freed.
+async function uncorkFromSlot(o, elId) {
+  const b = o.bottle;
   const before = Number(b.quantity) || 0;
   if (before <= 1) {
     const ok = await confirmModal("Era l'ultima bottiglia: rimuovere il vino dalla cantina?", {
@@ -866,8 +898,12 @@ async function uncorkFromSlot(b, elId) {
     showToast('Ultima bottiglia stappata: slot libero');
     return;
   }
-  await api.patch(`/api/bottles/${b.id}`, { quantity: before - 1 });
+  const { element_id, slot_tier, slot_col, slot_depth } = o.place;
+  await freePlace(o);
+  const updated = await api.patch(`/api/bottles/${b.id}`, { quantity: before - 1 });
   b.quantity = before - 1;
+  b.places = updated.places;
+  slotSel = null;
   applyFilters();
   renderElementDetail(elId);
   showToast(`Stappata · ${b.quantity === 1 ? 'ne resta 1' : `ne restano ${b.quantity}`}`, {
@@ -875,36 +911,58 @@ async function uncorkFromSlot(b, elId) {
     onAction: async () => {
       await api.patch(`/api/bottles/${b.id}`, { quantity: before });
       b.quantity = before;
-      applyFilters();
+      await addPlace(b, element_id, slot_tier, slot_col, slot_depth);
       if (currentElementId === elId && elementsMode === 'detail') renderElementDetail(elId);
     },
   });
 }
 
-async function moveBottleTo(b, elId, t, c, d) {
-  await assignBottleToSlot(b, elId, t, c, d);
-  movingBottle = null;
-  slotSel = b.id;
+async function moveBottleTo(o, elId, t, c, d) {
+  const res = await api.patch(`/api/places/${o.place.id}`, { elementId: elId, tier: t, col: c, depth: d });
+  o.bottle.places = res.places;
+  movingPlace = null;
+  slotSel = o.place.id;
+  applyFilters();
   renderElementDetail(elId);
   showToast(`Spostata in Livello ${t} · ${colLetter(c)}.${d}`);
 }
 
-async function assignBottleToSlot(bottle, elId, tier, col, depth) {
-  const updated = await api.patch(`/api/bottles/${bottle.id}/location`, { elementId: elId, tier, col, depth });
-  const el = currentElements.find((e) => e.id === elId);
-  bottle.element_id = updated.element_id;
-  bottle.slot_tier = updated.slot_tier;
-  bottle.slot_col = updated.slot_col;
-  bottle.slot_depth = updated.slot_depth;
-  bottle.element_name = el?.name;
-  bottle.element_kind = el?.kind;
+// One more bottle of this wine goes to this spot (refused by the server
+// when every bottle already has a place).
+async function addPlace(bottle, elId, tier, col, depth) {
+  const res = await api.post(`/api/bottles/${bottle.id}/places`, { elementId: elId, tier, col, depth });
+  bottle.places = res.places;
   applyFilters();
+}
+
+async function freePlace(o) {
+  const res = await api.del(`/api/places/${o.place.id}`);
+  o.bottle.places = res.places;
+  applyFilters();
+}
+
+// The wine chosen from its detail sheet goes here: a bottle still without a
+// place if there is one; if its only bottle is already somewhere, it moves.
+// With several bottles all placed it is ambiguous which one to move.
+async function putPickerBottle(bottle, elId, tier, col, depth) {
+  if (freeCount(bottle) > 0) {
+    await addPlace(bottle, elId, tier, col, depth);
+    return true;
+  }
+  if (bottle.places?.length === 1) {
+    const res = await api.patch(`/api/places/${bottle.places[0].id}`, { elementId: elId, tier, col, depth });
+    bottle.places = res.places;
+    applyFilters();
+    return true;
+  }
+  showToast('Tutte le bottiglie hanno già un posto: per spostarne una toccala e scegli Sposta');
+  return false;
 }
 
 async function placeBottle(elId, tier, col, depth) {
   if (picker) {
     const bottle = picker.bottle;
-    await assignBottleToSlot(bottle, elId, tier, col, depth);
+    if (!(await putPickerBottle(bottle, elId, tier, col, depth))) return;
     const onPicked = picker.onPicked;
     closeElementsOverlay();
     onPicked?.(bottle);
@@ -921,28 +979,32 @@ function renderBottlePickerForSlot(elId, tier, col, depth) {
   document.getElementById('elements-back-btn').style.visibility = 'visible';
   document.getElementById('elements-title').textContent = 'Scegli la bottiglia';
 
+  // Only wines with a bottle still without a place: each bottle has one spot.
+  const choices = currentBottles.filter((b) => freeCount(b) > 0);
   const slotLabel = tier == null ? 'questo elemento' : `Livello ${tier} · ${colLetter(col)}.${depth}`;
   const body = document.getElementById('elements-body');
   body.innerHTML = `
     <p class="page-sub" style="margin:0 0 4px; font-size:calc(11.5rem/17); color:#736a5d;">${slotLabel} — scegli quale bottiglia mettere qui:</p>
     <div id="pick-bottle-list" style="display:flex; flex-direction:column; gap:9px;">${
-      currentBottles.length
-        ? currentBottles
-            .map(
-              (b) => `
+      choices.length
+        ? choices
+            .map((b) => {
+              const free = freeCount(b);
+              const sub = b.places?.length ? `${free} ${free === 1 ? 'bottiglia' : 'bottiglie'} senza posto · ${locationLabel({ ...b, quantity: b.places.length })}` : `${free} ${free === 1 ? 'bottiglia' : 'bottiglie'} senza posto`;
+              return `
         <div class="elem-row" data-id="${b.id}" role="button" tabindex="0">
           ${photoHtml(b, 'cphoto')}
-          <div class="elem-body"><div class="elem-name">${escapeHtml(b.name)}</div>${locationLabel(b) ? `<div class="elem-sub">${escapeHtml(locationLabel(b))}</div>` : ''}</div>
-        </div>`,
-            )
+          <div class="elem-body"><div class="elem-name">${escapeHtml(b.name)}</div><div class="elem-sub">${escapeHtml(sub)}</div></div>
+        </div>`;
+            })
             .join('')
-        : '<div class="empty-note">Nessuna bottiglia in questa cantina.</div>'
+        : `<div class="empty-note">${currentBottles.length ? 'Tutte le bottiglie hanno già un posto.' : 'Nessuna bottiglia in questa cantina.'}</div>`
     }</div>`;
   document.querySelectorAll('#pick-bottle-list .elem-row').forEach((row) =>
     row.addEventListener('click', async () => {
       const bottle = currentBottles.find((b) => b.id === Number(row.dataset.id));
       if (!bottle) return;
-      await assignBottleToSlot(bottle, elId, tier, col, depth);
+      await addPlace(bottle, elId, tier, col, depth);
       renderElementDetail(elId);
     }),
   );
@@ -958,14 +1020,7 @@ async function deleteCurrentElement() {
   await api.del(`/api/elements/${currentElementId}`);
   currentElements = currentElements.filter((e) => e.id !== currentElementId);
   currentBottles.forEach((b) => {
-    if (b.element_id === currentElementId) {
-      b.element_id = null;
-      b.slot_tier = null;
-      b.slot_col = null;
-      b.slot_depth = null;
-      b.element_name = null;
-      b.element_kind = null;
-    }
+    b.places = (b.places ?? []).filter((p) => p.element_id !== currentElementId);
   });
   applyFilters();
   renderElementsList();

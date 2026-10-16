@@ -15,7 +15,7 @@ let wineId: number;
 
 beforeEach(async () => {
   await env.DB.exec(
-    'DELETE FROM activity_feed; DELETE FROM photos; DELETE FROM tasting_notes; DELETE FROM bottles; DELETE FROM wines; DELETE FROM cellar_members; DELETE FROM cellars; DELETE FROM users;',
+    'DELETE FROM activity_feed; DELETE FROM photos; DELETE FROM tasting_notes; DELETE FROM bottle_places; DELETE FROM bottles; DELETE FROM wines; DELETE FROM cellar_members; DELETE FROM cellars; DELETE FROM users;',
   );
   const wine = await env.DB
     .prepare(
@@ -159,84 +159,59 @@ describe('bottles', () => {
     expect(photosAfter!.n).toBe(0);
   });
 
-  it('assigns a bottle to a cellar element slot, and the list join surfaces the element name/kind', async () => {
-    const auth = signup('b5@b.com');
-    const cellarId = await myCellarId(auth);
-    const created = await (
-      await app.request(
-        `/api/cellars/${cellarId}/bottles`,
-        { method: 'POST', body: JSON.stringify({ wineId, quantity: 1 }), headers: { ...auth, 'content-type': 'application/json' } },
-        env,
-      )
-    ).json<{ id: number }>();
-    const element = await (
-      await app.request(
-        `/api/cellars/${cellarId}/elements`,
-        { method: 'POST', body: JSON.stringify({ kind: 'Scaffale', name: 'Scaffale A', tiers: 3, cols: 5, depth: 1 }), headers: { ...auth, 'content-type': 'application/json' } },
-        env,
-      )
-    ).json<{ id: number }>();
+  const json = (auth: Record<string, string>, method: string, body: unknown) => ({ method, body: JSON.stringify(body), headers: { ...auth, 'content-type': 'application/json' } });
 
-    const patchRes = await app.request(
-      `/api/bottles/${created.id}/location`,
-      { method: 'PATCH', body: JSON.stringify({ elementId: element.id, tier: 1, col: 2, depth: 1 }), headers: { ...auth, 'content-type': 'application/json' } },
-      env,
-    );
-    expect(patchRes.status).toBe(200);
-    const patched = await patchRes.json<any>();
-    expect(patched.element_id).toBe(element.id);
-    expect(patched.slot_col).toBe(2);
+  async function setup(email: string, quantity: number) {
+    const auth = signup(email);
+    const cellarId = await myCellarId(auth);
+    const created = await (await app.request(`/api/cellars/${cellarId}/bottles`, json(auth, 'POST', { wineId, quantity }), env)).json<{ id: number }>();
+    const element = await (await app.request(`/api/cellars/${cellarId}/elements`, json(auth, 'POST', { kind: 'Scaffale', name: 'Scaffale A', tiers: 3, cols: 5, depth: 1 }), env)).json<{ id: number }>();
+    return { auth, cellarId, bottleId: created.id, elementId: element.id };
+  }
+
+  it('puts each bottle of a wine in its own slot, up to the number of bottles', async () => {
+    const { auth, cellarId, bottleId, elementId } = await setup('b5@b.com', 2);
+    const first = await app.request(`/api/bottles/${bottleId}/places`, json(auth, 'POST', { elementId, tier: 1, col: 0, depth: 1 }), env);
+    expect(first.status).toBe(200);
+    const second = await app.request(`/api/bottles/${bottleId}/places`, json(auth, 'POST', { elementId, tier: 1, col: 1, depth: 1 }), env);
+    expect((await second.json<any>()).places.map((p: any) => p.slot_col)).toEqual([0, 1]);
+    const third = await app.request(`/api/bottles/${bottleId}/places`, json(auth, 'POST', { elementId, tier: 1, col: 2, depth: 1 }), env);
+    expect(third.status).toBe(409);
 
     const bottles = await (await app.request(`/api/cellars/${cellarId}/bottles`, { headers: auth }, env)).json<any[]>();
-    expect(bottles[0].element_name).toBe('Scaffale A');
-    expect(bottles[0].element_kind).toBe('Scaffale');
+    expect(bottles[0].places).toHaveLength(2);
+    expect(bottles[0].places[0]).toMatchObject({ element_name: 'Scaffale A', element_kind: 'Scaffale', slot_tier: 1, slot_col: 0, slot_depth: 1 });
+    expect(bottles[0].element_id).toBeUndefined();
   });
 
-  it('rejects assigning a bottle to an element from a different cellar', async () => {
-    const authA = signup('b7@b.com');
-    const cellarA = await myCellarId(authA);
-    const created = await (
-      await app.request(
-        `/api/cellars/${cellarA}/bottles`,
-        { method: 'POST', body: JSON.stringify({ wineId, quantity: 1 }), headers: { ...authA, 'content-type': 'application/json' } },
-        env,
-      )
-    ).json<{ id: number }>();
+  it('refuses a taken slot or one outside the element, moves and frees a place', async () => {
+    const { auth, bottleId, elementId } = await setup('b9@b.com', 2);
+    const { places } = await (await app.request(`/api/bottles/${bottleId}/places`, json(auth, 'POST', { elementId, tier: 1, col: 0, depth: 1 }), env)).json<any>();
+    expect((await app.request(`/api/bottles/${bottleId}/places`, json(auth, 'POST', { elementId, tier: 1, col: 0, depth: 1 }), env)).status).toBe(409);
+    expect((await app.request(`/api/bottles/${bottleId}/places`, json(auth, 'POST', { elementId, tier: 4, col: 0, depth: 1 }), env)).status).toBe(400);
 
+    const moved = await (await app.request(`/api/places/${places[0].id}`, json(auth, 'PATCH', { elementId, tier: 2, col: 3, depth: 1 }), env)).json<any>();
+    expect(moved.places[0]).toMatchObject({ slot_tier: 2, slot_col: 3 });
+    const freed = await (await app.request(`/api/places/${places[0].id}`, { method: 'DELETE', headers: auth }, env)).json<any>();
+    expect(freed).toEqual({ bottleId, places: [] });
+  });
+
+  it('frees the latest places when the number of bottles goes down', async () => {
+    const { auth, bottleId, elementId } = await setup('b10@b.com', 2);
+    await app.request(`/api/bottles/${bottleId}/places`, json(auth, 'POST', { elementId, tier: 1, col: 0, depth: 1 }), env);
+    await app.request(`/api/bottles/${bottleId}/places`, json(auth, 'POST', { elementId, tier: 1, col: 1, depth: 1 }), env);
+    const after = await (await app.request(`/api/bottles/${bottleId}`, json(auth, 'PATCH', { quantity: 1 }), env)).json<any>();
+    expect(after.places.map((p: any) => p.slot_col)).toEqual([0]);
+  });
+
+  it('rejects placing a bottle in an element from a different cellar', async () => {
+    const { auth: authA, bottleId } = await setup('b7@b.com', 1);
     const authB = signup('b8@b.com');
     const cellarB = await myCellarId(authB);
-    const foreignElement = await (
-      await app.request(
-        `/api/cellars/${cellarB}/elements`,
-        { method: 'POST', body: JSON.stringify({ kind: 'Scatolone', name: 'Altrui' }), headers: { ...authB, 'content-type': 'application/json' } },
-        env,
-      )
-    ).json<{ id: number }>();
-
-    const res = await app.request(
-      `/api/bottles/${created.id}/location`,
-      { method: 'PATCH', body: JSON.stringify({ elementId: foreignElement.id }), headers: { ...authA, 'content-type': 'application/json' } },
-      env,
-    );
+    const foreign = await (await app.request(`/api/cellars/${cellarB}/elements`, json(authB, 'POST', { kind: 'Scatolone', name: 'Altrui' }), env)).json<{ id: number }>();
+    const res = await app.request(`/api/bottles/${bottleId}/places`, json(authA, 'POST', { elementId: foreign.id }), env);
     expect(res.status).toBe(400);
-  });
-
-  it('clears a slot back to unassigned by sending elementId null', async () => {
-    const auth = signup('b6@b.com');
-    const cellarId = await myCellarId(auth);
-    const created = await (
-      await app.request(
-        `/api/cellars/${cellarId}/bottles`,
-        { method: 'POST', body: JSON.stringify({ wineId, quantity: 1 }), headers: { ...auth, 'content-type': 'application/json' } },
-        env,
-      )
-    ).json<{ id: number }>();
-    await app.request(
-      `/api/bottles/${created.id}/location`,
-      { method: 'PATCH', body: JSON.stringify({ elementId: null }), headers: { ...auth, 'content-type': 'application/json' } },
-      env,
-    );
-    const bottles = await (await app.request(`/api/cellars/${cellarId}/bottles`, { headers: auth }, env)).json<any[]>();
-    expect(bottles[0].element_id).toBeNull();
+    const notMine = await app.request(`/api/bottles/${bottleId}/places`, json(authB, 'POST', { elementId: foreign.id }), env);
+    expect(notMine.status).toBe(404);
   });
 });

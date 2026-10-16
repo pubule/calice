@@ -10,7 +10,7 @@ async function signup(email: string) {
 
 beforeEach(async () => {
   await env.DB.exec(
-    'DELETE FROM activity_feed; DELETE FROM follows; DELETE FROM bottles; DELETE FROM wines; DELETE FROM cellar_members; DELETE FROM cellars; DELETE FROM users;',
+    'DELETE FROM activity_feed; DELETE FROM follows; DELETE FROM bottle_places; DELETE FROM bottles; DELETE FROM wines; DELETE FROM cellar_members; DELETE FROM cellars; DELETE FROM users;',
   );
 });
 

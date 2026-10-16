@@ -43,11 +43,8 @@ async function assertElementAccess(env: Env, elementId: number, userId: number):
 elementRoutes.delete('/:id', async (c) => {
   const id = Number(c.req.param('id'));
   if (!(await assertElementAccess(c.env, id, c.get('userId')))) return c.json({ error: 'not found' }, 404);
-  // Unassign any bottle that lived here rather than leaving a dangling FK.
-  await c.env.DB
-    .prepare('update bottles set element_id = null, slot_tier = null, slot_col = null, slot_depth = null where element_id = ?')
-    .bind(id)
-    .run();
+  // The bottles that lived here stay in the cellar, without a place.
+  await c.env.DB.prepare('delete from bottle_places where element_id = ?').bind(id).run();
   await c.env.DB.prepare('delete from cellar_elements where id = ?').bind(id).run();
   return c.json({ ok: true });
 });

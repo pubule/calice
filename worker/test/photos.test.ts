@@ -13,7 +13,7 @@ const JPEG_MAGIC = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10]);
 let bottleId: number;
 
 beforeEach(async () => {
-  await env.DB.exec('DELETE FROM photos; DELETE FROM bottles; DELETE FROM wines; DELETE FROM cellar_members; DELETE FROM cellars; DELETE FROM users;');
+  await env.DB.exec('DELETE FROM photos; DELETE FROM bottle_places; DELETE FROM bottles; DELETE FROM wines; DELETE FROM cellar_members; DELETE FROM cellars; DELETE FROM users;');
   const auth = await signup('p1@b.com');
   const cellarId = (await (await app.request('/api/cellars', { headers: auth }, env)).json<any[]>())[0].id;
   const wine = await env.DB.prepare(`insert into wines (name, producer, country, type, source) values ('Barolo DOCG', 'Elio Altare', 'Italia', 'rosso', 'catalog') returning id`).first<{ id: number }>();

@@ -13,17 +13,16 @@ cellarBottleRoutes.get('/:cellarId/bottles', async (c) => {
     .prepare(
       `select bottles.*, wines.name, wines.producer, wines.region, wines.country, wines.type, wines.vintage, wines.image_url,
               wines.grape_variety, wines.denomination, wines.vivino_rating, wines.vivino_ratings_count, wines.alcohol, wines.producer_url,
-              (select avg(rating) from tasting_notes where tasting_notes.bottle_id = bottles.id) as score,
-              cellar_elements.name as element_name, cellar_elements.kind as element_kind
+              (select avg(rating) from tasting_notes where tasting_notes.bottle_id = bottles.id) as score
        from bottles
          join wines on wines.id = bottles.wine_id
-         left join cellar_elements on cellar_elements.id = bottles.element_id
        where bottles.cellar_id = ?
        order by bottles.added_at desc`,
     )
     .bind(cellarId)
-    .all();
-  return c.json(rows.results);
+    .all<Record<string, unknown> & { id: number }>();
+  const places = await placesWhere(c.env.DB, 'bottles.cellar_id = ?', cellarId);
+  return c.json(rows.results.map((b) => ({ ...withoutLegacyPlace(b), places: places.filter((p) => p.bottle_id === b.id).map(publicPlace) })));
 });
 
 cellarBottleRoutes.post('/:cellarId/bottles', async (c) => {
@@ -46,6 +45,51 @@ cellarBottleRoutes.post('/:cellarId/bottles', async (c) => {
     .run();
   return c.json(bottle);
 });
+
+// ---- where each bottle sits (bottle_places, one row per physical bottle) ----
+
+type PlaceRow = { id: number; bottle_id: number; element_id: number; element_name: string; element_kind: string; slot_tier: number | null; slot_col: number | null; slot_depth: number | null };
+
+async function placesWhere(db: D1Database, where: string, arg: number): Promise<PlaceRow[]> {
+  const rows = await db
+    .prepare(
+      `select bottle_places.id, bottle_places.bottle_id, bottle_places.element_id, cellar_elements.name as element_name,
+              cellar_elements.kind as element_kind, bottle_places.slot_tier, bottle_places.slot_col, bottle_places.slot_depth
+       from bottle_places
+         join cellar_elements on cellar_elements.id = bottle_places.element_id
+         join bottles on bottles.id = bottle_places.bottle_id
+       where ${where}
+       order by bottle_places.id`,
+    )
+    .bind(arg)
+    .all<PlaceRow>();
+  return rows.results;
+}
+
+const publicPlace = ({ bottle_id: _b, ...p }: PlaceRow) => p;
+
+// The old one-place-per-wine columns are no longer the truth: keep them out
+// of the answers so no client reads them by mistake.
+function withoutLegacyPlace<T extends Record<string, unknown>>(b: T) {
+  const { element_id: _e, slot_tier: _t, slot_col: _c, slot_depth: _d, ...rest } = b;
+  return rest;
+}
+
+export async function bottlePlaces(db: D1Database, bottleId: number) {
+  return (await placesWhere(db, 'bottle_places.bottle_id = ?', bottleId)).map(publicPlace);
+}
+
+// A wine never has more places than bottles: when the count goes down
+// (uncorked, or corrected by hand) the most recently placed ones are freed.
+async function trimPlaces(db: D1Database, bottleId: number) {
+  await db
+    .prepare(
+      `delete from bottle_places where bottle_id = ?1 and id not in (
+         select id from bottle_places where bottle_id = ?1 order by id limit (select quantity from bottles where id = ?1))`,
+    )
+    .bind(bottleId)
+    .run();
+}
 
 function isPrice(v: unknown): boolean {
   return v == null || (typeof v === 'number' && Number.isFinite(v) && v >= 0 && v <= 100000);
@@ -83,27 +127,84 @@ bottleRoutes.patch('/:id', async (c) => {
        where id = ? returning *`,
     )
     .bind(body.quantity ?? null, priceGiven, body.pricePaid ?? null, body.shelfLocation ?? null, body.drinkFrom ?? null, body.drinkUntil ?? null, id)
-    .first();
-  return c.json(bottle);
+    .first<Record<string, unknown>>();
+  if (body.quantity != null) await trimPlaces(c.env.DB, id);
+  return c.json({ ...withoutLegacyPlace(bottle!), places: await bottlePlaces(c.env.DB, id) });
 });
 
-// Full overwrite (nulls included) rather than the coalesce pattern above —
-// unassigning an element or clearing a slot is a real, valid state, not an
-// omitted field.
-bottleRoutes.patch('/:id/location', async (c) => {
+type Spot = { elementId: number; tier?: number | null; col?: number | null; depth?: number | null };
+
+// Checks a requested spot: the element belongs to the bottle's cellar, a
+// slot is inside the element's grid (a box takes no coordinates), and no
+// other bottle is already there. Returns an error message or null.
+async function spotError(db: D1Database, cellarId: number, spot: Spot, exceptPlaceId: number | null): Promise<string | null> {
+  const el = await db.prepare('select cellar_id, kind, tiers, cols, depth from cellar_elements where id = ?').bind(spot.elementId)
+    .first<{ cellar_id: number; kind: string; tiers: number | null; cols: number | null; depth: number | null }>();
+  if (!el || el.cellar_id !== cellarId) return 'element not in this cellar';
+  if (el.kind === 'Scatolone') return null;
+  const { tier, col, depth } = spot;
+  const inGrid = Number.isInteger(tier) && Number.isInteger(col) && Number.isInteger(depth)
+    && tier! >= 1 && tier! <= (el.tiers ?? 0) && col! >= 0 && col! < (el.cols ?? 0) && depth! >= 1 && depth! <= (el.depth ?? 0);
+  if (!inGrid) return 'slot outside the element';
+  const taken = await db
+    .prepare('select id from bottle_places where element_id = ? and slot_tier = ? and slot_col = ? and slot_depth = ? and id is not ?')
+    .bind(spot.elementId, tier, col, depth, exceptPlaceId)
+    .first();
+  return taken ? 'slot taken' : null;
+}
+
+// Puts one more bottle of this wine somewhere. Refused when every bottle
+// already has a place.
+bottleRoutes.post('/:id/places', async (c) => {
   const id = Number(c.req.param('id'));
   if (!(await assertBottleAccess(c.env, id, c.get('userId')))) return c.json({ error: 'not found' }, 404);
-  const body = await c.req.json<{ elementId: number | null; tier?: number | null; col?: number | null; depth?: number | null }>();
-  if (body.elementId != null) {
-    const bottleCellar = await c.env.DB.prepare('select cellar_id from bottles where id = ?').bind(id).first<{ cellar_id: number }>();
-    const element = await c.env.DB.prepare('select cellar_id from cellar_elements where id = ?').bind(body.elementId).first<{ cellar_id: number }>();
-    if (!element || element.cellar_id !== bottleCellar!.cellar_id) return c.json({ error: 'element not in this cellar' }, 400);
-  }
-  const bottle = await c.env.DB
-    .prepare('update bottles set element_id = ?, slot_tier = ?, slot_col = ?, slot_depth = ? where id = ? returning *')
-    .bind(body.elementId, body.tier ?? null, body.col ?? null, body.depth ?? null, id)
-    .first();
-  return c.json(bottle);
+  const spot = await c.req.json<Spot>();
+  const b = (await c.env.DB.prepare('select cellar_id, quantity, (select count(*) from bottle_places where bottle_id = bottles.id) as placed from bottles where id = ?')
+    .bind(id).first<{ cellar_id: number; quantity: number; placed: number }>())!;
+  const err = await spotError(c.env.DB, b.cellar_id, spot, null);
+  if (err) return c.json({ error: err }, err === 'slot taken' ? 409 : 400);
+  if (b.placed >= b.quantity) return c.json({ error: 'every bottle already has a place' }, 409);
+  const box = (await c.env.DB.prepare('select kind from cellar_elements where id = ?').bind(spot.elementId).first<{ kind: string }>())!.kind === 'Scatolone';
+  await c.env.DB
+    .prepare('insert into bottle_places (bottle_id, element_id, slot_tier, slot_col, slot_depth) values (?, ?, ?, ?, ?)')
+    .bind(id, spot.elementId, box ? null : spot.tier, box ? null : spot.col, box ? null : spot.depth)
+    .run();
+  return c.json({ places: await bottlePlaces(c.env.DB, id) });
+});
+
+export const placeRoutes = new Hono<{ Bindings: Env; Variables: { userId: number } }>();
+placeRoutes.use('*', requireAuth);
+
+async function placeBottle(c: { env: Env; get: (k: 'userId') => number }, placeId: number) {
+  const row = await c.env.DB.prepare('select bottle_id from bottle_places where id = ?').bind(placeId).first<{ bottle_id: number }>();
+  if (!row || !(await assertBottleAccess(c.env, row.bottle_id, c.get('userId')))) return null;
+  return row.bottle_id;
+}
+
+// Moves one placed bottle to another spot.
+placeRoutes.patch('/:id', async (c) => {
+  const placeId = Number(c.req.param('id'));
+  const bottleId = await placeBottle(c, placeId);
+  if (bottleId == null) return c.json({ error: 'not found' }, 404);
+  const spot = await c.req.json<Spot>();
+  const { cellar_id } = (await c.env.DB.prepare('select cellar_id from bottles where id = ?').bind(bottleId).first<{ cellar_id: number }>())!;
+  const err = await spotError(c.env.DB, cellar_id, spot, placeId);
+  if (err) return c.json({ error: err }, err === 'slot taken' ? 409 : 400);
+  const box = (await c.env.DB.prepare('select kind from cellar_elements where id = ?').bind(spot.elementId).first<{ kind: string }>())!.kind === 'Scatolone';
+  await c.env.DB
+    .prepare('update bottle_places set element_id = ?, slot_tier = ?, slot_col = ?, slot_depth = ? where id = ?')
+    .bind(spot.elementId, box ? null : spot.tier, box ? null : spot.col, box ? null : spot.depth, placeId)
+    .run();
+  return c.json({ bottleId, places: await bottlePlaces(c.env.DB, bottleId) });
+});
+
+// Frees a spot: that bottle stays in the cellar, without a place.
+placeRoutes.delete('/:id', async (c) => {
+  const placeId = Number(c.req.param('id'));
+  const bottleId = await placeBottle(c, placeId);
+  if (bottleId == null) return c.json({ error: 'not found' }, 404);
+  await c.env.DB.prepare('delete from bottle_places where id = ?').bind(placeId).run();
+  return c.json({ bottleId, places: await bottlePlaces(c.env.DB, bottleId) });
 });
 
 bottleRoutes.delete('/:id', async (c) => {
@@ -121,6 +222,7 @@ bottleRoutes.delete('/:id', async (c) => {
   }
   await c.env.DB.prepare('delete from photos where bottle_id = ?').bind(id).run();
   await c.env.DB.prepare('delete from tasting_notes where bottle_id = ?').bind(id).run();
+  await c.env.DB.prepare('delete from bottle_places where bottle_id = ?').bind(id).run();
   await c.env.DB.prepare('delete from bottles where id = ?').bind(id).run();
   return c.json({ ok: true });
 });
