@@ -222,7 +222,7 @@
     </div>
     <div class="logout" role="button" tabindex="0">Esci</div>
     <div class="app-footer">
-      <div class="app-build">build 137</div>
+      <div class="app-build">build 138</div>
       <div class="app-credit"><a href="https://www.flaticon.com/free-icons/wine" target="_blank" rel="noopener">Wine icons created by iconixar - Flaticon</a></div>
       <div class="app-credit">Foto dei paesaggi da <a href="https://commons.wikimedia.org/" target="_blank" rel="noopener">Wikimedia Commons</a>, autori e licenze nella scheda di ogni vino</div>
     </div>
@@ -326,6 +326,10 @@
           <div class="section-head" style="margin-bottom:8px;"><h3 style="font-size:calc(13rem/17);">Le tue foto</h3></div>
           <div class="gallery-row" id="detail-gallery"></div>
         </div>
+        <div class="detail-actions">
+          <button type="button" class="detail-action" id="detail-edit-btn"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>Modifica</button>
+          <button type="button" class="detail-action danger" id="detail-delete-btn"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"/><path d="M6 7l1 13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-13"/><path d="M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3"/></svg>Elimina dalla cantina</button>
+        </div>
         <div class="loc-row">
           <svg class="ic" viewBox="0 0 24 24" style="width:17px;height:17px;"><path d="M12 21s7-7.2 7-12a7 7 0 1 0-14 0c0 4.8 7 12 7 12Z"/><circle cx="12" cy="9" r="2.4"/></svg>
           <div class="loc-text"><b>Posizione fisica</b><span id="loc-value">Non assegnata</span></div>
@@ -345,10 +349,6 @@
           <div class="uncork-undo hidden" id="uncork-undo"><span>Bottiglia stappata</span><button type="button" id="uncork-undo-btn">Annulla</button></div>
         </div>
 
-        <div class="detail-actions">
-          <button type="button" class="detail-action" id="detail-edit-btn"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>Modifica</button>
-          <button type="button" class="detail-action danger" id="detail-delete-btn"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"/><path d="M6 7l1 13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-13"/><path d="M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3"/></svg>Elimina dalla cantina</button>
-        </div>
 
         <div class="rev-tabs" role="tablist">
           <div class="rev-tab active" data-tab="mine" role="tab" tabindex="0" aria-selected="true">Le tue note</div>

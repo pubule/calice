@@ -1422,6 +1422,16 @@ questo file è il riassunto "dove eravamo rimasti".
     lasciava `currentCellarId` nullo (Modifica e posizione fallivano):
     `ensureCellarOf()` carica la cantina del vino.
 
+63. **Scheda vino: bottiglia che spariva e ordine dei pulsanti** (build
+    138). Su iPhone, scorrendo giù e tornando su, la bottiglia scontornata
+    spariva: tolto `filter: drop-shadow` dall'immagine (noto difetto di
+    WebKit con i filtri dentro un contenitore che scorre), l'ombra ora è
+    un'ellisse `::after` sotto la bottiglia. **Non verificato su device**:
+    se succede ancora, il sospetto successivo è il layer di compositing
+    della bottiglia sopra il paesaggio (vedi la sezione `.settings-list`
+    in CLAUDE.md, stessa famiglia di bug). Modifica / Elimina spostati
+    subito sotto "Le tue foto", prima di posizione e "Da bere".
+
 ## Cose note, non (ancora) da rifare
 
 - `status-bar-style` è `black-translucent` (non più `default`), `.screen`

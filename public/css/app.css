@@ -310,7 +310,11 @@
   .hero-product{display:none; width:100%; height:100%; object-fit:cover;}
   .hero-art.has-product .hero-product{display:block;}
   .hero-art.cutout{width:auto; height:168px; margin-top:0; border-radius:0; overflow:visible; background:none!important; box-shadow:none;}
-  .hero-art.cutout .hero-product{width:auto; max-width:120px; height:100%; object-fit:contain; filter:drop-shadow(0 14px 12px rgba(36,30,26,.3));}
+  /* No CSS filter on the bottle: on iOS an element with filter: drop-shadow
+     inside a scrolling sheet can vanish after scrolling down and back up
+     (build 137). The shadow is a plain ellipse under it instead. */
+  .hero-art.cutout .hero-product{width:auto; max-width:120px; height:100%; object-fit:contain;}
+  .hero-art.cutout::after{content:''; position:absolute; left:50%; bottom:-6px; width:90px; height:14px; margin-left:-45px; border-radius:50%; background:radial-gradient(closest-side, rgba(36,30,26,.28), rgba(36,30,26,0)); z-index:-1;}
   .detail-hero .info{width:100%; min-width:0; margin-top:10px; display:flex; flex-direction:column; align-items:center; gap:2px; overflow-wrap:anywhere;}
   .hero-type{padding:3px 12px; border-radius:999px; font-size:calc(12rem/17); font-weight:600; color:#fff; background:#5b2333; margin-bottom:6px;}
   .hero-type.bianco{background:#efe6b8; color:#5e5317;}
