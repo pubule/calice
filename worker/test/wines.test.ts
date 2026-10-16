@@ -91,7 +91,7 @@ describe('POST /api/wines', () => {
     expect(body.source).toBe('custom');
   });
 
-  it("stores Vivino's rating as a pair, and refuses half or out-of-range values", async () => {
+  it("stores Vivino's rating, refusing a count without a rating or out-of-range values", async () => {
     const auth = signup('viv@b.com');
     const post = (body: object) =>
       app.request('/api/wines', { method: 'POST', body: JSON.stringify(body), headers: { ...auth, 'content-type': 'application/json' } }, env);
@@ -104,7 +104,7 @@ describe('POST /api/wines', () => {
     for (const bad of [{ alcohol: 0 }, { alcohol: 40 }, { producerUrl: 'javascript:alert(1)' }, { producerUrl: 'non un url' }]) {
       expect((await post({ ...base, name: 'Altro', ...bad })).status, JSON.stringify(bad)).toBe(400);
     }
-    for (const bad of [{ vivinoRating: 3.8 }, { vivinoRatingsCount: 10 }, { vivinoRating: 0, vivinoRatingsCount: 10 }, { vivinoRating: 6, vivinoRatingsCount: 10 }, { vivinoRating: 4, vivinoRatingsCount: 1.5 }]) {
+    for (const bad of [{ vivinoRatingsCount: 10 }, { vivinoRating: 0, vivinoRatingsCount: 10 }, { vivinoRating: 6, vivinoRatingsCount: 10 }, { vivinoRating: 4, vivinoRatingsCount: 1.5 }]) {
       expect((await post({ ...base, name: 'Altro', ...bad })).status, JSON.stringify(bad)).toBe(400);
     }
   });
@@ -303,6 +303,17 @@ describe('PATCH /api/wines/:id', () => {
     const body = await res.json<{ denomination: string | null; grape_variety: string }>();
     expect(body.denomination).toBeNull();
     expect(body.grape_variety).toBe('Garganega');
+  });
+
+  it('edits and clears the Vivino fields (alcohol, website, rating), keeping a hand-typed rating without a count', async () => {
+    const { auth, wineId } = await setUpWineInACellar('editor3@b.com');
+    const base = { name: 'Le due torri rebel', producer: 'Le Due Torri', country: 'Italia', region: 'Veneto', type: 'bianco', vintage: 2021 };
+    const patch = (body: object) => app.request(`/api/wines/${wineId}`, { method: 'PATCH', body: JSON.stringify({ ...base, ...body }), headers: { ...auth, 'content-type': 'application/json' } }, env);
+    const set = await patch({ alcohol: 13, producerUrl: 'https://www.leduetorri.it/', vivinoRating: 3.6 });
+    expect(await set.json<any>()).toMatchObject({ alcohol: 13, producer_url: 'https://www.leduetorri.it/', vivino_rating: 3.6, vivino_ratings_count: null });
+    const cleared = await patch({});
+    expect(await cleared.json<any>()).toMatchObject({ alcohol: null, producer_url: null, vivino_rating: null });
+    expect((await patch({ producerUrl: 'ftp://x' })).status).toBe(400);
   });
 
   it('rejects a caller who has no cellar containing this wine with 404', async () => {

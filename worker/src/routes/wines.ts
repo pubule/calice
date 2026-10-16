@@ -12,6 +12,30 @@ function isNonEmptyShortString(v: unknown): v is string {
   return typeof v === 'string' && v.trim().length > 0 && v.length <= MAX_TEXT_LEN;
 }
 
+// The fields that usually come from Vivino and that the user can also edit:
+// alcohol (% vol), the producer's website, Vivino's rating (1-5) and how many
+// ratings it averages. Each is optional and nullable; a ratings count needs
+// a rating (a hand-edited rating may have none).
+type Extras = { alcohol: number | null; producerUrl: string | null; vivinoRating: number | null; vivinoCount: number | null };
+function readExtras(body: { alcohol?: number | null; producerUrl?: string | null; vivinoRating?: number | null; vivinoRatingsCount?: number | null }): Extras | { error: string } {
+  if (body.alcohol != null && !(typeof body.alcohol === 'number' && body.alcohol > 0 && body.alcohol <= 25)) {
+    return { error: 'alcohol must be a number between 0 and 25' };
+  }
+  if (body.producerUrl != null && !isHttpUrl(body.producerUrl)) return { error: 'producerUrl must be a valid http(s) URL' };
+  if (body.vivinoRating != null && !(typeof body.vivinoRating === 'number' && body.vivinoRating >= 1 && body.vivinoRating <= 5)) {
+    return { error: 'vivinoRating must be between 1 and 5' };
+  }
+  if (body.vivinoRatingsCount != null && (body.vivinoRating == null || !Number.isInteger(body.vivinoRatingsCount) || body.vivinoRatingsCount <= 0)) {
+    return { error: 'vivinoRatingsCount must be a positive integer, with a vivinoRating' };
+  }
+  return {
+    alcohol: body.alcohol ?? null,
+    producerUrl: body.producerUrl ?? null,
+    vivinoRating: body.vivinoRating != null ? Math.round(body.vivinoRating * 10) / 10 : null,
+    vivinoCount: body.vivinoRatingsCount ?? null,
+  };
+}
+
 function isHttpUrl(v: unknown): boolean {
   if (!isNonEmptyShortString(v)) return false;
   try {
@@ -77,18 +101,9 @@ wineRoutes.post('/', async (c) => {
   if (!isNonEmptyShortString(body.name)) return c.json({ error: 'name is required (1-200 chars)' }, 400);
   if (!isNonEmptyShortString(body.producer)) return c.json({ error: 'producer is required (1-200 chars)' }, 400);
   if (!isNonEmptyShortString(body.country)) return c.json({ error: 'country is required (1-200 chars)' }, 400);
-  // Vivino's rating comes as a pair (average 1-5, number of ratings) or not at all.
-  const hasRating = body.vivinoRating != null || body.vivinoRatingsCount != null;
-  if (hasRating && !(typeof body.vivinoRating === 'number' && body.vivinoRating >= 1 && body.vivinoRating <= 5
-    && Number.isInteger(body.vivinoRatingsCount) && (body.vivinoRatingsCount as number) > 0)) {
-    return c.json({ error: 'vivinoRating must be 1-5 with a positive integer vivinoRatingsCount' }, 400);
-  }
-  const vivinoRating = hasRating ? Math.round((body.vivinoRating as number) * 10) / 10 : null;
-  if (body.alcohol != null && !(typeof body.alcohol === 'number' && body.alcohol > 0 && body.alcohol <= 25)) {
-    return c.json({ error: 'alcohol must be a number between 0 and 25' }, 400);
-  }
-  if (body.producerUrl != null && !isHttpUrl(body.producerUrl)) return c.json({ error: 'producerUrl must be a valid http(s) URL' }, 400);
-  const vivinoCount = hasRating ? body.vivinoRatingsCount as number : null;
+  const extras = readExtras(body);
+  if ('error' in extras) return c.json({ error: extras.error }, 400);
+  const { vivinoRating, vivinoCount } = extras;
   if (body.grapeVariety != null && !isNonEmptyShortString(body.grapeVariety)) {
     return c.json({ error: 'grapeVariety must be 1-200 chars' }, 400);
   }
@@ -138,7 +153,7 @@ wineRoutes.post('/', async (c) => {
          where id = ? returning *`,
       )
       .bind(body.region ?? null, body.barcode ?? null, body.grapeVariety ?? null, body.denomination ?? null, body.imageUrl ?? null,
-        vivinoRating, vivinoCount, body.alcohol ?? null, body.producerUrl ?? null, existing.id)
+        vivinoRating, vivinoCount, extras.alcohol, extras.producerUrl, existing.id)
       .first();
     return c.json(wine);
   }
@@ -152,7 +167,7 @@ wineRoutes.post('/', async (c) => {
     .bind(
       body.name, body.producer, body.region ?? null, body.country, type, body.vintage ?? null, body.barcode ?? null,
       body.grapeVariety ?? null, body.denomination ?? null, body.imageUrl ?? null, vivinoRating, vivinoCount,
-      body.alcohol ?? null, body.producerUrl ?? null, c.get('userId'),
+      extras.alcohol, extras.producerUrl, c.get('userId'),
     )
     .first();
   return c.json(wine);
@@ -183,6 +198,7 @@ wineRoutes.patch('/:id', async (c) => {
   const body = await c.req.json<{
     name: string; producer: string; region?: string | null; country: string; type: string; vintage?: number | null;
     grapeVariety?: string | null; denomination?: string | null;
+    alcohol?: number | null; producerUrl?: string | null; vivinoRating?: number | null; vivinoRatingsCount?: number | null;
   }>();
 
   if (!isNonEmptyShortString(body.name)) return c.json({ error: 'name is required (1-200 chars)' }, 400);
@@ -197,15 +213,19 @@ wineRoutes.patch('/:id', async (c) => {
     return c.json({ error: 'vintage must be an integer between 1900 and 2100' }, 400);
   }
 
+  const extras = readExtras(body);
+  if ('error' in extras) return c.json({ error: extras.error }, 400);
+
   const wine = await c.env.DB
     .prepare(
       `update wines set name = ?, producer = ?, region = ?, country = ?, type = ?, vintage = ?, grape_variety = ?, denomination = ?,
-         search_text = null
+         alcohol = ?, producer_url = ?, vivino_rating = ?, vivino_ratings_count = ?, search_text = null
        where id = ? returning *`,
     )
     .bind(
       body.name, body.producer, body.region ?? null, body.country, type,
-      body.vintage ?? null, body.grapeVariety ?? null, body.denomination ?? null, id,
+      body.vintage ?? null, body.grapeVariety ?? null, body.denomination ?? null,
+      extras.alcohol, extras.producerUrl, extras.vivinoRating, extras.vivinoCount, id,
     )
     .first();
   return c.json(wine);

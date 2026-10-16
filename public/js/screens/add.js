@@ -771,7 +771,65 @@ document.getElementById('camera-ok')?.addEventListener('click', () => foundActio
 
 let pendingImageUrl;
 let pendingBarcode;
-let pendingVivino; // Vivino extras of the result the sheet was opened from: rating(s), alcohol, website
+let pendingVivino; // Vivino's ratings for the wine the sheet was opened with: { rating, vintageRatings }
+let vivinoFieldStart = ''; // what the Vivino field showed when the sheet opened
+
+// Numbers typed with a comma or a dot ("12,5"); '' means "none".
+const decimalText = (n) => (n == null || n === '' ? '' : String(n).replace('.', ','));
+function readDecimal(id) {
+  const raw = document.getElementById(id).value.trim();
+  if (!raw) return { value: null };
+  const v = Number(raw.replace(',', '.'));
+  return Number.isFinite(v) ? { value: v } : { invalid: true };
+}
+
+// The three fields that usually come from Vivino, checked before saving.
+// The rating keeps Vivino's own (with its number of ratings) while the field
+// is untouched; a rating typed by hand has no count.
+async function readVivinoFields(vintage) {
+  const alcohol = readDecimal('rec-alcohol');
+  if (alcohol.invalid || (alcohol.value != null && !(alcohol.value > 0 && alcohol.value <= 25))) {
+    await alertModal('La gradazione deve essere un numero tra 0 e 25, per esempio 12,5.');
+    return null;
+  }
+  let site = document.getElementById('rec-site').value.trim();
+  if (site) {
+    if (!/^https?:\/\//i.test(site)) site = `https://${site}`;
+    try {
+      const u = new URL(site);
+      if (!u.hostname.includes('.')) throw new Error('no domain');
+      site = u.toString();
+    } catch {
+      await alertModal('Il sito del produttore non sembra un indirizzo web, per esempio tenutambrosini.it.');
+      return null;
+    }
+  }
+  const field = document.getElementById('rec-vivino');
+  let rating = null;
+  if (field.value.trim() === vivinoFieldStart.trim()) {
+    rating = vivinoFieldStart ? ratingFor(pendingVivino ?? {}, vintage) ?? null : null;
+  } else {
+    const typed = readDecimal('rec-vivino');
+    if (typed.invalid || (typed.value != null && !(typed.value >= 1 && typed.value <= 5))) {
+      await alertModal('Il voto su Vivino va da 1 a 5, per esempio 3,8.');
+      return null;
+    }
+    rating = typed.value != null ? { average: typed.value, count: null } : null;
+  }
+  return {
+    alcohol: alcohol.value,
+    producerUrl: site || null,
+    vivinoRating: rating?.average ?? null,
+    vivinoRatingsCount: rating?.count ?? null,
+  };
+}
+
+function fillVivinoFields({ alcohol, producerUrl, rating }) {
+  document.getElementById('rec-alcohol').value = decimalText(alcohol);
+  document.getElementById('rec-site').value = producerUrl ?? '';
+  vivinoFieldStart = rating?.average ? decimalText(rating.average) : '';
+  document.getElementById('rec-vivino').value = vivinoFieldStart;
+}
 let pendingPhotoFile;
 
 // The sheet is shared by three entry points that all end up at the same
@@ -828,7 +886,8 @@ function openRecognizeSheet(suggestion, capturedPhotoDataUrl) {
   resetNoteComposer();
   pendingImageUrl = suggestion.imageUrl;
   pendingBarcode = suggestion.barcode;
-  pendingVivino = { rating: suggestion.rating, vintageRatings: suggestion.vintageRatings, alcohol: suggestion.alcohol, producerUrl: suggestion.producerUrl };
+  pendingVivino = { rating: suggestion.rating, vintageRatings: suggestion.vintageRatings };
+  fillVivinoFields({ alcohol: suggestion.alcohol, producerUrl: suggestion.producerUrl, rating: ratingFor(pendingVivino, suggestion.vintage) });
   pendingPhotoFile = undefined;
   document.getElementById('rec-photo-input').value = '';
 
@@ -885,6 +944,8 @@ export function openEditWineSheet(bottle, onSaved) {
   document.getElementById('rec-vintage').value = bottle.vintage ?? '';
   document.getElementById('rec-grape').value = bottle.grape_variety ?? '';
   document.getElementById('rec-denomination').value = bottle.denomination ?? '';
+  pendingVivino = bottle.vivino_rating != null ? { rating: { average: Number(bottle.vivino_rating), count: bottle.vivino_ratings_count ?? null } } : null;
+  fillVivinoFields({ alcohol: bottle.alcohol, producerUrl: bottle.producer_url, rating: pendingVivino?.rating });
   resetNoteComposer();
   pendingImageUrl = undefined;
   pendingBarcode = undefined;
@@ -954,10 +1015,12 @@ async function saveRecognizedWine() {
   const vintage = vintageRaw ? Number(vintageRaw) : undefined;
   const grapeVariety = document.getElementById('rec-grape').value.trim() || undefined;
   const denomination = document.getElementById('rec-denomination').value.trim() || undefined;
+  const extras = await readVivinoFields(vintage);
+  if (!extras) return;
 
   if (sheetMode === 'edit') {
     try {
-      await api.patch(`/api/wines/${editingWineId}`, { name, producer, country, region, type, vintage, grapeVariety, denomination });
+      await api.patch(`/api/wines/${editingWineId}`, { name, producer, country, region, type, vintage, grapeVariety, denomination, ...extras });
       closeRecognizeSheet();
       if (pendingPhotoFile) {
         try {
@@ -991,8 +1054,8 @@ async function saveRecognizedWine() {
   try {
     const wine = await api.post('/api/wines', {
       name, producer, country, region, type, vintage, grapeVariety, denomination, imageUrl, barcode: pendingBarcode,
-      vivinoRating: ratingFor(pendingVivino ?? {}, vintage)?.average, vivinoRatingsCount: ratingFor(pendingVivino ?? {}, vintage)?.count,
-      alcohol: pendingVivino?.alcohol || undefined, producerUrl: pendingVivino?.producerUrl || undefined,
+      alcohol: extras.alcohol ?? undefined, producerUrl: extras.producerUrl ?? undefined,
+      vivinoRating: extras.vivinoRating ?? undefined, vivinoRatingsCount: extras.vivinoRatingsCount ?? undefined,
     });
     closeRecognizeSheet();
     await postBottle(wine.id, quantity, async (bottle) => {
@@ -1013,6 +1076,15 @@ async function saveRecognizedWine() {
 }
 
 document.getElementById('recognize-close')?.addEventListener('click', closeRecognizeSheet);
+// While the Vivino rating is untouched it follows the vintage being typed
+// (that year's rating when Vivino has one), so the field shows what is saved.
+document.getElementById('rec-vintage')?.addEventListener('input', (e) => {
+  const field = document.getElementById('rec-vivino');
+  if (!vivinoFieldStart || field.value.trim() !== vivinoFieldStart.trim()) return;
+  const r = ratingFor(pendingVivino ?? {}, e.target.value);
+  vivinoFieldStart = r?.average ? decimalText(r.average) : vivinoFieldStart;
+  field.value = vivinoFieldStart;
+});
 // Disabled for the whole save: a second tap while POST /api/wines is in
 // flight would create the wine (and the bottle, and the note) twice.
 const recognizeSave = document.getElementById('recognize-save');

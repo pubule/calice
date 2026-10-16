@@ -1163,6 +1163,21 @@ questo file è il riassunto "dove eravamo rimasti".
     tradurli. Il Batudè di produzione è stato aggiornato a mano (12,5% e
     tenutambrosini.it, dalla risposta di diagnosi).
 
+48. **Dati di Vivino modificabili** (build 117). Nel foglio condiviso
+    "Rivedi e conferma" / "Modifica vino" tre campi nuovi dopo la
+    denominazione: gradazione (`#rec-alcohol`, virgola o punto), sito del
+    produttore (`#rec-site`, `https://` aggiunto se manca) e voto su Vivino
+    (`#rec-vivino`, 1-5). Regione e denominazione erano già modificabili.
+    Il voto resta quello di Vivino, con il suo numero di voti, finché il
+    campo non viene toccato (e in creazione segue l'annata digitata); scritto
+    a mano si salva senza numero di voti. Validazione condivisa server-side
+    in `readExtras()` (`wines.ts`), usata da POST e PATCH; la PATCH sovrascrive
+    anche questi campi (svuotati → NULL), come da regola del progetto.
+    Nella stessa sessione, su richiesta, cancellati da produzione tutti i
+    vini (cantina e catalogo erano 4: l'utente li reinserisce a mano per
+    avere i dati di Vivino); l'arricchimento automatico dei vini esistenti
+    era stato iniziato e poi abbandonato, non è nel codice.
+
 ## Cose note, non (ancora) da rifare
 
 - `status-bar-style` è `black-translucent` (non più `default`), `.screen`
