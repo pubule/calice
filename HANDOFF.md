@@ -1810,6 +1810,15 @@ questo file è il riassunto "dove eravamo rimasti".
     1.524,45 €. Bookmark D1 prima:
     `000001b5-00000000-00005109-352431e03fbb0064c3092fd2f9dc2e18`.
 
+87. **Filtro Cantina per abbinamento** (build 166). Nel foglio Filtri un gruppo
+    "Abbinamento" con i piatti scritti nelle note dell'utente (solo quelli
+    presenti in cantina, con il numero di vini); se ne possono scegliere
+    più d'uno e il vino deve andare bene con tutti. Il badge del filtro conta
+    il gruppo come uno. La casella di ricerca trova anche per piatto. Il server
+    manda `my_food_pairings` (abbinamenti della nota più recente di chi chiama)
+    con ogni bottiglia. Un vino senza nota o senza abbinamenti non compare
+    quando si filtra per piatto (oggi 28 vini su 45 li hanno).
+
 ## Cose note, non (ancora) da rifare
 
 - Secret `TAVILY_API_KEY`, `VAPID_*` cancellati il 19 ottobre; la chiave

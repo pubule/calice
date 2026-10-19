@@ -50,6 +50,21 @@ describe('bottles', () => {
     expect(bottles[0].denomination).toBe('Barolo DOCG');
   });
 
+  it("lists the caller's own food pairings (latest note) for the cellar filter", async () => {
+    const auth = signup('food@b.com');
+    const other = signup('food2@b.com');
+    const cellarId = await myCellarId(auth);
+    const json = { ...auth, 'content-type': 'application/json' };
+    const bottle = await (await app.request(`/api/cellars/${cellarId}/bottles`, { method: 'POST', body: JSON.stringify({ wineId, quantity: 1 }), headers: json }, env)).json<any>();
+    expect((await (await app.request(`/api/cellars/${cellarId}/bottles`, { headers: auth }, env)).json<any[]>())[0].my_food_pairings).toEqual([]);
+    await app.request(`/api/bottles/${bottle.id}/notes`, { method: 'POST', body: JSON.stringify({ rating: 0, text: '', foodPairings: ['Manzo', 'Pasta'] }), headers: json }, env);
+    const list = await (await app.request(`/api/cellars/${cellarId}/bottles`, { headers: auth }, env)).json<any[]>();
+    expect(list[0].my_food_pairings).toEqual(['Manzo', 'Pasta']);
+    expect(list[0].my_food).toBeUndefined();
+    // Someone else's cellar never shows them.
+    expect((await app.request(`/api/cellars/${cellarId}/bottles`, { headers: other }, env)).status).toBe(403);
+  });
+
   it('computes score as the average tasting_notes rating', async () => {
     const auth = signup('b2@b.com');
     const cellarId = await myCellarId(auth);

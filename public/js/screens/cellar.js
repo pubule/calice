@@ -35,6 +35,8 @@ let currentElements = [];
 let compareMode = false;
 let compareSelected = [];
 let activeChips = { type: null, country: null, region: null };
+// Food pairings chosen in the filter sheet (several: a wine must suit them all).
+let activeFood = new Set();
 
 // picker state: set while the elements overlay was opened from a bottle's
 // "modifica posizione" link (detail.js), instead of the standalone
@@ -191,8 +193,32 @@ function renderChips() {
   }
 }
 
+// "Abbinamento": the dishes the user wrote in their own notes for the wines
+// of this cellar (only those, like the other groups). Several can be chosen.
+function renderFoodChips() {
+  const el = document.getElementById('cellar-chips-food');
+  const block = document.getElementById('cellar-food-block');
+  if (!el) return;
+  const counts = new Map();
+  for (const b of currentBottles) for (const f of b.my_food_pairings ?? []) counts.set(f, (counts.get(f) ?? 0) + 1);
+  for (const f of [...activeFood]) if (!counts.has(f)) activeFood.delete(f);
+  block.classList.toggle('hidden', counts.size === 0);
+  el.innerHTML = [...counts].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'it')).map(([f, n]) =>
+    `<div class="chip${activeFood.has(f) ? ' active' : ''}" data-v="${escapeHtml(f)}" role="button" tabindex="0" aria-pressed="${activeFood.has(f)}">${escapeHtml(f)} <span class="chip-n">${n}</span></div>`).join('');
+  el.querySelectorAll('.chip').forEach((chip) =>
+    chip.addEventListener('click', () => {
+      const v = chip.dataset.v;
+      if (activeFood.has(v)) activeFood.delete(v); else activeFood.add(v);
+      chip.classList.toggle('active', activeFood.has(v));
+      chip.setAttribute('aria-pressed', String(activeFood.has(v)));
+      updateFilterBadge();
+      applyFilters();
+    }),
+  );
+}
+
 function updateFilterBadge() {
-  const count = Object.values(activeChips).filter(Boolean).length;
+  const count = Object.values(activeChips).filter(Boolean).length + (activeFood.size ? 1 : 0);
   const badge = document.getElementById('cellar-filter-badge');
   badge.textContent = count;
   badge.classList.toggle('show', count > 0);
@@ -201,11 +227,12 @@ function updateFilterBadge() {
 function applyFilters() {
   const q = document.getElementById('cellar-search-input').value.trim().toLowerCase();
   const filtered = currentBottles.filter((b) => {
-    const mQ = !q || `${b.name} ${b.producer} ${b.vintage ?? ''}`.toLowerCase().includes(q);
+    const mQ = !q || `${b.name} ${b.producer} ${b.vintage ?? ''} ${(b.my_food_pairings ?? []).join(' ')}`.toLowerCase().includes(q);
     const mType = !activeChips.type || b.type === activeChips.type;
     const mCountry = !activeChips.country || b.country === activeChips.country;
     const mRegion = !activeChips.region || b.region === activeChips.region;
-    return mQ && mType && mCountry && mRegion;
+    const mFood = [...activeFood].every((f) => (b.my_food_pairings ?? []).includes(f));
+    return mQ && mType && mCountry && mRegion && mFood;
   });
   const nBottles = filtered.reduce((sum, b) => sum + (Number(b.quantity) || 0), 0);
   document.getElementById('cellar-results-count').textContent =
@@ -220,6 +247,7 @@ export function refreshCellarList(removedId) {
   if (removedId != null) {
     currentBottles = currentBottles.filter((b) => b.id !== removedId);
     renderChips();
+  renderFoodChips();
   }
   applyFilters();
 }
@@ -259,6 +287,7 @@ export async function deleteBottle(bottle) {
   await api.del(`/api/bottles/${bottle.id}`);
   currentBottles = await api.get(`/api/cellars/${currentCellarId}/bottles`);
   renderChips();
+  renderFoodChips();
   applyFilters();
   return true;
 }
@@ -596,9 +625,11 @@ async function loadCellarData() {
   currentBottles = await api.get(`/api/cellars/${currentCellarId}/bottles`);
   currentElements = await api.get(`/api/cellars/${currentCellarId}/elements`);
   activeChips = { type: null, country: null, region: null };
+  activeFood = new Set();
   updateFilterBadge();
   document.getElementById('cellar-search-input').value = '';
   renderChips();
+  renderFoodChips();
   applyFilters();
   await renderWishlist();
 }

@@ -16,17 +16,27 @@ cellarBottleRoutes.get('/:cellarId/bottles', async (c) => {
       `select bottles.*, wines.name, wines.producer, wines.region, wines.country, wines.type, wines.vintage, wines.image_url,
               wines.grape_variety, wines.denomination, wines.vivino_rating, wines.vivino_ratings_count, wines.alcohol, wines.producer_url,
               (select avg(rating) from tasting_notes where tasting_notes.bottle_id = bottles.id) as score,
-              (select nullif(rating, 0) from tasting_notes where tasting_notes.bottle_id = bottles.id and tasting_notes.user_id = ?
-                 order by created_at desc, id desc limit 1) as my_rating
+              (select nullif(rating, 0) from tasting_notes where tasting_notes.bottle_id = bottles.id and tasting_notes.user_id = ?1
+                 order by created_at desc, id desc limit 1) as my_rating,
+              (select food_pairings from tasting_notes where tasting_notes.bottle_id = bottles.id and tasting_notes.user_id = ?1
+                 order by created_at desc, id desc limit 1) as my_food
        from bottles
          join wines on wines.id = bottles.wine_id
-       where bottles.cellar_id = ?
+       where bottles.cellar_id = ?2
        order by bottles.added_at desc`,
     )
     .bind(c.get('userId'), cellarId)
     .all<Record<string, unknown> & { id: number }>();
   const places = await placesWhere(c.env.DB, 'bottles.cellar_id = ?', cellarId);
-  return c.json(rows.results.map((b) => ({ ...withoutLegacyPlace(b), places: places.filter((p) => p.bottle_id === b.id).map(publicPlace) })));
+  // The caller's food pairings (JSON text in the note) as a list, for the filter.
+  const pairings = (raw: unknown): string[] => {
+    try {
+      return typeof raw === 'string' ? JSON.parse(raw) : [];
+    } catch {
+      return [];
+    }
+  };
+  return c.json(rows.results.map(({ my_food, ...b }) => ({ ...withoutLegacyPlace(b), my_food_pairings: pairings(my_food), places: places.filter((p) => p.bottle_id === b.id).map(publicPlace) })));
 });
 
 cellarBottleRoutes.post('/:cellarId/bottles', async (c) => {

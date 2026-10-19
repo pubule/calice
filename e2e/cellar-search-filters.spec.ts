@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { gotoScreen, myCellarId, seedWine, seedBottle, runId } from './helpers';
+import { gotoScreen, myCellarId, seedWine, seedBottle, apiPost, runId } from './helpers';
 
 test.describe('Cantina — search and filters', () => {
   let redName: string;
@@ -58,5 +58,42 @@ test.describe('Cantina — search and filters', () => {
     await expect(page.locator('#wishlist-list')).toBeVisible();
     await page.click('.segmented button:has-text("La mia cantina")');
     await expect(page.locator('#cellar-list')).toBeVisible();
+  });
+});
+
+test.describe('Cantina — abbinamenti', () => {
+  test('the Abbinamento filter finds the wines whose note lists the chosen dishes', async ({ page, request }) => {
+    const cellarId = await myCellarId(request);
+    const names = { both: `Abbina Manzo e Formaggi ${runId}`, one: `Abbina Solo Pesce ${runId}`, none: `Abbina Niente ${runId}` };
+    for (const [key, foods] of [['both', ['Manzo', 'Formaggi stagionati']], ['one', ['Pesce']], ['none', []]] as const) {
+      const wine = await seedWine(request, { name: names[key], producer: 'Abbinamenti', type: 'rosso' });
+      const bottle = await seedBottle(request, cellarId, wine.id);
+      await apiPost(request, `/api/bottles/${bottle.id}/notes`, { rating: 0, text: '', foodPairings: foods });
+    }
+
+    await gotoScreen(page, 'cellar');
+    await page.click('#cellar-filter-btn');
+    const chip = (label: string) => page.locator('#cellar-chips-food .chip', { hasText: label });
+    await chip('Manzo').click();
+    await page.click('#filter-sheet-close');
+    await expect(page.locator('.cellar-row', { hasText: names.both })).toBeVisible();
+    await expect(page.locator('.cellar-row', { hasText: names.one })).not.toBeVisible();
+    await expect(page.locator('#cellar-filter-badge')).toHaveText('1');
+
+    // Two dishes: the wine must suit both.
+    await page.click('#cellar-filter-btn');
+    await chip('Pesce').click();
+    await page.click('#filter-sheet-close');
+    await expect(page.locator('.cellar-row', { hasText: names.both })).not.toBeVisible();
+    await expect(page.locator('.cellar-row', { hasText: names.one })).not.toBeVisible();
+
+    // The search box finds a dish too.
+    await page.click('#cellar-filter-btn');
+    await chip('Manzo').click();
+    await chip('Pesce').click(); // both off
+    await page.click('#filter-sheet-close');
+    await page.fill('#cellar-search-input', `Abbina ${runId} pesce`.replace(`Abbina ${runId} `, ''));
+    await expect(page.locator('.cellar-row', { hasText: names.one })).toBeVisible();
+    await expect(page.locator('.cellar-row', { hasText: names.none })).not.toBeVisible();
   });
 });
