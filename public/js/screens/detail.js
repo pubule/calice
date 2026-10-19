@@ -128,8 +128,11 @@ function renderHero(bottle) {
   }
   // What the wine is, as labels...
   const chips = hero.querySelector('.hero-chips');
+  const MONTHS_SHORT = ['gen', 'feb', 'mar', 'apr', 'mag', 'giu', 'lug', 'ago', 'set', 'ott', 'nov', 'dic'];
+  const disg = /^(\d{4})-(\d{2})$/.exec(bottle.disgorged_at ?? '');
   const facts = [bottle.denomination, bottle.vintage ? String(bottle.vintage) : null,
-    bottle.alcohol ? `${String(bottle.alcohol).replace('.', ',')}% vol` : null];
+    bottle.alcohol ? `${String(bottle.alcohol).replace('.', ',')}% vol` : null,
+    disg ? `Sboccatura ${MONTHS_SHORT[Number(disg[2]) - 1]} ${disg[1]}` : null];
   chips.replaceChildren(...facts.filter(Boolean).map((t) => Object.assign(document.createElement('span'), { textContent: t })));
   renderStats(bottle);
   loadLandscape(bottle);
@@ -145,7 +148,8 @@ function renderHero(bottle) {
     ? `Stima dalla sboccatura (${MONTHS[Number(dis[2]) - 1]} ${dis[1]}).`
     : w.basis === 'added'
     ? 'Stima da quando l\'hai aggiunto: con l\'annata (in Modifica) è più precisa.'
-    : w.basis === 'manual' ? 'Anni scelti da te.' : '';
+    : w.basis === 'manual' ? 'Anni scelti da te.'
+    : bottle.type === 'bollicine' ? 'Aggiungi la sboccatura (in Modifica) per una stima più precisa.' : '';
 }
 
 // The vineyard photo behind the bottle, for the wine's denomination, region

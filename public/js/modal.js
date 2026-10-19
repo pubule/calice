@@ -3,6 +3,8 @@
 // and reused — calls are always sequential (a person can only be looking at
 // one dialog at a time), so there's no need to queue concurrent opens.
 
+import { quantityStepperHtml, wireQuantitySteppers, parseQuantity } from './fields.js';
+
 let ready = false;
 
 function ensureModal() {
@@ -47,6 +49,8 @@ function showModal({ title, message, confirmLabel, cancelLabel, showInput, input
   input.style.display = showInput ? 'block' : 'none';
   const pasteBox = document.getElementById('app-modal-paste');
   if (pasteBox && !document.getElementById('app-modal').classList.contains('open')) pasteBox.style.display = 'none';
+  const qtySlot = document.getElementById('app-modal-qty');
+  if (qtySlot) qtySlot.style.display = 'none'; // quantityModal() shows it again after this
   input.type = inputType ?? 'text';
   input.inputMode = inputMode ?? '';
   input.value = inputValue ?? '';
@@ -188,4 +192,29 @@ export function pasteModal({ title = 'Incolla la foto', message = 'Tieni premuto
   };
   shown.then(() => close(null));
   return result;
+}
+
+// "Quante bottiglie?" with the app's one quantity control (− n +). Resolves
+// the number, or null when cancelled.
+export function quantityModal({ title = 'Quante bottiglie?', message = '', value = 1, min = 1, confirmLabel = 'Aggiungi' } = {}) {
+  ensureModal();
+  const sheet = document.querySelector('#app-modal .modal-sheet');
+  let slot = document.getElementById('app-modal-qty');
+  if (!slot) {
+    slot = document.createElement('div');
+    slot.id = 'app-modal-qty';
+    slot.className = 'modal-qty';
+    sheet.insertBefore(slot, sheet.querySelector('.modal-actions'));
+  }
+  slot.innerHTML = quantityStepperHtml({ id: 'app-modal-qty-input', value, min });
+  wireQuantitySteppers(slot);
+  const input = slot.querySelector('input');
+  const shown = showModal({ title, message, confirmLabel, cancelLabel: 'Annulla' });
+  slot.style.display = '';
+  // showModal resolves true/false; the number is read from the field.
+  return shown.then((ok) => {
+    const n = parseQuantity(input.value, min).value;
+    slot.style.display = 'none';
+    return ok ? (n ?? min) : null;
+  });
 }

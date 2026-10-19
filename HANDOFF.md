@@ -1471,6 +1471,22 @@ questo file è il riassunto "dove eravamo rimasti".
     annata: era la sboccatura (gennaio 2026), annata tolta e sboccatura
     inserita a mano in D1.
 
+66. **Audit dei campi + sboccatura in fase di aggiunta** (build 148). Vedi la
+    sezione "Campi condivisi" in CLAUDE.md. Trovato e uniformato: bottiglie
+    (3 controlli → `quantityStepperHtml`, anche `quantityModal` per il
+    codice a barre e per "quante sono dell'anno nuovo"); prezzo (il pannello
+    di aggiunta ora ha "Prezzo a bottiglia", prima solo nel foglio
+    completo; stesso parsing/messaggio dei desideri; totali Home/Statistiche
+    "197 €"); annata (stessa validazione 1900-anno prossimo ovunque, prima
+    il foglio la lasciava al server); interi (livelli/colonne/profondità e
+    anni "Da bere" come testo numerico). **Sboccatura**: campo `month` nel
+    pannello (solo bollicine), nel foglio completo in aggiunta e in
+    Modifica; `POST /api/cellars/:id/bottles` accetta `disgorgedAt`; nella
+    scheda un'etichetta "Sboccatura giu 2025" e, per le bollicine senza
+    data, il suggerimento di aggiungerla. "Modifica tutti i dati" dal
+    pannello porta con sé quantità, prezzo e sboccatura digitati.
+    Non fatto: la finestra "Da bere" in aggiunta (resta solo in Modifica).
+
 ## Cose note, non (ancora) da rifare
 
 - `status-bar-style` è `black-translucent` (non più `default`), `.screen`

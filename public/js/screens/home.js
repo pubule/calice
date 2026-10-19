@@ -2,6 +2,7 @@ import { api } from '../api-client.js';
 import { me } from '../auth.js';
 import { escapeHtml, skeletonBar } from '../util.js';
 import { navigate } from '../router.js';
+import { eurosText } from '../fields.js';
 import { drinkWindow, drinkStatus, drinkOrder, STATUS_LABEL } from '../drink-window.js';
 import { openDetail } from './detail.js';
 
@@ -196,7 +197,7 @@ export async function mountHome() {
 
   document.getElementById('home-stats').innerHTML = `
     <div class="stat"><div class="num">${totalBottles}</div><div class="lbl">bottiglie</div></div>
-    <div class="stat"><div class="num">€${totalValue.toFixed(0)}</div><div class="lbl">valore</div></div>
+    <div class="stat"><div class="num">${eurosText(totalValue)}</div><div class="lbl">valore</div></div>
     <div class="stat"><div class="num">${ready.length}</div><div class="lbl">da bere</div></div>
   `;
 

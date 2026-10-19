@@ -32,15 +32,18 @@ cellarBottleRoutes.post('/:cellarId/bottles', async (c) => {
   const cellarId = Number(c.req.param('cellarId'));
   const userId = c.get('userId');
   if (!(await isCellarMember(c.env.DB, cellarId, userId))) return c.json({ error: 'not a member' }, 403);
-  const body = await c.req.json<{ wineId: number; quantity: number; pricePaid?: number; shelfLocation?: string; drinkFrom?: string; drinkUntil?: string }>();
+  const body = await c.req.json<{ wineId: number; quantity: number; pricePaid?: number; shelfLocation?: string; drinkFrom?: string; drinkUntil?: string; disgorgedAt?: string }>();
   if (!isPrice(body.pricePaid)) return c.json({ error: 'pricePaid must be a number between 0 and 100000' }, 400);
   if (!Number.isInteger(body.quantity) || body.quantity < 1 || body.quantity > 9999) return c.json({ error: 'quantity must be an integer between 1 and 9999' }, 400);
+  if (body.disgorgedAt != null && !(typeof body.disgorgedAt === 'string' && /^\d{4}-(0[1-9]|1[0-2])$/.test(body.disgorgedAt))) {
+    return c.json({ error: 'disgorgedAt must be YYYY-MM' }, 400);
+  }
   const bottle = await c.env.DB
     .prepare(
-      `insert into bottles (cellar_id, wine_id, quantity, price_paid, shelf_location, drink_from, drink_until, added_by)
-       values (?, ?, ?, ?, ?, ?, ?, ?) returning *`,
+      `insert into bottles (cellar_id, wine_id, quantity, price_paid, shelf_location, drink_from, drink_until, disgorged_at, added_by)
+       values (?, ?, ?, ?, ?, ?, ?, ?, ?) returning *`,
     )
-    .bind(cellarId, body.wineId, body.quantity, body.pricePaid ?? null, body.shelfLocation ?? null, body.drinkFrom ?? null, body.drinkUntil ?? null, userId)
+    .bind(cellarId, body.wineId, body.quantity, body.pricePaid ?? null, body.shelfLocation ?? null, body.drinkFrom ?? null, body.drinkUntil ?? null, body.disgorgedAt ?? null, userId)
     .first();
   await c.env.DB
     .prepare('insert into activity_feed (user_id, cellar_id, wine_id, action) values (?, ?, ?, ?)')

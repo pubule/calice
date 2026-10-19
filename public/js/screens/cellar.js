@@ -668,9 +668,9 @@ function renderElementCreateForm() {
     <div id="new-elem-dims" style="margin-top:14px;">
       <div class="field-label" style="margin-bottom:9px;">Definisci gli slot</div>
       <div class="dims-row" style="flex-wrap:wrap; row-gap:8px;">
-        Livelli <input type="number" class="num-input" id="new-elem-tiers" aria-label="Livelli" value="3" min="1">
-        × Colonne <input type="number" class="num-input" id="new-elem-cols" aria-label="Colonne" value="5" min="1">
-        × Profondità <input type="number" class="num-input" id="new-elem-depth" aria-label="Profondità" value="1" min="1" max="2">
+        Livelli <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2" autocomplete="off" class="num-input" id="new-elem-tiers" aria-label="Livelli" value="3">
+        × Colonne <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2" autocomplete="off" class="num-input" id="new-elem-cols" aria-label="Colonne" value="5">
+        × Profondità <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="1" autocomplete="off" class="num-input" id="new-elem-depth" aria-label="Profondità" value="1">
       </div>
     </div>
     <div class="primary-btn" id="create-element-btn" style="margin-top:16px;" role="button" tabindex="0">Crea elemento</div>`;
@@ -691,7 +691,7 @@ function renderElementCreateForm() {
     if (kind !== 'Scatolone') {
       body.tiers = parseInt(document.getElementById('new-elem-tiers').value) || 3;
       body.cols = parseInt(document.getElementById('new-elem-cols').value) || 5;
-      body.depth = parseInt(document.getElementById('new-elem-depth').value) || 1;
+      body.depth = Math.min(2, parseInt(document.getElementById('new-elem-depth').value) || 1);
     }
     const created = await api.post(`/api/cellars/${currentCellarId}/elements`, body);
     currentElements.push(created);

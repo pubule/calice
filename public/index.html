@@ -222,7 +222,7 @@
     </div>
     <div class="logout" role="button" tabindex="0">Esci</div>
     <div class="app-footer">
-      <div class="app-build">build 147</div>
+      <div class="app-build">build 148</div>
       <div class="app-credit"><a href="https://www.flaticon.com/free-icons/wine" target="_blank" rel="noopener">Wine icons created by iconixar - Flaticon</a></div>
       <div class="app-credit">Foto dei paesaggi da <a href="https://commons.wikimedia.org/" target="_blank" rel="noopener">Wikimedia Commons</a>, autori e licenze nella scheda di ogni vino</div>
     </div>
@@ -439,7 +439,7 @@
               <option value="bollicine">Bollicine</option>
               <option value="rosato">Rosato</option>
             </select></div>
-          <div class="form-field"><label for="rec-vintage">Annata</label><input id="rec-vintage" class="search" placeholder="es. 2019" type="number" inputmode="numeric"></div>
+          <div class="form-field"><label for="rec-vintage">Annata</label><input id="rec-vintage" class="search" placeholder="es. 2019" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off"></div>
         </div>
       </div>
       <div class="form-sec">
@@ -452,17 +452,17 @@
       <div class="form-sec">
         <p class="form-sec-title">La tua bottiglia</p>
         <div class="form-pair">
-          <div class="form-field"><label for="rec-qty">Bottiglie</label><input id="rec-qty" class="search" type="text" inputmode="numeric" autocomplete="off" placeholder="1"></div>
+          <div class="form-field" id="rec-qty-field"><label for="rec-qty">Bottiglie</label><div id="rec-qty-slot"></div></div>
           <div class="form-field"><label for="rec-price">Prezzo a bottiglia</label><div class="affix-field"><input id="rec-price" placeholder="es. 18,50" type="text" inputmode="decimal" autocomplete="off"><span aria-hidden="true">€</span></div></div>
         </div>
         <!-- Edit only: the drinking window. Empty = the app's estimate (shown
              as placeholders and in the note below); years typed = the user's. -->
-        <!-- Edit only, sparkling wines: disgorgement month from the label. -->
+        <!-- Sparkling wines (when adding and when editing): disgorgement month from the label. -->
         <div class="form-field hidden" id="rec-disgorged-field"><label for="rec-disgorged">Sboccatura</label>
           <input id="rec-disgorged" class="search" type="month" aria-describedby="rec-disgorged-hint">
-          <p class="drink-est" id="rec-disgorged-hint">Mese e anno scritti in etichetta, per i metodo classico. Da qui parte la stima di quando berlo.</p></div>
+          <p class="drink-est" id="rec-disgorged-hint">Mese e anno scritti in etichetta. Da qui parte la stima di quando berlo.</p></div>
         <div class="form-field hidden" id="rec-drink-field"><label for="rec-drink-from">Da bere</label>
-          <div class="form-pair"><div class="affix-field prefix"><span aria-hidden="true">dal</span><input id="rec-drink-from" type="text" inputmode="numeric" autocomplete="off" aria-label="Da bere dal (anno)"></div><div class="affix-field prefix"><span aria-hidden="true">al</span><input id="rec-drink-until" type="text" inputmode="numeric" autocomplete="off" aria-label="Da bere fino al (anno)"></div></div>
+          <div class="form-pair"><div class="affix-field prefix"><span aria-hidden="true">dal</span><input id="rec-drink-from" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off" aria-label="Da bere dal (anno)"></div><div class="affix-field prefix"><span aria-hidden="true">al</span><input id="rec-drink-until" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off" aria-label="Da bere fino al (anno)"></div></div>
           <p class="drink-est" id="rec-drink-est"></p></div>
       </div>
       <div class="form-sec">

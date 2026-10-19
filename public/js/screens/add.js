@@ -1,7 +1,8 @@
 import { api } from '../api-client.js';
 import { escapeHtml, photoClass, priceText } from '../util.js';
 import { estimatedWindow } from '../drink-window.js';
-import { alertModal, promptModal, pasteModal } from '../modal.js';
+import { alertModal, promptModal, pasteModal, quantityModal } from '../modal.js';
+import { MAX_QUANTITY, WHOLE_NUMBER_ATTRS, parseDecimal, parsePrice, PRICE_ERROR, parseVintage, VINTAGE_ERROR, parseQuantity, quantityError, quantityStepperHtml, wireQuantitySteppers, parseDisgorged, DISGORGED_HINT } from '../fields.js';
 import { showToast } from '../toast.js';
 import { tastingProfileHtml, wireTastingProfile, resetTastingProfile, readTastingProfile, isTastingProfileEmpty } from '../tasting-profile.js';
 import { COUNTRIES } from '../data/wine-atlas.js';
@@ -112,17 +113,24 @@ function pickPanelHtml(w) {
   // Always editable, starting from the wine's own vintage: another year of a
   // wine already in the catalog is added as that year (see ensureWine).
   const vintageField = `
-      <div class="exp-row"><label for="exp-vintage">Annata</label><input id="exp-vintage" class="num-input exp-vintage" type="number" inputmode="numeric" placeholder="Nessuna" value="${escapeHtml(expanded.vintage ?? '')}"></div>`;
+      <div class="exp-row"><label for="exp-vintage">Annata</label><input id="exp-vintage" class="search exp-vintage" ${WHOLE_NUMBER_ATTRS} maxlength="4" placeholder="es. 2019" value="${escapeHtml(expanded.vintage ?? '')}"></div>`;
+  // Sparkling wines: when it was disgorged (from the label), the best guide
+  // to when to drink it. Same field as in the full sheet.
+  const disgorgedField = w.type === 'bollicine' ? `
+      <div class="exp-row"><label for="exp-disgorged">Sboccatura</label><input id="exp-disgorged" class="search exp-disgorged" type="month" value="${escapeHtml(expanded.disgorged ?? '')}" aria-describedby="exp-disgorged-hint"></div>
+      <p class="exp-hint" id="exp-disgorged-hint">${DISGORGED_HINT}</p>` : '';
   return `
     <div class="result-exp">
       ${facts.length || vivino ? `<div class="exp-facts">${facts.map((f) => `<span>${escapeHtml(f)}</span>`).join('')}${vivino ? `<span data-vivino>${escapeHtml(vivino)}</span>` : ''}</div>` : '<p class="exp-note">Da Vivino arriva solo il nome: gli altri dati li puoi aggiungere con "Modifica tutti i dati".</p>'}
       ${vintageField}
       ${expanded.mode === 'wish' ? `
-      <div class="exp-row"><label for="exp-price">Prezzo obiettivo</label><div class="affix-field exp-price"><input id="exp-price" type="text" inputmode="decimal" autocomplete="off" placeholder="Facoltativo" value="${escapeHtml(expanded.price ?? '')}"><span aria-hidden="true">€</span></div></div>
+      <div class="exp-row"><label for="exp-price">Prezzo obiettivo</label><div class="affix-field exp-price"><input id="exp-price" type="text" inputmode="decimal" autocomplete="off" placeholder="es. 18,50" value="${escapeHtml(expanded.price ?? '')}"><span aria-hidden="true">€</span></div></div>
       <p class="exp-hint">A quanto vale la pena comprarlo.</p>
       <button type="button" class="exp-add" data-wish>Aggiungi ai desideri</button>
       <button type="button" class="exp-edit" data-tocellar>Aggiungi alla cantina invece</button>` : `
-      <div class="exp-row"><span id="exp-qty-label">Bottiglie</span><div class="qty-step" role="group" aria-labelledby="exp-qty-label"><button type="button" data-qty="-1" aria-label="Una bottiglia in meno">−</button><output>${expanded.qty}</output><button type="button" data-qty="1" aria-label="Una bottiglia in più">+</button></div></div>
+      ${disgorgedField}
+      <div class="exp-row"><label for="exp-qty">Bottiglie</label>${quantityStepperHtml({ id: 'exp-qty', value: expanded.qty })}</div>
+      <div class="exp-row"><label for="exp-paid">Prezzo a bottiglia</label><div class="affix-field exp-price"><input id="exp-paid" type="text" inputmode="decimal" autocomplete="off" placeholder="es. 18,50" value="${escapeHtml(expanded.paid ?? '')}"><span aria-hidden="true">€</span></div></div>
       <button type="button" class="exp-add" data-confirm>Aggiungi alla cantina</button>
       <div class="exp-links"><button type="button" class="exp-edit" data-towish>${isWished(w) ? '♡ Cambia il prezzo obiettivo' : '♡ Metti nei desideri'}</button><button type="button" class="exp-edit" data-edit>Modifica tutti i dati</button></div>`}
     </div>`;
@@ -132,17 +140,15 @@ const groupLabel = (title, count) => `<div class="add-group-lbl">${title}${count
 const MANUAL_HTML = '<button type="button" class="add-manual" data-manual>Non lo trovi? Aggiungilo a mano</button>';
 
 // null = the user pressed Annulla: abort, don't default to adding 1.
-async function askQuantity() {
-  const raw = await promptModal('Quante bottiglie?', { title: 'Aggiungi alla cantina', defaultValue: '1', inputType: 'number', confirmLabel: 'Aggiungi' });
-  if (raw === null) return null;
-  return Math.min(9999, Math.max(1, Math.round(Number(raw)) || 1));
+function askQuantity() {
+  return quantityModal({ title: 'Aggiungi alla cantina', message: 'Quante bottiglie?', value: 1, min: 1 });
 }
 
 // `finish` runs before the sheet closes (tasting note, photo upload), so the
 // screen underneath redraws with everything already saved.
-async function postBottle(wineId, quantity, finish, pricePaid) {
+async function postBottle(wineId, quantity, finish, pricePaid, disgorgedAt) {
   if (!currentCellarId) await (cellarLoad ?? loadCellar());
-  const bottle = await api.post(`/api/cellars/${currentCellarId}/bottles`, { wineId, quantity, pricePaid: pricePaid ?? undefined });
+  const bottle = await api.post(`/api/cellars/${currentCellarId}/bottles`, { wineId, quantity, pricePaid: pricePaid ?? undefined, disgorgedAt: disgorgedAt ?? undefined });
   changed = true;
   await finish?.(bottle);
   closeAddSheet();
@@ -334,33 +340,38 @@ function renderResults(query) {
   results.innerHTML = html + MANUAL_HTML;
 }
 
-function validVintage(raw) {
-  const v = Number(String(raw ?? '').trim());
-  return Number.isInteger(v) && v >= 1900 && v <= new Date().getFullYear() + 1 ? v : undefined;
-}
-
 // The panel's "Aggiungi alla cantina": a catalog wine is added as it is; a
 // Vivino one is created first (POST /api/wines dedupes on name, producer and
 // vintage, so the same wine is never stored twice).
 // The vintage in the open panel: empty = none; undefined when not a year.
 function panelVintage() {
-  const typed = String(expanded?.vintage ?? '').trim();
-  return typed ? validVintage(typed) : null;
+  const r = parseVintage(expanded?.vintage);
+  return r.invalid ? undefined : r.value;
 }
 
 async function confirmPick(w, button) {
-  const qty = expanded?.qty ?? 1;
+  const qty = parseQuantity(expanded?.qty, 1);
   const vintage = panelVintage();
   if (vintage === undefined) {
-    await alertModal("L'annata deve essere un anno, per esempio 2019.");
+    await alertModal(VINTAGE_ERROR);
     return;
   }
+  if (qty.invalid || qty.value == null) {
+    await alertModal(quantityError(1));
+    return;
+  }
+  const paid = parsePrice(expanded?.paid);
+  if (paid.invalid) {
+    await alertModal(PRICE_ERROR);
+    return;
+  }
+  const disgorged = w.type === 'bollicine' ? parseDisgorged(expanded?.disgorged) : null;
   button.disabled = true;
   try {
     const wineId = await ensureWine(w, vintage);
     rememberSearch(currentQuery());
     expanded = null;
-    await postBottle(wineId, qty);
+    await postBottle(wineId, qty.value, undefined, paid.value, disgorged);
   } catch (err) {
     console.error(err);
     await alertModal('Impossibile aggiungere il vino, riprova.');
@@ -414,12 +425,12 @@ async function confirmWish(w, button) {
       await alertModal("L'annata deve essere un anno, per esempio 2019.");
       return;
     }
-    const rawPrice = String(expanded?.price ?? '').trim().replace(/\s*€$/, '');
-    const price = rawPrice ? Number(rawPrice.replace(',', '.')) : null;
-    if (rawPrice && !(Number.isFinite(price) && price >= 0 && price <= 100000)) {
-      await alertModal('Il prezzo obiettivo deve essere un numero, per esempio 45 o 45,50.');
+    const target = parsePrice(expanded?.price);
+    if (target.invalid) {
+      await alertModal(PRICE_ERROR);
       return;
     }
+    const price = target.value;
     if (!currentCellarId) await (cellarLoad ?? loadCellar());
     const wineId = await ensureWine(w, vintage);
     await api.post(`/api/cellars/${currentCellarId}/wishlist`, { wineId, targetPrice: price ?? undefined });
@@ -451,6 +462,8 @@ function editPick(w) {
     name: w.name, producer: w.producer, country: w.country, region: w.region, type: SHEET_TYPES.has(w.type) ? w.type : undefined,
     vintage, grapeVariety: w.grape, denomination: w.denomination, imageUrl: w.image, sourceUrl: w.sourceUrl, rawText: w.snippet,
     rating: w.rating, vintageRatings: w.vintageRatings, alcohol: w.alcohol, producerUrl: w.producerUrl,
+    quantity: parseQuantity(expanded?.qty, 1).value ?? 1, price: parsePrice(expanded?.paid).value ?? undefined,
+    disgorgedAt: parseDisgorged(expanded?.disgorged) ?? undefined,
   });
 }
 
@@ -555,10 +568,12 @@ function handleResultsTap(t) {
   const item = t.closest('.result-item');
   const pick = item && shownPicks.get(item.dataset.key);
   if (!pick) return;
-  const step = t.closest('[data-qty]');
+  const step = t.closest('[data-qty-step]');
   if (step) {
-    expanded.qty = Math.min(99, Math.max(1, expanded.qty + Number(step.dataset.qty)));
-    item.querySelector('.qty-step output').textContent = expanded.qty;
+    const input = item.querySelector('#exp-qty');
+    const current = parseQuantity(input.value, 1).value ?? 1;
+    expanded.qty = Math.min(MAX_QUANTITY, Math.max(1, current + Number(step.dataset.qtyStep)));
+    input.value = String(expanded.qty);
     return;
   }
   if (t.closest('[data-confirm]')) {
@@ -640,17 +655,36 @@ results?.addEventListener('click', (e) => {
   }
 });
 results?.addEventListener('input', (e) => {
-  if (e.target.id === 'exp-price' && expanded) {
+  if (!expanded) return;
+  if (e.target.id === 'exp-price') {
     expanded.price = e.target.value;
     return;
   }
-  if (e.target.id !== 'exp-vintage' || !expanded) return;
+  if (e.target.id === 'exp-paid') {
+    expanded.paid = e.target.value;
+    return;
+  }
+  if (e.target.id === 'exp-disgorged') {
+    expanded.disgorged = e.target.value;
+    return;
+  }
+  if (e.target.id === 'exp-qty') {
+    e.target.value = e.target.value.replace(/\D/g, '');
+    expanded.qty = e.target.value;
+    return;
+  }
+  if (e.target.id !== 'exp-vintage') return;
+  e.target.value = e.target.value.replace(/\D/g, '');
   expanded.vintage = e.target.value;
   // The Vivino chip follows the typed year (that vintage's rating, if any).
   const pick = shownPicks.get(expanded.key);
   const chip = e.target.closest('.result-item')?.querySelector('[data-vivino]');
   const label = pick && vivinoLabel(ratingFor(pick, expanded.vintage));
   if (chip && label) chip.textContent = label;
+});
+
+results?.addEventListener('change', (e) => {
+  if (e.target.id === 'exp-disgorged' && expanded) expanded.disgorged = e.target.value;
 });
 
 // ---- viewfinder: label photo / barcode / back to typing ----
@@ -888,12 +922,8 @@ let vivinoFieldStart = ''; // what the Vivino field showed when the sheet opened
 // Numbers typed with a comma or a dot ("12,5"); '' means "none".
 const decimalText = (n) => (n == null || n === '' ? '' : String(n).replace('.', ','));
 function readDecimal(id) {
-  const raw = document.getElementById(id).value.trim();
-  if (!raw) return { value: null };
-  const v = Number(raw.replace(',', '.'));
-  return Number.isFinite(v) ? { value: v } : { invalid: true };
+  return parseDecimal(document.getElementById(id).value);
 }
-
 // The three fields that usually come from Vivino, checked before saving.
 // The rating keeps Vivino's own (with its number of ratings) while the field
 // is untouched; a rating typed by hand has no count.
@@ -962,6 +992,21 @@ let editingQuantity = null; // its bottles in that row
 let editingBottleId = null;
 let editingDrinkBottle = null; // the bottle being edited, for the drink estimate
 
+// The number of bottles in the full sheet: the app's one quantity control.
+// 1 or more when adding, 0 allowed when editing (all drunk).
+function setReviewQuantity(value, min) {
+  const slot = document.getElementById('rec-qty-slot');
+  slot.innerHTML = quantityStepperHtml({ id: 'rec-qty', value, min });
+  wireQuantitySteppers(slot);
+}
+
+// Disgorgement shows for sparkling wines only, when adding and when editing.
+function syncDisgorgedField() {
+  const sparkling = document.getElementById('rec-type').value === 'bollicine';
+  document.getElementById('rec-disgorged-field').classList.toggle('hidden', !sparkling);
+}
+document.getElementById('rec-type')?.addEventListener('change', syncDisgorgedField);
+
 // "Da bere" in the edit sheet: the estimate (from what is typed now: type,
 // denomination, vintage) shows as placeholders and as a note; years typed
 // replace it, "Usa la stima" empties them.
@@ -969,8 +1014,7 @@ function renderDrinkEstimate() {
   if (!editingDrinkBottle) return;
   const vintage = Number(document.getElementById('rec-vintage').value) || null;
   const type = document.getElementById('rec-type').value;
-  // Disgorgement only matters for sparkling wines.
-  document.getElementById('rec-disgorged-field').classList.toggle('hidden', type !== 'bollicine');
+  syncDisgorgedField();
   const disgorged = type === 'bollicine' ? document.getElementById('rec-disgorged').value || null : null;
   const w = estimatedWindow({
     ...editingDrinkBottle,
@@ -1047,8 +1091,11 @@ function openRecognizeSheet(suggestion, capturedPhotoDataUrl) {
   pendingImageUrl = suggestion.imageUrl;
   pendingBarcode = suggestion.barcode;
   pendingVivino = { rating: suggestion.rating, vintageRatings: suggestion.vintageRatings };
-  document.getElementById('rec-price').value = '';
-  document.getElementById('rec-qty').value = '1';
+  // Typed in the add panel before opening the full sheet: nothing is lost.
+  document.getElementById('rec-price').value = suggestion.price != null ? priceText(suggestion.price, { grouping: false }) : '';
+  setReviewQuantity(suggestion.quantity ?? 1, 1);
+  document.getElementById('rec-disgorged').value = suggestion.disgorgedAt ?? '';
+  syncDisgorgedField();
   fillVivinoFields({ alcohol: suggestion.alcohol, producerUrl: suggestion.producerUrl, rating: ratingFor(pendingVivino, suggestion.vintage) });
   pendingPhoto = null;
   document.getElementById('rec-photo-input').value = '';
@@ -1100,7 +1147,7 @@ export function openEditWineSheet(bottle, onSaved) {
   document.getElementById('rec-grape').value = bottle.grape_variety ?? '';
   document.getElementById('rec-denomination').value = bottle.denomination ?? '';
   document.getElementById('rec-price').value = priceText(bottle.price_paid, { grouping: false });
-  document.getElementById('rec-qty').value = String(Number(bottle.quantity) || 0);
+  setReviewQuantity(Number(bottle.quantity) || 0, 0);
   editingDrinkBottle = bottle;
   document.getElementById('rec-drink-from').value = bottle.drink_from ? String(bottle.drink_from).slice(0, 4) : '';
   document.getElementById('rec-drink-until').value = bottle.drink_until ? String(bottle.drink_until).slice(0, 4) : '';
@@ -1166,28 +1213,32 @@ async function saveRecognizedWine() {
   const country = document.getElementById('rec-country').value.trim() || 'Italia';
   const region = document.getElementById('rec-region').value.trim() || undefined;
   const type = document.getElementById('rec-type').value;
-  const vintageRaw = document.getElementById('rec-vintage').value.trim();
-  const vintage = vintageRaw ? Number(vintageRaw) : undefined;
+  const vintageRead = parseVintage(document.getElementById('rec-vintage').value);
+  if (vintageRead.invalid) {
+    await alertModal(VINTAGE_ERROR);
+    return;
+  }
+  const vintage = vintageRead.value ?? undefined;
   const grapeVariety = document.getElementById('rec-grape').value.trim() || undefined;
   const denomination = document.getElementById('rec-denomination').value.trim() || undefined;
   const extras = await readVivinoFields(vintage);
   if (!extras) return;
   // Price per bottle: belongs to the bottle, not to the shared wine.
-  const priceRead = readDecimal('rec-price');
-  if (priceRead.invalid || (priceRead.value != null && !(priceRead.value >= 0 && priceRead.value <= 100000))) {
-    await alertModal('Il prezzo deve essere un numero, per esempio 18 o 18,50.');
+  const priceRead = parsePrice(document.getElementById('rec-price').value);
+  if (priceRead.invalid) {
+    await alertModal(PRICE_ERROR);
     return;
   }
   const pricePaid = priceRead.value;
   // How many bottles: a new wine needs at least one; editing can set any
   // count, 0 included (all drunk, the wine stays listed as finished).
-  const qtyRaw = document.getElementById('rec-qty').value.trim();
-  const quantity = qtyRaw === '' ? (sheetMode === 'edit' ? null : 1) : Number(qtyRaw);
   const minQty = sheetMode === 'edit' ? 0 : 1;
-  if (quantity != null && !(Number.isInteger(quantity) && quantity >= minQty && quantity <= 9999)) {
-    await alertModal(sheetMode === 'edit' ? 'Le bottiglie devono essere un numero intero, da 0 in su.' : 'Le bottiglie devono essere un numero intero, almeno 1.');
+  const qtyRead = parseQuantity(document.getElementById('rec-qty').value, minQty);
+  if (qtyRead.invalid) {
+    await alertModal(quantityError(minQty));
     return;
   }
+  const quantity = qtyRead.value ?? (sheetMode === 'edit' ? null : 1);
 
   // Drinking window (edit only): two years, or both empty for the estimate.
   let drink = null;
@@ -1222,15 +1273,17 @@ async function saveRecognizedWine() {
         let moving = inRow;
         if (inRow > 1) {
           const label = vintage ? `del ${vintage}` : 'senza annata';
-          const typed = await promptModal(`Hai ${inRow} bottiglie in questa riga. Le altre restano ${editingVintage ? `del ${editingVintage}` : 'senza annata'}.`, {
-            title: `Quante sono ${label}?`, defaultValue: '1', inputMode: 'numeric', confirmLabel: 'Continua',
+          const picked = await quantityModal({
+            title: `Quante sono ${label}?`,
+            message: `Hai ${inRow} bottiglie in questa riga. Le altre restano ${editingVintage ? `del ${editingVintage}` : 'senza annata'}.`,
+            value: 1, min: 1, confirmLabel: 'Continua',
           });
-          if (typed == null) return;
-          moving = Number(typed.trim());
-          if (!(Number.isInteger(moving) && moving >= 1 && moving <= inRow)) {
-            await alertModal(`Scrivi un numero da 1 a ${inRow}.`);
+          if (picked == null) return;
+          if (picked > inRow) {
+            await alertModal(`In questa riga ci sono ${inRow} bottiglie: scrivi un numero da 1 a ${inRow}.`);
             return;
           }
+          moving = picked;
         }
         const res = await api.post(`/api/bottles/${editingBottleId}/vintage`, { vintage: vintage ?? null, quantity: moving });
         wineId = res.wine.id;
@@ -1271,7 +1324,7 @@ async function saveRecognizedWine() {
     await postBottle(wine.id, quantity, async (bottle) => {
       await maybeSaveNote(bottle.id);
       await savePendingPhoto(wine.id, 'Vino salvato');
-    }, pricePaid);
+    }, pricePaid, type === 'bollicine' ? parseDisgorged(document.getElementById('rec-disgorged').value) : null);
   } catch (err) {
     console.error(err);
     await alertModal('Impossibile aggiungere il vino: controlla i dati inseriti e riprova.');

@@ -234,6 +234,14 @@ describe('bottles', () => {
     expect((await app.request(`/api/bottles/${bottleId}/vintage`, json(auth, 'POST', { vintage: 2018, quantity: 5 }), env)).status).toBe(400);
   });
 
+  it('saves the disgorgement month when the bottle is added', async () => {
+    const auth = signup('b15@b.com');
+    const cellarId = await myCellarId(auth);
+    const ok = await (await app.request(`/api/cellars/${cellarId}/bottles`, json(auth, 'POST', { wineId, quantity: 1, disgorgedAt: '2026-01' }), env)).json<any>();
+    expect(ok.disgorged_at).toBe('2026-01');
+    expect((await app.request(`/api/cellars/${cellarId}/bottles`, json(auth, 'POST', { wineId, quantity: 1, disgorgedAt: 'gennaio' }), env)).status).toBe(400);
+  });
+
   it('sets and clears the disgorgement month', async () => {
     const { auth, bottleId } = await setup('b14@b.com', 1);
     const set = await (await app.request(`/api/bottles/${bottleId}`, json(auth, 'PATCH', { disgorgedAt: '2026-01' }), env)).json<any>();

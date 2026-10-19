@@ -1,4 +1,5 @@
 import { api } from '../api-client.js';
+import { eurosText } from '../fields.js';
 import { escapeHtml, skeletonBar } from '../util.js';
 
 const TYPE_LABEL = { rosso: 'Rosso', bianco: 'Bianco', bollicine: 'Bollicine', rosato: 'Rosato' };
@@ -97,7 +98,7 @@ export async function mountStats() {
 
   document.getElementById('stats-summary').innerHTML = `
     <div class="stat"><div class="num">${total}</div><div class="lbl">bottiglie</div></div>
-    <div class="stat"><div class="num">€${value.toFixed(0)}</div><div class="lbl">valore</div></div>
+    <div class="stat"><div class="num">${eurosText(value)}</div><div class="lbl">valore</div></div>
     <div class="stat"><div class="num">${avgVintage}</div><div class="lbl">annata media</div></div>
   `;
 

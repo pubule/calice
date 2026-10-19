@@ -843,3 +843,27 @@ dall'app si legge sempre il dato nuovo. Regole:
 - una nuova schermata o scheda che legge dati va aggiunta anche a
   `warmUp()`, altrimenti alla prima apertura aspetta la rete;
 - non modificare dati sul server con una GET: la memoria non lo saprebbe.
+
+## Campi condivisi (`js/fields.js`): la stessa informazione si chiede, si legge e si valida sempre allo stesso modo
+
+Audit di build 148: lo stesso dato era gestito in tre modi diversi a seconda
+della schermata (bottiglie: contatore − n + nel pannello, campo di testo nel
+foglio completo, finestra con campo numerico dopo il codice a barre; annata:
+`type=number` e validata solo dal server nel foglio, con controllo e
+segnaposto diversi nel pannello). Ora c'è un solo modulo e **ogni nuovo punto
+dove compare una di queste informazioni deve usarlo**:
+- **Bottiglie**: `quantityStepperHtml()` + `wireQuantitySteppers()` (− campo +,
+  il numero si può anche scrivere, 1-9999; in Modifica può scendere a 0).
+  Per una domanda a sé: `quantityModal()` in `modal.js`, mai `promptModal` con
+  un numero.
+- **Prezzo**: `parsePrice()` / `PRICE_ERROR`, campo `.affix-field` con "€" a
+  destra e segnaposto "es. 18,50", mostrato sempre con `priceText()` (due
+  decimali) o `eurosText()` per i totali ("197 €", mai "€197").
+- **Annata**: `parseVintage()` / `VINTAGE_ERROR`, campo di testo numerico
+  (`WHOLE_NUMBER_ATTRS`), segnaposto "es. 2019". Mai `type="number"`.
+- **Sboccatura** (bollicine): `input type=month`, `parseDisgorged()`, presente
+  nel pannello di aggiunta, nel foglio completo (aggiunta e Modifica) e
+  visibile nella scheda; il pannello la passa al foglio completo se si preme
+  "Modifica tutti i dati" (come quantità, prezzo e annata).
+Gli interi di altri campi (livelli/colonne/profondità degli elementi, anni di
+"Da bere") usano gli stessi attributi: testo con tastierino numerico.

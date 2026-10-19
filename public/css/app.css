@@ -1052,7 +1052,10 @@ input.search:focus, select.search:focus, .text-input:focus, .num-input:focus, te
 .exp-vintage{width:140px; text-align:center;}
 .qty-step{display:flex; align-items:center; border:1px solid #e2e0d8; border-radius:999px; overflow:hidden; background:#ffffff;}
 .qty-step button{width:44px; height:40px; border:0; background:transparent; color:#5b2333; font-size:calc(18rem/17); cursor:pointer;}
-.qty-step output{min-width:28px; text-align:center; font-family:'JetBrains Mono',monospace; font-size:calc(14rem/17); color:#241e1a;}
+.qty-step .qty-input{width:56px; min-height:40px; border:0; outline:0; background:transparent; text-align:center; padding:0; font-family:'JetBrains Mono',monospace; font-size:max(calc(16rem/17), 16px); color:#241e1a; -webkit-appearance:none; appearance:none;}
+.qty-step:focus-within{border-color:#5b2333; box-shadow:0 0 0 3px rgba(91,35,51,.12);}
+.modal-qty{display:flex; justify-content:center; margin:6px 0 14px;}
+.exp-disgorged{width:190px; min-width:0; max-width:100%; box-sizing:border-box; text-align:left;}
 .exp-add{min-height:46px; border:0; border-radius:999px; background:#5b2333; color:#ffffff; font-family:inherit; font-size:calc(14rem/17); font-weight:600; cursor:pointer;}
 .exp-add:disabled{opacity:.6;}
 .exp-edit{align-self:center; min-height:44px; padding:0 8px; border:0; background:none; color:#5b2333; font-family:inherit; font-size:calc(13rem/17); font-weight:600; text-decoration:underline; text-underline-offset:3px; cursor:pointer;}
