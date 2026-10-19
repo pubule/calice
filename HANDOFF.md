@@ -1801,9 +1801,6 @@ questo file è il riassunto "dove eravamo rimasti".
   di oggi. Il database di sviluppo tiene le bottiglie di ogni esecuzione,
   quindi il caricamento iniziale in locale è lento: un test che apre l'app
   da zero aspetta `#app-loader` staccato prima di controllare.
-- `e2e/bottle-detail.spec.ts` › "deleting a bottle…" è rotto da prima del
-  build 158: cerca `.delete-btn` sulla riga, che dal build 85 sta dietro lo
-  swipe. Va riscritto con lo swipe o col pulsante nella scheda.
 
 - `status-bar-style` è `black-translucent` (non più `default`), `.screen`
   si stira fra `top:0` e `bottom:0` senza **nessuna** unità di altezza
