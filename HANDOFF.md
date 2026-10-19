@@ -1622,7 +1622,38 @@ questo file è il riassunto "dove eravamo rimasti".
     simulato funziona, ma il menu "Incolla" su un `contenteditable` senza
     tastiera si vede solo sul device.
 
+75. **Pulizia e dati dei vini in produzione** (solo dati, nessun codice).
+    Cantina di Fabio (utente 9, cantina 9): nessun orfano, nessuna bottiglia
+    a 0; cancellati 4 vini senza bottiglie né desideri (38, 39, 40, 58: copie
+    senza annata nate dal cambio annata) con le loro righe di
+    `activity_feed`; tolta l'annata 2025 impossibile al Batudè (vino 60).
+    Poi vitigni/denominazione/gradazione/regione/sito presi dai siti dei
+    produttori (in mancanza: etichetta nella foto, poi web), da 41 a 5 vini
+    senza vitigni. Regola dell'utente: **vince il sito ufficiale**. Siti
+    corretti: Le Due Torri è `leduetorrivini.it` (non `le2torri.com`),
+    Campo Reale `camporealevini.it`, Colli Morenici/Valpantena/Cantina di
+    Verona sono nel gruppo `cantinediverona.it`. "San Zenone" è un marchio
+    ALDI Suisse (Provinco Italia), non la Cantina San Zenone del Molise.
+    Il nome "Tarzelenghe" (vino 85) va lasciato così, scelta dell'utente.
+    Ogni update ha rimesso `search_text = null`.
+
+76. **Scheda vino a tab** (build 158, mockup A scelto dall'utente su
+    `https://claude.ai/artifact/FfHwZLHvToTjYSUDDrMJbL`). Sotto foto e nome,
+    un `.segmented` `#detail-tabs`: **Il vino** (righe `.fact-row` da
+    `renderFacts()` in `detail.js`: denominazione, vitigni come
+    `.grape-chip`, gradazione, annata, sboccatura, regione, Vivino; solo le
+    righe con un valore), **Sentori e note** (nota e profilo, invariati),
+    **In cantina** (posizione, da bere, stappa, foto). Modifica/Elimina
+    restano sempre visibili sotto. Si riapre sempre su "Il vino"
+    (`selectDetailTab()` in `openDetail()`). Tolti i bollini `.hero-chips`
+    sotto il nome (ora nel primo tab). Prima i vitigni si vedevano solo in
+    Modifica. `e2e/bottle-detail.spec.ts` aggiornato.
+
 ## Cose note, non (ancora) da rifare
+
+- `e2e/bottle-detail.spec.ts` › "deleting a bottle…" è rotto da prima del
+  build 158: cerca `.delete-btn` sulla riga, che dal build 85 sta dietro lo
+  swipe. Va riscritto con lo swipe o col pulsante nella scheda.
 
 - `status-bar-style` è `black-translucent` (non più `default`), `.screen`
   si stira fra `top:0` e `bottom:0` senza **nessuna** unità di altezza

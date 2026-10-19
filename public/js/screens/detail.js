@@ -85,6 +85,49 @@ function renderStats(bottle) {
   document.querySelector('#detail-overlay .hero-stats').replaceChildren(...stats);
 }
 
+// The "Il vino" tab: what the wine is, one row per known fact (grapes as
+// chips). Facts nobody has filled stay out; with none at all, a pointer to
+// Modifica.
+function renderFacts(bottle) {
+  const MONTHS = ['gennaio', 'febbraio', 'marzo', 'aprile', 'maggio', 'giugno', 'luglio', 'agosto', 'settembre', 'ottobre', 'novembre', 'dicembre'];
+  const disg = /^(\d{4})-(\d{2})$/.exec(bottle.disgorged_at ?? '');
+  const grapes = (bottle.grape_variety ?? '').split(',').map((g) => g.trim()).filter(Boolean);
+  const n = Number(bottle.vivino_ratings_count) || 0;
+  const rows = [
+    ['Denominazione', bottle.denomination],
+    ['Vitigni', grapes.length ? grapes : null],
+    ['Gradazione', bottle.alcohol ? `${String(bottle.alcohol).replace('.', ',')}% vol` : null],
+    ['Annata', bottle.vintage ? String(bottle.vintage) : null],
+    ['Sboccatura', disg ? `${MONTHS[Number(disg[2]) - 1]} ${disg[1]}` : null],
+    ['Regione', [bottle.region, bottle.country].filter(Boolean).join(', ') || null],
+    ['Vivino', bottle.vivino_rating != null
+      ? `★ ${Number(bottle.vivino_rating).toFixed(1).replace('.', ',')} · ${n.toLocaleString('it-IT')} ${n === 1 ? 'voto' : 'voti'}` : null],
+  ].filter(([, v]) => v);
+  const el = (tag, className, text) => Object.assign(document.createElement(tag), { className, textContent: text ?? '' });
+  const facts = document.getElementById('detail-facts');
+  if (!rows.length) {
+    facts.replaceChildren(el('p', 'fact-empty', 'Nessun dato sul vino: aggiungili da Modifica.'));
+    return;
+  }
+  facts.replaceChildren(...rows.map(([label, value]) => {
+    const row = el('div', Array.isArray(value) ? 'fact-row stacked' : 'fact-row');
+    const v = Array.isArray(value)
+      ? Object.assign(el('div', 'fact-chips'), { role: 'list' })
+      : el('span', 'fact-value', value);
+    if (Array.isArray(value)) v.append(...value.map((g) => Object.assign(el('span', 'grape-chip', g), { role: 'listitem' })));
+    row.append(el('span', 'fact-label', label), v);
+    return row;
+  }));
+}
+
+function selectDetailTab(tab) {
+  document.querySelectorAll('#detail-tabs button').forEach((b) => {
+    b.classList.toggle('active', b.dataset.tab === tab);
+    b.setAttribute('aria-pressed', String(b.dataset.tab === tab));
+  });
+  document.querySelectorAll('#detail-overlay .detail-tab-panel').forEach((p) => p.classList.toggle('hidden', p.dataset.tabPanel !== tab));
+}
+
 function renderHero(bottle) {
   const art = document.querySelector('#detail-overlay .hero-art');
   const product = art.querySelector('.hero-product');
@@ -126,14 +169,7 @@ function renderHero(bottle) {
     a.setAttribute('aria-label', `Sito del produttore: ${a.textContent}`);
     sub.append(' · ', a);
   }
-  // What the wine is, as labels...
-  const chips = hero.querySelector('.hero-chips');
-  const MONTHS_SHORT = ['gen', 'feb', 'mar', 'apr', 'mag', 'giu', 'lug', 'ago', 'set', 'ott', 'nov', 'dic'];
-  const disg = /^(\d{4})-(\d{2})$/.exec(bottle.disgorged_at ?? '');
-  const facts = [bottle.denomination, bottle.vintage ? String(bottle.vintage) : null,
-    bottle.alcohol ? `${String(bottle.alcohol).replace('.', ',')}% vol` : null,
-    disg ? `Sboccatura ${MONTHS_SHORT[Number(disg[2]) - 1]} ${disg[1]}` : null];
-  chips.replaceChildren(...facts.filter(Boolean).map((t) => Object.assign(document.createElement('span'), { textContent: t })));
+  renderFacts(bottle);
   renderStats(bottle);
   loadLandscape(bottle);
   document.getElementById('loc-value').textContent = locationLabel(bottle) || 'Non assegnata';
@@ -313,6 +349,7 @@ export async function openDetail(bottle, me) {
   sheet.classList.remove('compact');
   document.getElementById('detail-overlay').classList.add('open');
   hideUndo();
+  selectDetailTab('wine');
   resetNoteComposer();
   renderQuantity();
   renderHero(bottle);
@@ -332,6 +369,10 @@ export async function openDetail(bottle, me) {
 // a fresh listener (and stacking duplicates) on every openDetail() call.
 function wireStaticControls() {
   document.getElementById('uncork-btn')?.addEventListener('click', uncorkOne);
+  document.getElementById('detail-tabs')?.addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-tab]');
+    if (btn) selectDetailTab(btn.dataset.tab);
+  });
 
   // Same actions as the swipe on a Cantina row (kept here too: a swipe is
   // invisible to VoiceOver and keyboard users).

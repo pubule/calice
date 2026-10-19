@@ -7,7 +7,10 @@ test.describe('Dettaglio bottiglia', () => {
   test.beforeAll(async ({ request }) => {
     const cellarId = await myCellarId(request);
     name = `Detail Test Wine ${runId}`;
-    const wine = await seedWine(request, { name, producer: 'Detail Producer', region: 'Piemonte', type: 'rosso' });
+    const wine = await seedWine(request, {
+      name, producer: 'Detail Producer', region: 'Piemonte', type: 'rosso',
+      denomination: 'Barolo DOCG', grapeVariety: 'Nebbiolo, Barbera', alcohol: 14.5,
+    } as Parameters<typeof seedWine>[1]);
     await seedBottle(request, cellarId, wine.id);
   });
 
@@ -16,16 +19,33 @@ test.describe('Dettaglio bottiglia', () => {
     await page.click(`.cellar-row:has-text("${name}")`);
     await expect(page.locator('#detail-overlay')).toHaveClass(/open/);
     await expect(page.locator('#detail-overlay .info .name')).toHaveText(name);
-    await expect(page.locator('#loc-value')).toHaveText('Non assegnata');
 
-    await page.click('.rev-tab:has-text("Le tue note")');
+    // "Il vino" opens first, with the wine's data that used to be only in Modifica.
+    const facts = page.locator('#detail-facts');
+    await expect(facts).toBeVisible();
+    await expect(facts.locator('.fact-row', { hasText: 'Denominazione' })).toContainText('Barolo DOCG');
+    await expect(facts.locator('.grape-chip')).toHaveText(['Nebbiolo', 'Barbera']);
+    await expect(facts.locator('.fact-row', { hasText: 'Gradazione' })).toContainText('14,5% vol');
+    await expect(page.locator('#loc-value')).toBeHidden();
+
+    await page.click('#detail-tabs button:has-text("In cantina")');
+    await expect(page.locator('#loc-value')).toHaveText('Non assegnata');
+    await expect(facts).toBeHidden();
+
+    await page.click('#detail-tabs button:has-text("Sentori e note")');
     await page.fill('#note-text', 'Ottimo vino, note di frutti rossi.');
     await page.locator('.stars-input span').nth(3).click(); // 4 stars
     await page.click('#note-submit');
-    await expect(page.locator('#notes-mine')).toContainText('Ottimo vino, note di frutti rossi.');
+    // The user's own note stays in the composer (one note per bottle), now saved.
+    await expect(page.locator('#note-submit')).toHaveText('Aggiorna nota');
 
     await page.click('#detail-close');
     await expect(page.locator('#detail-overlay')).not.toHaveClass(/open/);
+
+    // Reopening starts again on "Il vino".
+    await page.click(`.cellar-row:has-text("${name}")`);
+    await expect(page.locator('#detail-tabs button.active')).toHaveText('Il vino');
+    await expect(facts).toBeVisible();
   });
 
   test('deleting a bottle asks for confirmation and only deletes when confirmed', async ({ page, request }) => {

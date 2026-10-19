@@ -330,9 +330,6 @@
   /* Due gruppi: cosa è il vino (etichette: denominazione, annata, gradazione)
      e quanto vale (riga di numeri: prezzo, voto delle note, voto Vivino), con
      il numero grande e sotto cosa misura, come la riga d'informazioni dell'App Store. */
-  .hero-chips{display:flex; flex-wrap:wrap; justify-content:center; gap:6px; margin-top:10px;}
-  .hero-chips:empty{display:none;}
-  .hero-chips span{padding:4px 10px; border-radius:999px; background:#ece7de; color:#4a423a; font-size:calc(12rem/17);}
   .hero-stats{display:flex; justify-content:center; margin-top:14px; width:100%;}
   .hero-stats:empty{display:none;}
   .hero-stat{flex:1 1 0; max-width:120px; min-width:0; display:flex; flex-direction:column; align-items:center; gap:1px; padding:0 8px;}
@@ -350,6 +347,16 @@
   .detail-sheet.compact .detail-bar-title{opacity:1;}
   .detail-bar .close{position:absolute; top:11px; right:14px; width:30px; height:30px; border-radius:50%; background:#efece3; display:flex; align-items:center; justify-content:center; cursor:pointer;}
   .detail-body{padding:16px 18px 4px; display:flex; flex-direction:column; gap:18px;}
+  .detail-tab-panel{display:flex; flex-direction:column; gap:18px;}
+  .detail-tab-panel.hidden{display:none;}
+  .fact-row{display:flex; justify-content:space-between; align-items:baseline; gap:16px; padding:12px 2px; border-bottom:1px solid #ece8de;}
+  .fact-row:last-child{border-bottom:none;}
+  .fact-row.stacked{flex-direction:column; align-items:stretch; gap:8px;}
+  .fact-label{font-size:calc(13rem/17); color:#736a5d; flex-shrink:0;}
+  .fact-value{font-size:calc(13.5rem/17); color:#241e1a; text-align:right; overflow-wrap:anywhere;}
+  .fact-chips{display:flex; flex-wrap:wrap; gap:6px;}
+  .fact-chips .grape-chip{font-size:calc(12.5rem/17); color:#241e1a; padding:5px 11px;}
+  .fact-empty{margin:0; font-size:calc(13rem/17); color:#736a5d;}
   .loc-row{display:flex; align-items:center; gap:10px; background:#ffffff; border:1px solid #e2e0d8; border-radius:12px; padding:12px 14px;}
   .loc-row svg{stroke:#5b2333; flex-shrink:0;}
   .loc-row .loc-text{flex:1; font-size:calc(12rem/17);}
