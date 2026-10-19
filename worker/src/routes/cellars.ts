@@ -44,8 +44,6 @@ cellarRoutes.delete('/:id', async (c) => {
     db.prepare('delete from bottles where cellar_id = ?').bind(id),
     db.prepare('delete from wishlist_items where cellar_id = ?').bind(id),
     db.prepare('delete from cellar_elements where cellar_id = ?').bind(id),
-    db.prepare('delete from activity_feed where cellar_id = ?').bind(id),
-    db.prepare('delete from cellar_invites where cellar_id = ?').bind(id),
     db.prepare('delete from cellar_members where cellar_id = ?').bind(id),
     db.prepare('delete from cellars where id = ?').bind(id),
   ]);

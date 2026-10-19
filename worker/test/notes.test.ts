@@ -14,7 +14,7 @@ let ownerAuth: Record<string, string>;
 
 beforeEach(async () => {
   await env.DB.exec(
-    'DELETE FROM tasting_notes; DELETE FROM follows; DELETE FROM bottle_places; DELETE FROM bottles; DELETE FROM wines; DELETE FROM cellar_members; DELETE FROM cellars; DELETE FROM users;',
+    'DELETE FROM tasting_notes; DELETE FROM bottle_places; DELETE FROM bottles; DELETE FROM wines; DELETE FROM cellar_members; DELETE FROM cellars; DELETE FROM users;',
   );
   const owner = await signup('owner@notes.com');
   ownerAuth = owner.auth;

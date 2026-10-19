@@ -1792,6 +1792,15 @@ questo file è il riassunto "dove eravamo rimasti".
     In produzione al 19 ottobre: 45 vini, un solo utente, nessuno da
     separare. Test: `worker/test/wine-owner.test.ts`.
 
+85. **Pulizia del database di produzione** (migrazione 0021, 19 ottobre).
+    Verifica in sola lettura: nessuna riga orfana, nessuna bottiglia a 0,
+    nessun vino inutilizzato; R2 214 file / 45 MB, tutti in uso. Eliminate le
+    tabelle delle funzioni tolte (`activity_feed` 42 righe, `cellar_invites` 3,
+    `follows` e `push_subscriptions` vuote) e le 16 righe di `landscapes` con un
+    link a Commons. Bookmark D1 prima:
+    `000001b1-00000000-00005109-4432a6a636e9920b6cda5ad5bab46a7a`. L'utente 12
+    (cantina vuota) resta: scelta dell'utente.
+
 ## Cose note, non (ancora) da rifare
 
 - Secret `TAVILY_API_KEY`, `VAPID_*` cancellati il 19 ottobre; la chiave

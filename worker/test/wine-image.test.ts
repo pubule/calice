@@ -10,7 +10,7 @@ let wineId: number;
 let auth: Record<string, string>;
 
 beforeEach(async () => {
-  await env.DB.exec('DELETE FROM activity_feed; DELETE FROM bottle_places; DELETE FROM bottles; DELETE FROM wines; DELETE FROM cellar_members; DELETE FROM cellars; DELETE FROM users;');
+  await env.DB.exec('DELETE FROM bottle_places; DELETE FROM bottles; DELETE FROM wines; DELETE FROM cellar_members; DELETE FROM cellars; DELETE FROM users;');
   auth = signup('img@b.com');
   const cellars = await (await app.request('/api/cellars', { headers: auth }, env)).json<any[]>();
   const wine = await env.DB.prepare(`insert into wines (name, producer, country, type, source, image_url) values ('Le Macine', 'Colli Vicentini', 'Italia', 'bollicine', 'catalog', 'https://images.vivino.com/x.png') returning id`).first<{ id: number }>();
