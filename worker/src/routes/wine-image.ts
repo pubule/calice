@@ -77,7 +77,8 @@ async function dropOwnImage(env: Env, wineId: number) {
   // Another vintage of the same wine can share the photo (copied with it):
   // the file goes only when no other wine still shows it.
   const shared = await env.DB.prepare('select 1 from wines where image_url = ? and id != ? limit 1').bind(row.image_url, wineId).first();
-  if (!shared) await env.PHOTOS.delete(decodeURIComponent(row.image_url.slice(PREFIX.length)));
+  const key = decodeURIComponent(row.image_url.slice(PREFIX.length));
+  if (!shared && key.startsWith('wines/')) await env.PHOTOS.delete(key);
 }
 
 // PUT /api/wines/:id/image — multipart "file", or JSON { url }.

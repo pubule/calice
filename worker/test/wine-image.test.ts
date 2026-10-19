@@ -75,10 +75,14 @@ describe('web images copied into R2', () => {
 
   it('a wine whose photo is already ours can be saved again with that photo', async () => {
     const own = '/api/wine-images/wines%2F1%2Fabc';
-    const res = await app.request('/api/wines', { method: 'POST', headers: { ...auth, 'content-type': 'application/json' },
-      body: JSON.stringify({ name: 'Nuovo', producer: 'Y', country: 'Italia', type: 'rosso', imageUrl: own }) }, env);
+    await env.DB.prepare(`update wines set image_url = ? where id = ?`).bind(own, wineId).run();
+    const post = (imageUrl: string) => app.request('/api/wines', { method: 'POST', headers: { ...auth, 'content-type': 'application/json' },
+      body: JSON.stringify({ name: 'Nuovo', producer: 'Y', country: 'Italia', type: 'rosso', imageUrl }) }, env);
+    const res = await post(own);
     expect(res.status).toBe(200);
     expect((await res.json<any>()).image_url).toBe(own);
+    // A key no wine shows (here: a backup) is refused, so "Rimuovi foto" can never delete it.
+    expect((await post('/api/wine-images/backups%2F2026-10-19.json')).status).toBe(400);
   });
 });
 

@@ -120,8 +120,13 @@ wineRoutes.post('/', async (c) => {
   if (body.denomination != null && !isNonEmptyShortString(body.denomination)) {
     return c.json({ error: 'denomination must be 1-200 chars' }, 400);
   }
-  // A wine photo already in our R2 (suggested from the catalog) is kept as is.
-  if (body.imageUrl != null && !(isNonEmptyShortString(body.imageUrl) && body.imageUrl.startsWith('/api/wine-images/'))) {
+  // A wine photo already in our R2 (suggested from the catalog) is kept as is,
+  // but only one a catalog wine already shows: any other key could later be
+  // deleted from R2 by "Rimuovi foto".
+  if (isNonEmptyShortString(body.imageUrl) && body.imageUrl.startsWith('/api/wine-images/')) {
+    const known = await c.env.DB.prepare('select 1 from wines where image_url = ? limit 1').bind(body.imageUrl).first();
+    if (!known) return c.json({ error: 'imageUrl must be a valid http(s) URL' }, 400);
+  } else if (body.imageUrl != null) {
     if (!isNonEmptyShortString(body.imageUrl)) {
       return c.json({ error: 'imageUrl must be a valid http(s) URL' }, 400);
     }

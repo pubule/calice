@@ -1692,6 +1692,9 @@ questo file è il riassunto "dove eravamo rimasti".
     - `POST /api/wines` accetta anche `imageUrl` già nostro
       (`/api/wine-images/…`): prima era 400, e il codice a barre di un vino
       in catalogo con foto propria lo propone così.
+      Solo se un vino la mostra già: un'altra chiave verrebbe poi cancellata
+      da "Rimuovi foto" (es. un backup). `dropOwnImage` cancella solo `wines/…`.
+      Il backup settimanale tiene al massimo 30 MB di foto (memoria del Worker).
     - Backup settimanale: `files` con i byte (base64) di ogni foto citata
       da `photos.r2_key` e `wines.image_url` (`dumpPhotos()` in
       `lib/backup.ts`), stessa forma del backup di Profilo. Ripristino

@@ -19,8 +19,11 @@ const backup = JSON.parse(readFileSync(file, 'utf8')) as Backup;
 if (backup.format !== 'calice-backup') throw new Error('non è un backup di Calice');
 const files = Object.entries(backup.files ?? {});
 for (const [key, f] of files) {
-  if (key.split('/').includes('..')) throw new Error(`chiave non valida: ${key}`);
+  // The output is a shell script: only plain keys and image types get in.
+  if (!/^[A-Za-z0-9_-]+(\/[A-Za-z0-9_.-]+)*$/.test(key) || key.split('/').includes('..')) throw new Error(`chiave non valida: ${key}`);
+  if (!/^image\/[a-z0-9.+-]+$/.test(f.type)) throw new Error(`tipo non valido: ${f.type}`);
   const out = path.join(dir, key);
+  if (!path.resolve(out).startsWith(path.resolve(dir) + path.sep) || dir.includes("'")) throw new Error(`cartella non valida: ${dir}`);
   mkdirSync(path.dirname(out), { recursive: true });
   writeFileSync(out, Buffer.from(f.data, 'base64'));
   process.stdout.write(`npx wrangler r2 object put 'calice-photos/${key}' --remote --file '${out}' --content-type '${f.type}'\n`);

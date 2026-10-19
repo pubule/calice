@@ -22,6 +22,7 @@ export type Backup = {
 };
 
 const WINE_IMAGE = '/api/wine-images/';
+const MAX_PHOTO_BYTES = 30_000_000;
 
 function toBase64(bytes: ArrayBuffer): string {
   const u8 = new Uint8Array(bytes);
@@ -40,9 +41,16 @@ export async function dumpPhotos(photos: R2Bucket, tables: Backup['tables']): Pr
     if (url.startsWith(WINE_IMAGE)) keys.add(decodeURIComponent(url.slice(WINE_IMAGE.length)));
   }
   const files: NonNullable<Backup['files']> = {};
+  let total = 0;
   for (const key of keys) {
     const object = await photos.get(key);
-    if (object) files[key] = { type: object.httpMetadata?.contentType ?? 'application/octet-stream', data: toBase64(await object.arrayBuffer()) };
+    // shortcut: past MAX_PHOTO_BYTES the rest is left out (Worker memory, 128 MB);
+    // a cellar that big needs the photos in separate objects.
+    if (object && (total += object.size) > MAX_PHOTO_BYTES) {
+      console.error(`backup: photos over ${MAX_PHOTO_BYTES} bytes, ${key} and the rest left out`);
+      break;
+    }
+    if (object) files[key] ={ type: object.httpMetadata?.contentType ?? 'application/octet-stream', data: toBase64(await object.arrayBuffer()) };
   }
   return files;
 }
