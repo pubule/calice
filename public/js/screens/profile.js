@@ -17,7 +17,10 @@ document.getElementById('help-row')?.addEventListener('click', () => alertModal(
 // Excel in Italian reads ";" as the separator and "," as the decimal mark;
 // the BOM makes it read accents as UTF-8.
 function csvField(value) {
-  const s = String(value ?? '');
+  let s = String(value ?? '');
+  // A text starting like a formula (a wine name from the shared catalog) must
+  // not run as one in Excel.
+  if (/^[=+@\t\r-]/.test(s) && !/^-?\d+(,\d+)?$/.test(s)) s = `'${s}`;
   return /[";\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 

@@ -120,3 +120,84 @@ describe('user backup', () => {
     expect(status.saved).toBeTruthy();
   });
 });
+
+// VAPT 2026-10-19: a backup file is the caller's own input, so it must never
+// reach rows or files of other users.
+describe('a crafted backup file', () => {
+  async function attackerFile(h: Record<string, string>, extra: { wines?: any[]; photos?: any[] }) {
+    const file = await (await app.request('/api/backup', { headers: h }, env)).json<any>();
+    const bottle = file.bottles[0];
+    return {
+      ...file,
+      wines: [...file.wines, ...(extra.wines ?? [])],
+      photos: [...file.photos, ...(extra.photos ?? []).map((p, i) => ({ id: 9000 + i, bottle_id: bottle.id, uploaded_by: file.users[0].id, created_at: '2026-10-19 10:00:00', ...p }))],
+    };
+  }
+  const restore = (h: Record<string, string>, body: unknown) =>
+    app.request('/api/backup/restore', { method: 'POST', body: JSON.stringify(body), headers: json(h) }, env);
+
+  it('cannot read or delete an R2 object that is not a bottle photo (the database backups)', async () => {
+    const { h } = await setup('attacker@b.com');
+    await env.PHOTOS.put('backups/2026-10-19.json', '{"users":[{"email":"victim@b.com"}]}');
+    const file = await attackerFile(h, { photos: [{ r2_key: 'backups/2026-10-19.json' }, { r2_key: 'restore-safety/1/x.json' }] });
+    expect((await restore(h, file)).status).toBe(200);
+    const read = await app.request('/api/photos/' + encodeURIComponent('backups/2026-10-19.json'), { headers: h }, env);
+    expect(read.status).toBe(404);
+    await read.arrayBuffer();
+    const bottles = await (await app.request(`/api/cellars/${(await (await app.request('/api/cellars', { headers: h }, env)).json<any[]>())[0].id}/bottles`, { headers: h }, env)).json<any[]>();
+    for (const b of bottles) await app.request(`/api/bottles/${b.id}`, { method: 'DELETE', headers: h }, env);
+    expect(await env.PHOTOS.head('backups/2026-10-19.json')).not.toBeNull();
+  });
+
+  it("cannot take over the photo of another user's bottle", async () => {
+    const victim = await setup('victim@b.com');
+    await env.PHOTOS.put(`bottles/${victim.bottleId}/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa`, PNG);
+    await env.DB.prepare('insert into photos (bottle_id, r2_key, uploaded_by) values (?, ?, ?)').bind(victim.bottleId, `bottles/${victim.bottleId}/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa`, victim.me.id).run();
+    const { h } = await setup('attacker2@b.com');
+    const file = await attackerFile(h, { photos: [{ r2_key: `bottles/${victim.bottleId}/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa` }] });
+    expect((await restore(h, file)).status).toBe(200);
+    const read = await app.request('/api/photos/' + encodeURIComponent(`bottles/${victim.bottleId}/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa`), { headers: h }, env);
+    expect(read.status).toBe(404);
+    await read.arrayBuffer();
+    // Deleting the attacker's own bottles leaves the victim's photo file alone.
+    const cellar = (await (await app.request('/api/cellars', { headers: h }, env)).json<any[]>())[0].id;
+    for (const b of await (await app.request(`/api/cellars/${cellar}/bottles`, { headers: h }, env)).json<any[]>()) {
+      await app.request(`/api/bottles/${b.id}`, { method: 'DELETE', headers: h }, env);
+    }
+    expect(await env.PHOTOS.head(`bottles/${victim.bottleId}/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa`)).not.toBeNull();
+  });
+
+  it('cannot rewrite a catalog wine that another user has in the cellar', async () => {
+    const victim = await setup('victim2@b.com');
+    const { h } = await setup('attacker3@b.com');
+    const w = await env.DB.prepare('select * from wines where id = ?').bind(victim.wineId).first<any>();
+    const { search_text: _, ...row } = w;
+    const file = await attackerFile(h, { wines: [{ ...row, denomination: 'Falso', producer_url: 'javascript:alert(1)', image_url: '/api/wine-images/' + encodeURIComponent('backups/2026-10-19.json') }] });
+    expect((await restore(h, file)).status).toBe(200);
+    const after = await env.DB.prepare('select denomination, producer_url, image_url from wines where id = ?').bind(victim.wineId).first<any>();
+    expect(after).toEqual({ denomination: w.denomination, producer_url: w.producer_url, image_url: w.image_url });
+  });
+
+  it('keeps only safe links in the wines it brings back', async () => {
+    const { h } = await setup('attacker4@b.com');
+    const file = await attackerFile(h, { wines: [{ id: 99999, name: 'Nuovo', producer: 'X', country: 'Italia', type: 'rosso', source: 'custom',
+      producer_url: 'javascript:alert(1)', image_url: '/api/wine-images/' + encodeURIComponent('backups/2026-10-19.json') }] });
+    expect((await restore(h, file)).status).toBe(200);
+    const w = await env.DB.prepare(`select producer_url, image_url from wines where name = 'Nuovo'`).first<any>();
+    expect(w).toEqual({ producer_url: null, image_url: null });
+  });
+});
+
+
+describe('a crafted backup file and other users', () => {
+  it('brings back only the caller\'s own notes, never notes signed by someone else', async () => {
+    const victim = await setup('victim3@b.com');
+    const { h } = await setup('attacker5@b.com');
+    const file = await (await app.request('/api/backup', { headers: h }, env)).json<any>();
+    file.users.push({ id: 777, email: 'victim3@b.com', name: 'victim3' });
+    file.tasting_notes.push({ ...file.tasting_notes[0], id: 778, user_id: 777, flavor_tags: '["Zolfo"]' });
+    expect((await app.request('/api/backup/restore', { method: 'POST', body: JSON.stringify(file), headers: json(h) }, env)).status).toBe(200);
+    const signed = await env.DB.prepare(`select count(*) as n from tasting_notes where user_id = ? and flavor_tags like '%Zolfo%'`).bind(victim.me.id).first<{ n: number }>();
+    expect(signed!.n).toBe(0);
+  });
+});

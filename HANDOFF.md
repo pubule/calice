@@ -1756,7 +1756,41 @@ questo file è il riassunto "dove eravamo rimasti".
     `automaticAt` (ISO UTC, `uploaded` dell'oggetto in R2); `saved` aveva già
     l'orario.
 
+83. **Audit di sicurezza (VAPT) del 19 ottobre** (build 165). Verificato a
+    posto: tutto dietro Cloudflare Access (anche `/health` e i file statici,
+    `workers.dev` spento), JWT verificato (firma, scadenza, audience),
+    `CALICE_DEV_EMAIL` assente in produzione, ogni route controlla la
+    cantina, SQL sempre parametrico, escape coerente nel client, link del
+    produttore filtrati sul protocollo. Corretto:
+    - **Critico, ripristino da backup**: una riga `photos` del file con
+      `r2_key: "backups/<data>.json"` permetteva di scaricare da
+      `/api/photos/` il backup dell'intero database (dati di tutti), e
+      cancellando la bottiglia di cancellare qualunque file R2. Ora il file
+      vale solo con chiavi `bottles/…` non di altre cantine
+      (`isBottlePhotoKey`); `/api/photos/` serve e la cancellazione della
+      bottiglia tocca solo `bottles/…`; `PUT /api/backup/files/` accetta solo
+      `bottles/…` e `wines/…`.
+    - **Alto**: il file riscriveva per intero un vino del catalogo che un
+      altro utente ha in cantina (anche `producer_url`/`image_url` senza
+      controlli). Ora un vino di altri resta com'è; i link vengono filtrati.
+    - **Medio**: note firmate da un altro utente (per email); ora il file
+      porta solo le note di chi ripristina.
+    - **Basso**: export CSV, una cella che inizia con `= + - @` ora non diventa
+      una formula; header di sicurezza su API (`hono/secure-headers`) e file
+      (`public/_headers`).
+    Test: `worker/test/user-backup.test.ts` ("a crafted backup file…"), ognuno
+    fallisce senza la correzione. Restano aperti (vedi "Cose note").
+
 ## Cose note, non (ancora) da rifare
+
+- **Catalogo condiviso**: chiunque aggiunga una bottiglia di un vino del
+  catalogo può modificarlo per tutti. Deciso dall'utente: catalogo per utente,
+  condivisa solo la ricerca (lavoro in corso dopo la build 165).
+- Secret `TAVILY_API_KEY`, `VAPID_*` cancellati il 19 ottobre; la chiave
+  Tavily va revocata anche dal sito di Tavily (lo fa l'utente).
+- **E2E**: 24 test su 44 falliscono da prima dell'audit (stesso elenco prima e
+  dopo): seguiti, inviti, più cantine, finestra "quante bottiglie", ecc. sono
+  funzioni tolte. Vanno riscritti o cancellati.
 
 - `e2e/bottle-detail.spec.ts` › "deleting a bottle…" è rotto da prima del
   build 158: cerca `.delete-btn` sulla riga, che dal build 85 sta dietro lo

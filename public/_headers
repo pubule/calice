@@ -1,0 +1,8 @@
+# Security headers for the app shell (Workers Static Assets). The API sets
+# its own in worker/src/index.ts. The camera is used to read labels and
+# barcodes; nothing else of the device is.
+/*
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(self), microphone=(), geolocation=(), payment=(), usb=()

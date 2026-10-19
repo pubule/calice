@@ -872,6 +872,17 @@ dove compare una di queste informazioni deve usarlo**:
 Gli interi di altri campi (livelli/colonne/profondità degli elementi, anni di
 "Da bere") usano gli stessi attributi: testo con tastierino numerico.
 
+## Un file dell'utente (backup da ripristinare) è input non fidato
+
+Audit del 19 ottobre: il ripristino da Profilo inseriva le righe del file
+così com'erano, e una chiave R2 scelta ad arte (`backups/<data>.json`) dava
+accesso al backup dell'intero database. Regole: una chiave R2 o un link che
+arriva da un file vale solo se ha la forma che l'app stessa scrive
+(`isBottlePhotoKey`, `wines/…`, http(s)); mai toccare righe condivise (vini
+del catalogo, utenti) che appartengono anche ad altri; ogni route che serve o
+cancella file R2 controlla il prefisso (`bottles/`, `wines/`, `landscapes/`).
+Una nuova tabella nel backup segue le stesse regole.
+
 ## Backup: copia settimanale in R2, ripristino a mano
 
 `runWeeklyBackup()` (`worker/src/lib/backup.ts`, dal cron giornaliero) salva

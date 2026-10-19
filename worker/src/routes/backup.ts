@@ -91,6 +91,24 @@ function readBackup(body: unknown): UserBackup | null {
 const ids = (rows: Row[], key = 'id') => JSON.stringify(rows.map((r) => r[key]));
 const wineImageKey = (url: unknown) => (typeof url === 'string' && url.startsWith(WINE_IMAGE) ? decodeURIComponent(url.slice(WINE_IMAGE.length)) : null);
 
+// A backup file is the caller's own input: its R2 keys and links are trusted
+// only when they have the shape the app itself writes. A photo row pointing
+// at "backups/<date>.json" would otherwise let the caller read the whole
+// database through /api/photos, or delete any file by deleting the bottle.
+export const isBottlePhotoKey = (key: string) => /^bottles\/[^/]+\/[^/]+$/.test(key) && !key.split('/').includes('..');
+const isWineImageKey = (key: string) => /^wines\/[^/]+\/[^/]+$/.test(key) && !key.split('/').includes('..');
+function safeWineLinks(w: Row): Row {
+  const http = (v: unknown) => {
+    try {
+      return typeof v === 'string' && ['http:', 'https:'].includes(new URL(v).protocol) ? v : null;
+    } catch {
+      return null;
+    }
+  };
+  const key = (() => { try { return wineImageKey(w.image_url); } catch { return null; } })();
+  return { producer_url: http(w.producer_url), image_url: key ? (isWineImageKey(key) ? w.image_url : null) : http(w.image_url) };
+}
+
 export async function saveSafetyCopy(env: Env, userId: number) {
   const prefix = `${SAFETY_PREFIX}${userId}/`;
   await env.PHOTOS.put(`${prefix}${new Date().toISOString()}.json`, JSON.stringify(await buildUserBackup(env.DB, userId)), {
@@ -103,25 +121,31 @@ export async function saveSafetyCopy(env: Env, userId: number) {
 
 export async function restoreUserBackup(env: Env, userId: number, b: UserBackup) {
   const db = env.DB;
-  const [meRes, maxRes, winesRes, usersRes] = await db.batch<Row>([
+  const target = await ensureCellar(db, userId);
+  const fileKeys = JSON.stringify(b.photos.map((p) => String(p.r2_key)));
+  const [meRes, maxRes, winesRes, sharedRes, takenRes] = await db.batch<Row>([
     db.prepare('select email from users where id = ?').bind(userId),
     db.prepare(`select ${['cellars', 'cellar_elements', 'bottles', 'bottle_places', 'tasting_notes', 'photos', 'wishlist_items', 'wines', 'tastings']
       .map((t) => `(select coalesce(max(id), 0) from ${t}) as ${t}`).join(', ')}`),
     db.prepare('select id, name, producer from wines where id in (select value from json_each(?))').bind(ids(b.wines)),
-    db.prepare('select id, email from users where email in (select value from json_each(?))').bind(ids(b.users, 'email')),
+    // Catalog wines someone else has: the file must not rewrite them.
+    db.prepare(`select wine_id from bottles where cellar_id != ?1 and wine_id in (select value from json_each(?2))
+                union select wine_id from wishlist_items where cellar_id != ?1 and wine_id in (select value from json_each(?2))`).bind(target, ids(b.wines)),
+    // Photo files that belong to another cellar's bottles.
+    db.prepare(`select r2_key from photos where r2_key in (select value from json_each(?2))
+                and bottle_id not in (select id from bottles where cellar_id = ?1)`).bind(target, fileKeys),
   ]);
+  const shared = new Set(sharedRes.results.map((r) => Number(r.wine_id)));
+  const taken = new Set(takenRes.results.map((r) => String(r.r2_key)));
   const myEmail = String(meRes.results[0].email);
   const max = maxRes.results[0] as Record<string, number>;
   const next = (table: string) => ++max[table];
 
-  // Who is who: by email, so a file works on another database too.
-  const userByEmail = new Map(usersRes.results.map((u) => [String(u.email), Number(u.id)]));
-  userByEmail.set(myEmail, userId);
+  // Who is who: the file's owner becomes the caller. Nobody else: a file
+  // could otherwise write notes signed by another real user (one cellar per
+  // user, so every row of a cellar is its owner's).
   const userMap = new Map<unknown, number>();
-  for (const u of b.users) {
-    const id = userByEmail.get(String(u.email));
-    if (id) userMap.set(u.id, id);
-  }
+  for (const u of b.users) if (String(u.email) === b.user.email || String(u.email) === myEmail) userMap.set(u.id, userId);
   const userOr = (old: unknown, fallback: number | null) => userMap.get(old) ?? fallback;
 
   const stmts: D1PreparedStatement[] = [];
@@ -135,7 +159,6 @@ export async function restoreUserBackup(env: Env, userId: number, b: UserBackup)
 
   // One cellar per user: whatever the file holds goes into the caller's
   // cellar, emptied first (an old file with several cellars is merged).
-  const target = await ensureCellar(db, userId);
   const cellarMap = new Map<unknown, number>(b.cellars.map((c) => [c.id, target]));
   const replaced = [target];
   if (!cellarMap.size) return { error: 'Nel file non c\'è nessuna cantina.' } as const;
@@ -157,7 +180,8 @@ export async function restoreUserBackup(env: Env, userId: number, b: UserBackup)
   stmts.push(db.prepare('update cellars set name = ? where id = ?').bind(String(b.cellars[0].name ?? '') || 'Casa', target));
 
   // Wines are shared rows: the same id is updated when it is still that wine
-  // (or free), otherwise the file's wine comes back under a new id.
+  // (or free), otherwise the file's wine comes back under a new id. A wine
+  // another user has stays as it is (the caller's bottles point at it).
   const existing = new Map(winesRes.results.map((w) => [Number(w.id), w]));
   const wineMap = new Map<unknown, number>();
   for (const w of b.wines) {
@@ -165,7 +189,8 @@ export async function restoreUserBackup(env: Env, userId: number, b: UserBackup)
     const same = !now || (now.name === w.name && now.producer === w.producer);
     const id = same ? Number(w.id) : next('wines');
     wineMap.set(w.id, id);
-    insert('wines', w, { id, created_by: userOr(w.created_by, null), search_text: null }, same);
+    if (same && now && shared.has(id)) continue;
+    insert('wines', w, { id, created_by: userOr(w.created_by, null), search_text: null, ...safeWineLinks(w) }, same);
   }
 
   const elementMap = new Map<unknown, number>();
@@ -202,7 +227,8 @@ export async function restoreUserBackup(env: Env, userId: number, b: UserBackup)
   const photoKeys: string[] = [];
   for (const p of b.photos) {
     const bottle = bottleMap.get(p.bottle_id);
-    if (bottle == null) continue;
+    const key = String(p.r2_key);
+    if (bottle == null || !isBottlePhotoKey(key) || taken.has(key)) continue;
     insert('photos', p, { id: next('photos'), bottle_id: bottle, uploaded_by: userOr(p.uploaded_by, userId) });
     photoKeys.push(String(p.r2_key));
   }
@@ -216,7 +242,7 @@ export async function restoreUserBackup(env: Env, userId: number, b: UserBackup)
   await saveSafetyCopy(env, userId);
   await db.batch(stmts); // one transaction: all or nothing
 
-  const keys = new Set([...photoKeys, ...b.wines.map((w) => wineImageKey(w.image_url)).filter((k): k is string => !!k)]);
+  const keys = new Set([...photoKeys, ...b.wines.map((w) => { try { return wineImageKey(safeWineLinks(w).image_url); } catch { return null; } }).filter((k): k is string => !!k)]);
   const missingFiles: string[] = [];
   for (const key of keys) if (!(await env.PHOTOS.head(key))) missingFiles.push(key);
   return { wines: bottleMap.size, notes, missingFiles } as const;
@@ -225,6 +251,7 @@ export async function restoreUserBackup(env: Env, userId: number, b: UserBackup)
 // May the caller put this photo back? Only a key a row of their cellars
 // points at, and only when R2 has lost it.
 async function fileWanted(env: Env, key: string, userId: number) {
+  if (!isBottlePhotoKey(key) && !isWineImageKey(key)) return false;
   const row = await env.DB
     .prepare(
       `select 1 from photos where r2_key = ?2 and bottle_id in (${MY_BOTTLES})

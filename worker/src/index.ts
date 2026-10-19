@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import { secureHeaders } from 'hono/secure-headers';
 import { authRoutes } from './routes/auth';
 import { cellarRoutes } from './routes/cellars';
 import { wineRoutes } from './routes/wines';
@@ -24,6 +25,8 @@ export type Env = {
 };
 
 const app = new Hono<{ Bindings: Env }>();
+// nosniff, no framing, no referrer to other sites on every API answer.
+app.use('*', secureHeaders({ xFrameOptions: 'DENY', crossOriginResourcePolicy: 'same-origin' }));
 
 app.get('/health', (c) => c.json({ ok: true }));
 app.route('/api/auth', authRoutes);

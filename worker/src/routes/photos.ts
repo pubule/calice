@@ -65,6 +65,7 @@ photoFileRoutes.use('*', requireAuth);
 
 photoFileRoutes.get('/:key', async (c) => {
   const key = decodeURIComponent(c.req.param('key'));
+  if (!key.startsWith('bottles/')) return c.notFound();
   const photo = await c.env.DB.prepare('select bottle_id from photos where r2_key = ?').bind(key).first<{ bottle_id: number }>();
   if (!photo || !(await assertBottleAccess(c.env, photo.bottle_id, c.get('userId')))) return c.notFound();
 

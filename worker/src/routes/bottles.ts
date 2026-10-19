@@ -273,7 +273,9 @@ bottleRoutes.delete('/:id', async (c) => {
   // or it's orphaned storage forever.
   const photos = await c.env.DB.prepare('select r2_key from photos where bottle_id = ?').bind(id).all<{ r2_key: string }>();
   for (const photo of photos.results) {
-    await c.env.PHOTOS.delete(photo.r2_key);
+    // Only the bottle's own photo files, never another path a row might name.
+    const elsewhere = await c.env.DB.prepare('select 1 from photos where r2_key = ? and bottle_id != ? limit 1').bind(photo.r2_key, id).first();
+    if (photo.r2_key.startsWith('bottles/') && !elsewhere) await c.env.PHOTOS.delete(photo.r2_key);
   }
   await c.env.DB.prepare('delete from photos where bottle_id = ?').bind(id).run();
   await c.env.DB.prepare('delete from tasting_notes where bottle_id = ?').bind(id).run();
