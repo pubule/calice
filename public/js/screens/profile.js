@@ -96,12 +96,15 @@ async function showBackupStatus() {
   const auto = document.getElementById('backup-auto');
   const when = document.getElementById('backup-when');
   if (!auto || !when) return;
-  const { automatic, saved } = await api.get('/api/backup/status').catch(() => ({}));
-  auto.textContent = automatic
-    ? `Automatico: ${new Date(`${automatic}T12:00:00Z`).toLocaleDateString('it-IT', { day: 'numeric', month: 'long' })}`
+  const { automatic, automaticAt, saved } = await api.get('/api/backup/status').catch(() => ({}));
+  const time = (d) => d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+  const autoDate = automaticAt ? new Date(automaticAt) : automatic ? new Date(`${automatic}T12:00:00Z`) : null;
+  auto.textContent = autoDate
+    ? `Automatico: ${autoDate.toLocaleDateString('it-IT', { day: 'numeric', month: 'long' })}${automaticAt ? ` alle ${time(autoDate)}` : ''}`
     : 'Automatico: il primo entro domani';
-  const days = saved ? Math.floor((Date.now() - Date.parse(`${String(saved).replace(' ', 'T')}Z`)) / 86_400_000) : null;
-  when.textContent = `Sul telefono: ${days == null ? 'mai' : days <= 0 ? 'oggi' : days === 1 ? 'ieri' : `${days} giorni fa`}`;
+  const savedAt = saved ? new Date(`${String(saved).replace(' ', 'T')}Z`) : null;
+  const days = savedAt ? Math.floor((Date.now() - savedAt.getTime()) / 86_400_000) : null;
+  when.textContent = `Sul telefono: ${days == null ? 'mai' : `${days <= 0 ? 'oggi' : days === 1 ? 'ieri' : `${days} giorni fa`} alle ${time(savedAt)}`}`;
   when.classList.toggle('late', days == null || days > BACKUP_LATE_DAYS);
 }
 

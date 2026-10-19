@@ -116,6 +116,7 @@ describe('user backup', () => {
     await env.PHOTOS.put('backups/2026-10-19.json', '{}');
     const status = await (await app.request('/api/backup/status', { headers: h }, env)).json<any>();
     expect(status.automatic).toBe('2026-10-19');
+    expect(new Date(status.automaticAt).toISOString()).toBe(status.automaticAt);
     expect(status.saved).toBeTruthy();
   });
 });

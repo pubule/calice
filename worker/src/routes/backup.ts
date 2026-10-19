@@ -241,13 +241,18 @@ backupRoutes.use('*', requireAuth);
 
 backupRoutes.get('/', async (c) => c.json(await buildUserBackup(c.env.DB, c.get('userId'))));
 
-// For the row in Profilo: the newest weekly copy (YYYY-MM-DD, whole
-// database) and when this user last saved a file on the phone.
+// For the row in Profilo: the newest weekly copy (whole database; `automatic`
+// is its day YYYY-MM-DD, `automaticAt` the moment it was written, ISO UTC) and
+// when this user last saved a file on the phone.
 backupRoutes.get('/status', async (c) => {
-  const keys = (await c.env.PHOTOS.list({ prefix: BACKUP_PREFIX })).objects.map((o) => o.key).sort();
-  const newest = keys.at(-1)?.slice(BACKUP_PREFIX.length, BACKUP_PREFIX.length + 10) ?? null;
+  const objects = (await c.env.PHOTOS.list({ prefix: BACKUP_PREFIX })).objects.sort((a, b) => (a.key < b.key ? -1 : 1));
+  const newest = objects.at(-1);
   const me = await c.env.DB.prepare('select last_backup_at from users where id = ?').bind(c.get('userId')).first<{ last_backup_at: string | null }>();
-  return c.json({ automatic: newest, saved: me?.last_backup_at ?? null });
+  return c.json({
+    automatic: newest?.key.slice(BACKUP_PREFIX.length, BACKUP_PREFIX.length + 10) ?? null,
+    automaticAt: newest?.uploaded.toISOString() ?? null,
+    saved: me?.last_backup_at ?? null,
+  });
 });
 
 backupRoutes.post('/saved', async (c) => {

@@ -1750,6 +1750,12 @@ questo file è il riassunto "dove eravamo rimasti".
     bicchiere). L'avanzamento è quello di `warmUp()`, che si ferma a un quarto
     finché non conosce le bottiglie. Con "Riduci movimento" niente onde.
 
+82. **Profilo: l'orario dei backup** (build 164). Le due righe sotto "Scarica
+    backup" ora dicono "Automatico: 19 ottobre alle 17:42" e "Sul telefono:
+    oggi alle 18:10" (ora del telefono). `GET /api/backup/status` aggiunge
+    `automaticAt` (ISO UTC, `uploaded` dell'oggetto in R2); `saved` aveva già
+    l'orario.
+
 ## Cose note, non (ancora) da rifare
 
 - `e2e/bottle-detail.spec.ts` › "deleting a bottle…" è rotto da prima del
