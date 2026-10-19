@@ -1637,17 +1637,18 @@ questo file è il riassunto "dove eravamo rimasti".
     Il nome "Tarzelenghe" (vino 85) va lasciato così, scelta dell'utente.
     Ogni update ha rimesso `search_text = null`.
 
-76. **Scheda vino a tab** (build 158, mockup A scelto dall'utente su
+76. **Scheda vino a tab** (build 158-159, mockup A scelto dall'utente su
     `https://claude.ai/artifact/FfHwZLHvToTjYSUDDrMJbL`). Sotto foto e nome,
     un `.segmented` `#detail-tabs`: **Il vino** (righe `.fact-row` da
     `renderFacts()` in `detail.js`: denominazione, vitigni come
-    `.grape-chip`, gradazione, annata, sboccatura, regione, Vivino; solo le
+    `.grape-chip`, gradazione, annata, sboccatura, regione; solo le
     righe con un valore), **Sentori e note** (nota e profilo, invariati),
     **In cantina** (posizione, da bere, stappa, foto). Modifica/Elimina
     restano sempre visibili sotto. Si riapre sempre su "Il vino"
     (`selectDetailTab()` in `openDetail()`). Tolti i bollini `.hero-chips`
     sotto il nome (ora nel primo tab). Prima i vitigni si vedevano solo in
-    Modifica. `e2e/bottle-detail.spec.ts` aggiornato.
+    Modifica. Il voto Vivino resta solo nei numeri in alto (build 159:
+    era duplicato nel tab). `e2e/bottle-detail.spec.ts` aggiornato.
 
 ## Cose note, non (ancora) da rifare
 

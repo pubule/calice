@@ -92,7 +92,6 @@ function renderFacts(bottle) {
   const MONTHS = ['gennaio', 'febbraio', 'marzo', 'aprile', 'maggio', 'giugno', 'luglio', 'agosto', 'settembre', 'ottobre', 'novembre', 'dicembre'];
   const disg = /^(\d{4})-(\d{2})$/.exec(bottle.disgorged_at ?? '');
   const grapes = (bottle.grape_variety ?? '').split(',').map((g) => g.trim()).filter(Boolean);
-  const n = Number(bottle.vivino_ratings_count) || 0;
   const rows = [
     ['Denominazione', bottle.denomination],
     ['Vitigni', grapes.length ? grapes : null],
@@ -100,8 +99,6 @@ function renderFacts(bottle) {
     ['Annata', bottle.vintage ? String(bottle.vintage) : null],
     ['Sboccatura', disg ? `${MONTHS[Number(disg[2]) - 1]} ${disg[1]}` : null],
     ['Regione', [bottle.region, bottle.country].filter(Boolean).join(', ') || null],
-    ['Vivino', bottle.vivino_rating != null
-      ? `★ ${Number(bottle.vivino_rating).toFixed(1).replace('.', ',')} · ${n.toLocaleString('it-IT')} ${n === 1 ? 'voto' : 'voti'}` : null],
   ].filter(([, v]) => v);
   const el = (tag, className, text) => Object.assign(document.createElement(tag), { className, textContent: text ?? '' });
   const facts = document.getElementById('detail-facts');
