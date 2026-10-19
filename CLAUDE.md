@@ -1,5 +1,14 @@
 # Note per sessioni future
 
+## Ponytail sempre attivo (anche nel cloud)
+
+Richiesta esplicita dell'utente. Sul suo PC Ponytail è un plugin che si
+attiva da solo; nel cloud i plugin non si installano, quindi le sue sei skill
+sono copiate in `.claude/skills/ponytail*` (MIT, `LICENSE` in `ponytail/`, da
+github.com/DietrichGebert/ponytail @09c434a). In ogni sessione segui la skill
+`ponytail` a livello **full** per ogni compito di codice. Per aggiornarle:
+ricopiare la cartella `skills/` del repo originale.
+
 ## Handoff: aggiornarlo a ogni push
 
 `HANDOFF.md` (root del repo) è il riassunto "dove eravamo rimasti" per chi

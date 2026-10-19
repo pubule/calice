@@ -1831,6 +1831,10 @@ questo file è il riassunto "dove eravamo rimasti".
     le 3 bottiglie senza nota (id 46, 41, 23), creata una nota con solo
     l'abbinamento e `rating 0`, come fa l'app.
 
+- **Ponytail nelle sessioni cloud**: le sue skill sono copiate in
+  `.claude/skills/` e sempre attive tramite CLAUDE.md (scelta dell'utente:
+  nel cloud i plugin non si installano).
+
 ## Cose note, non (ancora) da rifare
 
 - Secret `TAVILY_API_KEY`, `VAPID_*` cancellati il 19 ottobre; la chiave
