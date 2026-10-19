@@ -1,5 +1,5 @@
 import { api } from './api-client.js';
-import { landscapeFor } from './landscape.js';
+import { landscapeFor, landscapeKey } from './landscape.js';
 
 // Start-up loader: everything the app shows is fetched once, here, so that
 // afterwards moving between screens and opening a wine never waits (the
@@ -50,8 +50,8 @@ export async function warmUp(onProgress = () => {}) {
     const bottles = lists.flatMap(([b]) => b ?? []);
     listsKnown = true;
 
-    // One landscape per area, then its photo; each bottle's own photo.
-    const areas = new Map(bottles.map((b) => [JSON.stringify([b.denomination, b.region, b.country]), b]));
+    // One landscape per wine, then its photo; each bottle's own photo.
+    const areas = new Map(bottles.map((b) => [landscapeKey(b), b]));
     const images = pool([...areas.values()], 4, (b) => step(landscapeFor(b).then((l) => preloadImage(l?.url))));
     const bottleImages = pool(bottles.filter((b) => b.image_url), 6, (b) => step(preloadImage(b.image_url)));
     // What a wine's sheet reads when opened: notes and the user's photos.

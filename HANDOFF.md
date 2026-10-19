@@ -1710,6 +1710,32 @@ questo file è il riassunto "dove eravamo rimasti".
       `C:\Users\pubul\Documents\calice-backups\calice-2026-10-19-1559\`
       sul PC dell'utente; lo SQL anche in R2
       `manual-backups/calice-db-2026-10-19-1559.sql`.
+    - Primo backup settimanale con le foto fatto a mano il 19 ottobre (cron
+      messo per qualche minuto a `*/2 * * * *` con `wrangler triggers deploy
+      --schedule`, poi rimesso a `0 8 * * *`): 44 foto, copia verificata
+      identica all'originale.
+
+80. **Sfondi dei vini scelti a mano, uno per vino** (build 162). Prima: una
+    sola foto per zona trovata da una ricerca su Commons senza controllo del
+    luogo, quindi 19 vini veneti mostravano Schramsberg (California) e 8
+    friulani una pagina di storia. Ora:
+    - `lib/landscape-zones.ts`: 16 zone (Valdobbiadene, Valpolicella con
+      Ripasso/Amarone/Rosso Veronese, Bardolino, Piave, Lessini, Garda,
+      Franciacorta, Colli Orientali, Grave, Alto Adige, Chianti, Langhe,
+      Chablis, Borgogna, poi Veneto e Friuli come ripiego) con 123 foto di
+      vigneti guardate una per una e confermate dall'utente sulla pagina
+      `https://claude.ai/artifact/8nmdyBqyRGz7hFXh3SL5Qa`. File in R2
+      `landscapes/<zona>/<n>.jpg` (960 px), servite da
+      `/api/landscape-images/<chiave>`. Si confronta prima la denominazione,
+      poi la regione (`zoneFor()`); ogni vino prende sempre la stessa foto
+      della sua zona (`zonePhoto()`, hash di `wine_id` passato come `seed`).
+    - Zone non curate: resta la ricerca su Commons, ma la foto deve nominare il
+      luogo, e viene copiata in R2 (`landscapes/auto/…`). Le righe vecchie di
+      `landscapes` con un link a Commons si ricercano da sole.
+    - Il backup settimanale copia anche questi file (le chiavi curate le passa
+      `index.ts` a `runWeeklyBackup`, le automatiche vengono da `landscapes`).
+    - Poche foto valide su Commons per Piave (3, una sola del Piave vero),
+      Lessini, Franciacorta, Friuli e Chianti (3-5).
 
 ## Cose note, non (ancora) da rifare
 

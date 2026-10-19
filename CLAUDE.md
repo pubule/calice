@@ -923,6 +923,16 @@ solo personale: niente inviti, persone seguite, notifiche push o note "della
 community" (tolti in build 153-154); l'unica cosa comune fra utenti è il
 catalogo `wines` e la memoria delle ricerche `search_cache`.
 
+## Sfondi dei vini: zone scelte a mano, foto in R2
+
+Lo sfondo della scheda vino viene prima da `lib/landscape-zones.ts` (foto
+guardate una per una e confermate dall'utente), poi dalla ricerca su Commons.
+Per una zona nuova o una foto in più: scegliere guardando le foto (la ricerca
+da sola aveva messo un vigneto californiano sul Veneto), caricarle in R2 sotto
+`landscapes/<zona>/` con una chiave nuova (mai riusarne una: le immagini sono
+in cache per sempre) e aggiungerle al file. Il credito (autore, licenza,
+pagina Commons) è obbligatorio per CC BY/BY-SA e si vede sotto la foto.
+
 ## Assaggio guidato: finisce sempre su un vino
 
 Scelta dell'utente: un assaggio non si salva da solo. L'ultimo passo apre il

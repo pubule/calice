@@ -8,9 +8,10 @@ import { cellarElementRoutes, elementRoutes } from './routes/elements';
 import { cellarWishlistRoutes, wishlistItemRoutes } from './routes/wishlist';
 import { noteRoutes, palateRoutes } from './routes/notes';
 import { photoRoutes, photoFileRoutes } from './routes/photos';
-import { landscapeRoutes } from './routes/landscape';
+import { landscapeRoutes, landscapeImageRoutes } from './routes/landscape';
 import { wineImageRoutes, wineImageFileRoutes, copyExternalImages } from './routes/wine-image';
 import { runWeeklyBackup } from './lib/backup';
+import { ZONES } from './lib/landscape-zones';
 import { backupRoutes } from './routes/backup';
 
 export type Env = {
@@ -32,6 +33,7 @@ app.route('/api/wines/recognize', recognizeRoutes);
 app.route('/api/wines', wineImageRoutes);
 app.route('/api/wine-images', wineImageFileRoutes);
 app.route('/api/landscape', landscapeRoutes);
+app.route('/api/landscape-images', landscapeImageRoutes);
 app.route('/api/cellars', cellarBottleRoutes);
 app.route('/api/bottles', bottleRoutes);
 app.route('/api/places', placeRoutes);
@@ -49,7 +51,7 @@ export default {
   fetch: app.fetch,
   scheduled: async (_event: ScheduledEvent, env: Env) => {
     await copyExternalImages(env).catch(() => {}); // before the backup, so it holds the copies
-    await runWeeklyBackup(env);
+    await runWeeklyBackup(env, new Date(), ZONES.flatMap((z) => z.photos.map((p) => p.key)));
   },
 };
 

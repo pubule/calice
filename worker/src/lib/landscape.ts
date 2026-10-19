@@ -1,10 +1,18 @@
 import { fetchWithTimeout } from './fetch-timeout';
+import { detectImageType } from '../routes/photos';
+import { ZONES, type Zone } from './landscape-zones';
 
 // A photo of vineyards for a wine's area, shown behind the bottle in the
-// detail sheet. Found on Wikimedia Commons (free, no key, free licences
-// only) and remembered per search term in `landscapes`, so each area costs
-// one search ever. The most specific term goes first: the denomination
-// ("Barolo"), then the region ("Piemonte"), then the country.
+// detail sheet. First the hand-picked photos of a known zone
+// (landscape-zones.ts), one per wine. Otherwise a search on Wikimedia Commons
+// (free, no key, free licences only), remembered per search term in
+// `landscapes`, so each area costs one search ever. The most specific term
+// goes first: the denomination ("Barolo"), then the region ("Piemonte"), then
+// the country. Every photo is served from our R2 (the user's choice: no links
+// to other sites), under landscapes/.
+
+export const LANDSCAPE_IMAGE = '/api/landscape-images/';
+const ownUrl = (key: string) => LANDSCAPE_IMAGE + encodeURIComponent(key);
 
 const TIMEOUT_MS = 6000;
 // One of Wikimedia's standard thumbnail widths: those are already generated
@@ -50,6 +58,24 @@ export function landscapeTerms(a: Area): { key: string; query: string }[] {
   return out;
 }
 
+// The hand-picked zone for an area: the denomination decides, else the region.
+export function zoneFor(a: Area): Zone | null {
+  for (const text of [a.denomination, a.region]) {
+    const t = fold(text ?? '');
+    if (!t) continue;
+    const zone = ZONES.find((z) => z.match.test(t));
+    if (zone) return zone;
+  }
+  return null;
+}
+
+// Always the same photo for the same wine, spread over the zone's photos.
+export function zonePhoto(zone: Zone, seed: string): Zone['photos'][number] {
+  let h = 2166136261;
+  for (const ch of seed) h = Math.imul(h ^ ch.charCodeAt(0), 16777619);
+  return zone.photos[(h >>> 0) % zone.photos.length];
+}
+
 export type Landscape = { url: string; pageUrl: string; author: string; license: string; licenseUrl: string | null; file: string };
 
 type Page = {
@@ -83,6 +109,8 @@ export function pickLandscape(pages: Page[], query: string): Landscape | null {
     const cats = strip(m.Categories?.value);
     const about = `${title} ${strip(m.ImageDescription?.value)} ${cats}`;
     if (!VINE.test(about) || OFF.test(title)) continue;
+    // The photo must name the place: a vineyard anywhere is not this area's.
+    if (words.length && !words.some((w) => fold(about).includes(w))) continue;
     let score = 10 - (p.index ?? 0) * 0.3;
     if (VINE.test(title)) score += 3;
     if (/quality images|featured pictures|valued images/i.test(cats)) score += 3;
@@ -110,26 +138,46 @@ export async function searchCommons(query: string, fetchImpl: typeof fetch = fet
 
 type Row = { file: string | null; url: string | null; page_url: string | null; author: string | null; license: string | null; license_url: string | null; fresh: number };
 
-// The photo for a wine's area, from the remembered ones or a new search.
-// A term with nothing usable is remembered too (file null) and skipped for
+// The photo for a wine's area: a hand-picked one (seed: the wine, so each
+// wine of a zone keeps its own), else a remembered or new search. A term
+// with nothing usable is remembered too (file null) and skipped for
 // RETRY_DAYS. A Commons error is not remembered: it is tried again next time.
-export async function findLandscape(db: D1Database, area: Area, fetchImpl: typeof fetch = fetch): Promise<Landscape | null> {
+// A row from before the photos lived in R2 (url on Commons) is searched again.
+export async function findLandscape(env: { DB: D1Database; PHOTOS: R2Bucket }, area: Area, fetchImpl: typeof fetch = fetch, seed = ''): Promise<Landscape | null> {
+  const zone = zoneFor(area);
+  if (zone) {
+    const p = zonePhoto(zone, seed || fold(`${area.denomination ?? ''}|${area.region ?? ''}`));
+    return { file: p.file, url: ownUrl(p.key), pageUrl: p.pageUrl, author: p.author, license: p.license, licenseUrl: p.licenseUrl };
+  }
   for (const { key, query } of landscapeTerms(area)) {
-    const row = await db
+    const row = await env.DB
       .prepare(`select file, url, page_url, author, license, license_url, checked_at > datetime('now', ?) as fresh from landscapes where term = ?`)
       .bind(`-${RETRY_DAYS} days`, key)
       .first<Row>();
-    if (row?.file && row.url) {
-      return { file: row.file, url: atWidth(row.url), pageUrl: row.page_url ?? '', author: row.author ?? '', license: row.license ?? '', licenseUrl: row.license_url };
+    if (row?.file && row.url?.startsWith(LANDSCAPE_IMAGE)) {
+      return { file: row.file, url: row.url, pageUrl: row.page_url ?? '', author: row.author ?? '', license: row.license ?? '', licenseUrl: row.license_url };
     }
-    if (row && row.fresh) continue;
+    if (row && !row.file && row.fresh) continue;
     const pages = await searchCommons(query, fetchImpl);
     if (!pages) return null; // Commons unreachable: nothing remembered, retried next time
-    const found = pickLandscape(pages, query);
-    await remember(db, key, found);
+    const picked = pickLandscape(pages, query);
+    const found = picked && (await copyToR2(env.PHOTOS, picked, fetchImpl));
+    if (picked && !found) return null; // download failed: retried next time
+    await remember(env.DB, key, found);
     if (found) return found;
   }
   return null;
+}
+
+// The photo's bytes into R2, or null when they could not be fetched.
+async function copyToR2(photos: R2Bucket, l: Landscape, fetchImpl: typeof fetch): Promise<Landscape | null> {
+  const res = await fetchWithTimeout(atWidth(l.url), TIMEOUT_MS, fetchImpl, { headers: { 'user-agent': UA } });
+  const bytes = res?.ok ? await res.arrayBuffer().catch(() => null) : null;
+  const type = bytes && detectImageType(bytes);
+  if (!bytes || !type) return null;
+  const key = `landscapes/auto/${crypto.randomUUID()}`;
+  await photos.put(key, bytes, { httpMetadata: { contentType: type } });
+  return { ...l, url: ownUrl(key) };
 }
 
 async function remember(db: D1Database, key: string, l: Landscape | null) {

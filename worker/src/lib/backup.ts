@@ -25,17 +25,24 @@ export type Backup = {
 
 export const PHOTO_COPY_PREFIX = 'backup-photos/';
 const WINE_IMAGE = '/api/wine-images/';
+const LANDSCAPE_IMAGE = '/api/landscape-images/';
 
-// The photo keys the rows point at.
-export function photoKeys(tables: Backup['tables']): string[] {
-  const keys = new Set<string>();
+// The photo keys the rows point at, plus `extra` (the hand-picked landscapes,
+// which no row names).
+export function photoKeys(tables: Backup['tables'], extra: string[] = []): string[] {
+  const keys = new Set<string>(extra);
   for (const p of tables.photos ?? []) if (p.r2_key) keys.add(String(p.r2_key));
-  for (const w of tables.wines ?? []) {
-    const url = String(w.image_url ?? '');
-    if (!url.startsWith(WINE_IMAGE)) continue;
-    try {
-      keys.add(decodeURIComponent(url.slice(WINE_IMAGE.length)));
-    } catch {} // a malformed link points at no file
+  const links: [Record<string, unknown>[] | undefined, string, string][] = [
+    [tables.wines, 'image_url', WINE_IMAGE], [tables.landscapes, 'url', LANDSCAPE_IMAGE],
+  ];
+  for (const [rows, column, prefix] of links) {
+    for (const r of rows ?? []) {
+      const url = String(r[column] ?? '');
+      if (!url.startsWith(prefix)) continue;
+      try {
+        keys.add(decodeURIComponent(url.slice(prefix.length)));
+      } catch {} // a malformed link points at no file
+    }
   }
   return [...keys].sort();
 }
@@ -83,7 +90,7 @@ export async function dumpDatabase(db: D1Database): Promise<Backup> {
 // Called by the daily cron: makes a copy when the newest is a week old,
 // then drops the oldest beyond KEEP. Checking the age (not the weekday)
 // means a missed cron run only delays the copy by a day.
-export async function runWeeklyBackup(env: { DB: D1Database; PHOTOS: R2Bucket }, now = new Date()) {
+export async function runWeeklyBackup(env: { DB: D1Database; PHOTOS: R2Bucket }, now = new Date(), extraPhotos: string[] = []) {
   const keys = await listKeys(env.PHOTOS, BACKUP_PREFIX);
   keys.sort(); // backups/YYYY-MM-DD.json: by name = by date
 
@@ -93,7 +100,7 @@ export async function runWeeklyBackup(env: { DB: D1Database; PHOTOS: R2Bucket },
   if (!(age < EVERY_DAYS - 0.5)) {
     made = `${BACKUP_PREFIX}${now.toISOString().slice(0, 10)}.json`;
     const backup = await dumpDatabase(env.DB);
-    backup.photos = await copyPhotos(env.PHOTOS, photoKeys(backup.tables));
+    backup.photos = await copyPhotos(env.PHOTOS, photoKeys(backup.tables, extraPhotos));
     await env.PHOTOS.put(made, JSON.stringify(backup), { httpMetadata: { contentType: 'application/json' } });
     if (!keys.includes(made)) keys.push(made);
   }
