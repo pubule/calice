@@ -1818,6 +1818,8 @@ questo file è il riassunto "dove eravamo rimasti".
     manda `my_food_pairings` (abbinamenti della nota più recente di chi chiama)
     con ogni bottiglia. Un vino senza nota o senza abbinamenti non compare
     quando si filtra per piatto (oggi 28 vini su 45 li hanno).
+    Build 167: i piatti vanno a capo (erano una riga che scorre di lato,
+    scomoda con 30 piatti) e il testo di aiuto usa il carattere dell'app.
 
 ## Cose note, non (ancora) da rifare
 

@@ -170,8 +170,11 @@
   .chip{ flex:0 0 auto; padding:6px 13px; min-height:32px; display:inline-flex; align-items:center; border-radius:9999px; font-size:calc(11.5rem/17); border:1px solid #e2e0d8; color:#756b60; white-space:nowrap; background:#ffffff; cursor:pointer; }
   .chip.active{background:#5b2333; border-color:#5b2333; color:#f7f5f0;}
   .chip .chip-n{margin-left:6px; font-size:calc(11rem/17); opacity:.7; font-variant-numeric:tabular-nums;}
-  .chip-label .chip-hint{display:block; margin-top:2px; font-family:inherit; font-size:calc(11rem/17); letter-spacing:0; text-transform:none; color:#736a5d;}
+  .chip-label .chip-hint{display:block; margin-top:3px; font-family:'Archivo',sans-serif; font-size:calc(11rem/17); letter-spacing:0; text-transform:none; color:#736a5d;}
   #cellar-food-block.hidden{display:none;}
+  /* Many dishes: they wrap onto lines instead of a sideways scroller. */
+  #cellar-chips-food{flex-wrap:wrap; overflow:visible; margin:0; padding:0;}
+  #cellar-chips-food .chip{white-space:normal;}
   /* Wrapping chip groups: a long label wraps inside the chip rather than push the page wider than the screen (the horizontal .chips scroller keeps nowrap). */
   .chip-row .chip, .flavor-chip-panel .chip, .occasion-chips .chip{white-space:normal; max-width:100%;}
   .chip-label{font-family:'JetBrains Mono',monospace; font-size:calc(11rem/17); letter-spacing:.08em; text-transform:uppercase; color:#736a5d; margin:2px 0 -4px;}

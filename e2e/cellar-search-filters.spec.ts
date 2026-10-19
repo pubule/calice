@@ -97,3 +97,24 @@ test.describe('Cantina — abbinamenti', () => {
     await expect(page.locator('.cellar-row', { hasText: names.none })).not.toBeVisible();
   });
 });
+
+test.describe('Cantina — foglio filtri', () => {
+  test('the dishes wrap onto lines instead of scrolling sideways', async ({ page, request }) => {
+    const cellarId = await myCellarId(request);
+    const wine = await seedWine(request, { name: `Abbina Righe ${runId}`, producer: 'Abbinamenti', type: 'rosso' });
+    const bottle = await seedBottle(request, cellarId, wine.id);
+    await apiPost(request, `/api/bottles/${bottle.id}/notes`, { rating: 0, text: '', foodPairings: ['Aperitivo', 'Antipasti', 'Crudi di mare', 'Frutti di mare', 'Crostacei', 'Sushi', 'Pesce', 'Pollame', 'Maiale', 'Manzo', 'Agnello', 'Selvaggina'] });
+    await gotoScreen(page, 'cellar');
+    await page.click('#cellar-filter-btn');
+    const row = page.locator('#cellar-chips-food');
+    await expect(row.locator('.chip').first()).toBeVisible();
+    const { wraps, scrolls, hintFont } = await row.evaluate((el) => ({
+      wraps: new Set([...el.children].map((c) => (c as HTMLElement).offsetTop)).size > 1,
+      scrolls: el.scrollWidth > el.clientWidth + 1,
+      hintFont: getComputedStyle(document.querySelector('#cellar-food-block .chip-hint')!).fontFamily,
+    }));
+    expect(wraps).toBe(true);
+    expect(scrolls).toBe(false);
+    expect(hintFont).not.toMatch(/mono/i);
+  });
+});
