@@ -1732,6 +1732,8 @@ questo file è il riassunto "dove eravamo rimasti".
     - Zone non curate: resta la ricerca su Commons, ma la foto deve nominare il
       luogo, e viene copiata in R2 (`landscapes/auto/…`). Le righe vecchie di
       `landscapes` con un link a Commons si ricercano da sole.
+      `GET /api/landscape` risponde solo per la zona di un vino nella cantina
+      di chi chiede: la ricerca scrive in tabella e in R2, comuni a tutti.
     - Il backup settimanale copia anche questi file (le chiavi curate le passa
       `index.ts` a `runWeeklyBackup`, le automatiche vengono da `landscapes`).
     - Poche foto valide su Commons per Piave (3, una sola del Piave vero),

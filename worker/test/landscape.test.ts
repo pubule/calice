@@ -90,6 +90,16 @@ describe('hand-picked landscapes', () => {
     expect((await app.request('/api/landscape-images/wines%2F1%2Fx', { headers: { 'X-Calice-Dev-Email': 'land@b.com' } }, env)).status).toBe(404);
   });
 
+  it('answers only for the area of a wine in the caller\'s cellar', async () => {
+    const auth = { 'X-Calice-Dev-Email': 'area@b.com' };
+    const cellars = await (await app.request('/api/cellars', { headers: auth }, env)).json<any[]>();
+    const wine = await env.DB.prepare(`insert into wines (name, producer, country, type, source, denomination, region) values ('B', 'X', 'Italia', 'rosso', 'catalog', 'Bardolino DOC', 'Veneto') returning id`).first<{ id: number }>();
+    await app.request(`/api/cellars/${cellars[0].id}/bottles`, { method: 'POST', body: JSON.stringify({ wineId: wine!.id, quantity: 1 }), headers: { ...auth, 'content-type': 'application/json' } }, env);
+    const get = async (qs: string) => (await (await app.request(`/api/landscape?${qs}`, { headers: auth }, env)).json<any>()).landscape;
+    expect((await get('denomination=Bardolino+DOC&region=Veneto&country=Italia&seed=1'))?.url).toMatch(/landscapes%2Fbardolino%2F/);
+    expect(await get('denomination=Qualunque+cosa&region=Veneto&country=Italia')).toBeNull();
+  });
+
   it('every zone has photos with a credit', () => {
     for (const z of ZONES) {
       expect(z.photos.length).toBeGreaterThan(0);
