@@ -76,9 +76,13 @@ async function dropOwnImage(env: Env, wineId: number) {
   if (!row?.image_url?.startsWith(PREFIX)) return;
   // Another vintage of the same wine can share the photo (copied with it):
   // the file goes only when no other wine still shows it.
-  const shared = await env.DB.prepare('select 1 from wines where image_url = ? and id != ? limit 1').bind(row.image_url, wineId).first();
-  const key = decodeURIComponent(row.image_url.slice(PREFIX.length));
-  if (!shared && key.startsWith('wines/')) await env.PHOTOS.delete(key);
+  // Compared as decoded keys: the same key written with another encoding
+  // ("/" vs "%2F") is still the same file.
+  const keyOf = (url: string) => { try { return decodeURIComponent(url.slice(PREFIX.length)); } catch { return null; } };
+  const key = keyOf(row.image_url);
+  if (!key?.startsWith('wines/')) return;
+  const others = await env.DB.prepare(`select image_url from wines where image_url like '/api/wine-images/%' and id != ?`).bind(wineId).all<{ image_url: string }>();
+  if (!others.results.some((w) => keyOf(w.image_url) === key)) await env.PHOTOS.delete(key);
 }
 
 // PUT /api/wines/:id/image — multipart "file", or JSON { url }.

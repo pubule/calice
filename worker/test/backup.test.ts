@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { env } from 'cloudflare:test';
 import { app } from '../src/index';
-import { runWeeklyBackup, backupToSql, BACKUP_PREFIX, type Backup } from '../src/lib/backup';
+import { runWeeklyBackup, backupToSql, BACKUP_PREFIX, PHOTO_COPY_PREFIX, type Backup } from '../src/lib/backup';
 
 async function backupKeys() {
   return (await env.PHOTOS.list({ prefix: BACKUP_PREFIX })).objects.map((o) => o.key).sort();
@@ -45,12 +45,25 @@ describe('runWeeklyBackup', () => {
     expect(wine?.name).toBe("L'Amarone");
   });
 
-  it('holds the bytes of the wine photos and bottle photos', async () => {
+  it('copies each photo once to backup-photos/ and drops copies no kept backup lists', async () => {
+    for (const k of (await env.PHOTOS.list({ prefix: PHOTO_COPY_PREFIX })).objects) await env.PHOTOS.delete(k.key);
     await env.PHOTOS.put('wines/1/abc', new Uint8Array([1, 2, 3]), { httpMetadata: { contentType: 'image/png' } });
     await env.DB.prepare(`insert into wines (name, producer, country, type, source, image_url) values ('Foto', 'Z', 'Italia', 'rosso', 'catalog', '/api/wine-images/wines%2F1%2Fabc')`).run();
     await env.DB.prepare(`insert into wines (name, producer, country, type, source, image_url) values ('Persa', 'Z', 'Italia', 'rosso', 'catalog', '/api/wine-images/wines%2F2%2Fgone')`).run();
-    const { made } = await runWeeklyBackup(env as any, new Date('2026-10-01T08:00:00Z'));
+    const start = Date.parse('2026-10-01T08:00:00Z');
+    const { made } = await runWeeklyBackup(env as any, new Date(start));
     const backup = await (await env.PHOTOS.get(made!))!.json<Backup>();
-    expect(backup.files).toEqual({ 'wines/1/abc': { type: 'image/png', data: 'AQID' } });
+    expect(backup.photos).toEqual([{ key: 'wines/1/abc', type: 'image/png' }]);
+    const copy = await env.PHOTOS.get(PHOTO_COPY_PREFIX + 'wines/1/abc');
+    expect(new Uint8Array(await copy!.arrayBuffer())).toEqual(new Uint8Array([1, 2, 3]));
+    expect(copy!.httpMetadata?.contentType).toBe('image/png');
+
+    // The photo is deleted from the app: the copy stays while a kept backup lists it.
+    await env.PHOTOS.delete('wines/1/abc');
+    await env.DB.exec('DELETE FROM wines;');
+    for (let week = 1; week <= 7; week++) await runWeeklyBackup(env as any, new Date(start + week * 7 * 86_400_000));
+    expect(await env.PHOTOS.head(PHOTO_COPY_PREFIX + 'wines/1/abc')).not.toBeNull();
+    await runWeeklyBackup(env as any, new Date(start + 8 * 7 * 86_400_000));
+    expect(await env.PHOTOS.head(PHOTO_COPY_PREFIX + 'wines/1/abc')).toBeNull();
   });
 });

@@ -1,8 +1,10 @@
 // Weekly copy of the whole database, kept in R2 next to the photos
 // (backups/<date>.json, the newest KEEP only). It covers a bad deploy, a
-// wrong edit or a deletion. The photos (bottle photos and wine photos, all in
-// R2) go inside the copy as base64, same shape as the Profilo backup's
-// `files`, so a lost or overwritten photo comes back too. To restore, see
+// wrong edit or a deletion. Every photo the rows point at (bottle photos and
+// wine photos) is also copied, once, to backup-photos/<key> (a key is never
+// reused, so a copy never goes stale), and the backup lists them in `photos`.
+// A copy goes when none of the KEEP backups lists it any more, so a photo
+// deleted by mistake can come back for KEEP weeks. To restore, see
 // worker/scripts/backup-to-sql.ts and worker/scripts/backup-files.ts.
 
 export const BACKUP_PREFIX = 'backups/';
@@ -18,41 +20,53 @@ export type Backup = {
   createdAt: string;
   migrations: string[];
   tables: Record<string, Record<string, unknown>[]>;
-  files?: Record<string, { type: string; data: string }>;
+  photos?: { key: string; type: string }[];
 };
 
+export const PHOTO_COPY_PREFIX = 'backup-photos/';
 const WINE_IMAGE = '/api/wine-images/';
-const MAX_PHOTO_BYTES = 30_000_000;
 
-function toBase64(bytes: ArrayBuffer): string {
-  const u8 = new Uint8Array(bytes);
-  let bin = '';
-  for (let i = 0; i < u8.length; i += 0x8000) bin += String.fromCharCode(...u8.subarray(i, i + 0x8000));
-  return btoa(bin);
-}
-
-// The bytes of every photo the rows point at. A key R2 no longer has is
-// simply missing from the result.
-export async function dumpPhotos(photos: R2Bucket, tables: Backup['tables']): Promise<NonNullable<Backup['files']>> {
+// The photo keys the rows point at.
+export function photoKeys(tables: Backup['tables']): string[] {
   const keys = new Set<string>();
   for (const p of tables.photos ?? []) if (p.r2_key) keys.add(String(p.r2_key));
   for (const w of tables.wines ?? []) {
     const url = String(w.image_url ?? '');
-    if (url.startsWith(WINE_IMAGE)) keys.add(decodeURIComponent(url.slice(WINE_IMAGE.length)));
+    if (!url.startsWith(WINE_IMAGE)) continue;
+    try {
+      keys.add(decodeURIComponent(url.slice(WINE_IMAGE.length)));
+    } catch {} // a malformed link points at no file
   }
-  const files: NonNullable<Backup['files']> = {};
-  let total = 0;
+  return [...keys].sort();
+}
+
+// Copies the photos not copied yet, one at a time (no size limit, little
+// memory). Returns the photos that have a copy; a key R2 no longer has is left out.
+async function copyPhotos(bucket: R2Bucket, keys: string[]): Promise<NonNullable<Backup['photos']>> {
+  const copied: NonNullable<Backup['photos']> = [];
   for (const key of keys) {
-    const object = await photos.get(key);
-    // shortcut: past MAX_PHOTO_BYTES the rest is left out (Worker memory, 128 MB);
-    // a cellar that big needs the photos in separate objects.
-    if (object && (total += object.size) > MAX_PHOTO_BYTES) {
-      console.error(`backup: photos over ${MAX_PHOTO_BYTES} bytes, ${key} and the rest left out`);
-      break;
+    const done = await bucket.head(PHOTO_COPY_PREFIX + key);
+    if (done) {
+      copied.push({ key, type: done.httpMetadata?.contentType ?? '' });
+      continue;
     }
-    if (object) files[key] ={ type: object.httpMetadata?.contentType ?? 'application/octet-stream', data: toBase64(await object.arrayBuffer()) };
+    const object = await bucket.get(key);
+    if (!object) continue;
+    await bucket.put(PHOTO_COPY_PREFIX + key, await object.arrayBuffer(), { httpMetadata: object.httpMetadata });
+    copied.push({ key, type: object.httpMetadata?.contentType ?? '' });
   }
-  return files;
+  return copied;
+}
+
+async function listKeys(bucket: R2Bucket, prefix: string): Promise<string[]> {
+  const keys: string[] = [];
+  let cursor: string | undefined;
+  do {
+    const page = await bucket.list({ prefix, cursor });
+    keys.push(...page.objects.map((o) => o.key));
+    cursor = page.truncated ? page.cursor : undefined;
+  } while (cursor);
+  return keys;
 }
 
 export async function dumpDatabase(db: D1Database): Promise<Backup> {
@@ -70,13 +84,7 @@ export async function dumpDatabase(db: D1Database): Promise<Backup> {
 // then drops the oldest beyond KEEP. Checking the age (not the weekday)
 // means a missed cron run only delays the copy by a day.
 export async function runWeeklyBackup(env: { DB: D1Database; PHOTOS: R2Bucket }, now = new Date()) {
-  const keys: string[] = [];
-  let cursor: string | undefined;
-  do {
-    const page = await env.PHOTOS.list({ prefix: BACKUP_PREFIX, cursor });
-    keys.push(...page.objects.map((o) => o.key));
-    cursor = page.truncated ? page.cursor : undefined;
-  } while (cursor);
+  const keys = await listKeys(env.PHOTOS, BACKUP_PREFIX);
   keys.sort(); // backups/YYYY-MM-DD.json: by name = by date
 
   const newest = keys.at(-1)?.slice(BACKUP_PREFIX.length, BACKUP_PREFIX.length + 10);
@@ -85,13 +93,23 @@ export async function runWeeklyBackup(env: { DB: D1Database; PHOTOS: R2Bucket },
   if (!(age < EVERY_DAYS - 0.5)) {
     made = `${BACKUP_PREFIX}${now.toISOString().slice(0, 10)}.json`;
     const backup = await dumpDatabase(env.DB);
-    backup.files = await dumpPhotos(env.PHOTOS, backup.tables);
+    backup.photos = await copyPhotos(env.PHOTOS, photoKeys(backup.tables));
     await env.PHOTOS.put(made, JSON.stringify(backup), { httpMetadata: { contentType: 'application/json' } });
     if (!keys.includes(made)) keys.push(made);
   }
   const old = keys.slice(0, Math.max(0, keys.length - KEEP));
   if (old.length) await env.PHOTOS.delete(old);
-  return { made, deleted: old };
+
+  // Photo copies no kept backup lists any more.
+  const listed = new Set<string>();
+  for (const key of keys.slice(old.length)) {
+    const backup = await (await env.PHOTOS.get(key))?.json<Backup>().catch(() => null);
+    if (!backup) return { made, deleted: old, photosDeleted: 0 }; // unreadable: keep every copy
+    for (const p of backup.photos ?? []) listed.add(p.key);
+  }
+  const stale = (await listKeys(env.PHOTOS, PHOTO_COPY_PREFIX)).filter((k) => !listed.has(k.slice(PHOTO_COPY_PREFIX.length)));
+  for (let n = 0; n < stale.length; n += 1000) await env.PHOTOS.delete(stale.slice(n, n + 1000));
+  return { made, deleted: old, photosDeleted: stale.length };
 }
 
 const sqlValue = (v: unknown) =>

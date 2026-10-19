@@ -73,6 +73,14 @@ describe('web images copied into R2', () => {
     expect(await imageOf(dead!.id)).toBe('https://images.vivino.com/y.png');
   });
 
+  it('"Rimuovi foto" keeps a file another wine shows under another encoding of its key', async () => {
+    await env.PHOTOS.put('wines/9/k', PNG);
+    await env.DB.prepare(`insert into wines (name, producer, country, type, source, image_url) values ('Altro', 'X', 'Italia', 'rosso', 'catalog', '/api/wine-images/wines%2F9%2Fk')`).run();
+    await env.DB.prepare(`update wines set image_url = '/api/wine-images/wines/9/k' where id = ?`).bind(wineId).run();
+    expect((await app.request(`/api/wines/${wineId}/image`, { method: 'DELETE', headers: auth }, env)).status).toBe(200);
+    expect(await env.PHOTOS.head('wines/9/k')).not.toBeNull();
+  });
+
   it('a wine whose photo is already ours can be saved again with that photo', async () => {
     const own = '/api/wine-images/wines%2F1%2Fabc';
     await env.DB.prepare(`update wines set image_url = ? where id = ?`).bind(own, wineId).run();

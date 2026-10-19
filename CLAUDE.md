@@ -876,10 +876,13 @@ Gli interi di altri campi (livelli/colonne/profondità degli elementi, anni di
 
 `runWeeklyBackup()` (`worker/src/lib/backup.ts`, dal cron giornaliero) salva
 tutto D1 in `calice-photos/backups/AAAA-MM-GG.json` una volta a settimana e
-tiene le ultime 8. Dentro c'è anche `files`: i byte di ogni foto citata da
-`photos.r2_key` e `wines.image_url` (richiesta dell'utente: i backup devono
-avere le foto; gli export CSV no). Un nuovo posto dove si salva una foto va
-aggiunto a `dumpPhotos()` e a `buildUserBackup()`.
+tiene le ultime 8. Anche le foto (richiesta dell'utente: i backup devono
+avere le foto; gli export CSV no): ogni foto citata da `photos.r2_key` e
+`wines.image_url` è copiata una volta in `backup-photos/<chiave>` e il backup
+le elenca in `photos`; una copia si cancella quando nessuno degli 8 backup la
+elenca più. Niente byte dentro il JSON: il Worker ha 128 MB di memoria. Un
+nuovo posto dove si salva una foto va aggiunto a `photoKeys()` e a
+`buildUserBackup()`.
 
 **Foto: mai link esterni.** Scelta dell'utente: ogni immagine sta nel nostro
 R2. Un `image_url` dal web viene copiato da `copyImageToR2()`

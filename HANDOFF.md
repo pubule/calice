@@ -1694,11 +1694,14 @@ questo file è il riassunto "dove eravamo rimasti".
       in catalogo con foto propria lo propone così.
       Solo se un vino la mostra già: un'altra chiave verrebbe poi cancellata
       da "Rimuovi foto" (es. un backup). `dropOwnImage` cancella solo `wines/…`.
-      Il backup settimanale tiene al massimo 30 MB di foto (memoria del Worker).
-    - Backup settimanale: `files` con i byte (base64) di ogni foto citata
-      da `photos.r2_key` e `wines.image_url` (`dumpPhotos()` in
-      `lib/backup.ts`), stessa forma del backup di Profilo. Ripristino
-      foto: `worker/scripts/backup-files.ts`. Circa 8 MB a copia × 8.
+      `dropOwnImage` confronta le chiavi decodificate (`/` e `%2F` sono la
+      stessa foto).
+    - Backup settimanale: ogni foto citata da `photos.r2_key` e
+      `wines.image_url` (`photoKeys()` in `lib/backup.ts`) è copiata una volta
+      in `backup-photos/<chiave>`, una alla volta (nessun tetto di
+      dimensione); il JSON le elenca in `photos` con il tipo. Le copie che
+      nessuno degli 8 backup elenca più si cancellano. Ripristino foto:
+      `worker/scripts/backup-files.ts` (scrive uno script con get + put).
     - Produzione: le 20 immagini Vivino sono state copiate a mano in R2 (dalla
       copia locale del 19 ottobre) e i vini aggiornati: 0 vini con link
       esterno. Il backup "Scarica backup" di Profilo le include già (prende
