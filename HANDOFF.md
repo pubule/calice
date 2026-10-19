@@ -1495,7 +1495,16 @@ questo file è il riassunto "dove eravamo rimasti".
     Excel italiano: `;`, virgola decimale, BOM UTF-8. Le note si leggono
     con una GET per bottiglia (va bene per una cantina domestica). Le
     colonne sono in `CSV_COLUMNS`: un nuovo dato del vino va aggiunto lì.
-    **Backup**: proposto all'utente, in attesa di scelta (vedi sotto).
+68. **Backup automatico settimanale** (solo server). Il cron giornaliero
+    (`scheduled` in `index.ts`, 08:00 UTC) chiama `runWeeklyBackup()`
+    (`worker/src/lib/backup.ts`): se la copia più recente ha almeno una
+    settimana, salva tutto il database in R2 come
+    `backups/AAAA-MM-GG.json` (tutte le tabelle tranne quelle interne di
+    D1) e tiene le ultime 8. Le foto non vengono copiate (sono già in R2,
+    la copia ne conserva le chiavi). Ripristino: vedi CLAUDE.md, sezione
+    "Backup". Scelto dall'utente insieme al punto B (backup scaricabile da
+    Profilo con ripristino): **mockup in attesa di scelta**, non ancora
+    implementato.
 
 ## Cose note, non (ancora) da rifare
 

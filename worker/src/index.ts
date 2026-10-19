@@ -14,6 +14,7 @@ import { tastingRoutes } from './routes/tastings';
 import { landscapeRoutes } from './routes/landscape';
 import { wineImageRoutes, wineImageFileRoutes } from './routes/wine-image';
 import { runNotificationScan, checkPhotoStorageUsage } from './cron';
+import { runWeeklyBackup } from './lib/backup';
 
 export type Env = {
   DB: D1Database;
@@ -56,6 +57,8 @@ app.route('/api/tastings', tastingRoutes);
 export default {
   fetch: app.fetch,
   scheduled: async (_event: ScheduledEvent, env: Env) => {
+    // First and on its own: a failing push scan must not skip the copy.
+    await runWeeklyBackup(env).catch((err) => console.error('backup failed', err));
     await runNotificationScan(env);
     await checkPhotoStorageUsage(env);
   },

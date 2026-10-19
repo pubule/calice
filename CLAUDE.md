@@ -867,3 +867,20 @@ dove compare una di queste informazioni deve usarlo**:
   "Modifica tutti i dati" (come quantità, prezzo e annata).
 Gli interi di altri campi (livelli/colonne/profondità degli elementi, anni di
 "Da bere") usano gli stessi attributi: testo con tastierino numerico.
+
+## Backup: copia settimanale in R2, ripristino a mano
+
+`runWeeklyBackup()` (`worker/src/lib/backup.ts`, dal cron giornaliero) salva
+tutto D1 in `calice-photos/backups/AAAA-MM-GG.json` una volta a settimana e
+tiene le ultime 8. Una **nuova tabella** finisce nella copia da sola (legge
+`sqlite_master`); una tabella che non va copiata va aggiunta a `SKIP`.
+Ripristino (svuota e riempie ogni tabella della copia: si perde quanto
+scritto dopo quella data, quindi scaricare prima anche la copia attuale):
+```
+npx wrangler r2 object get calice-photos/backups/<data>.json --remote --file backup.json
+node worker/scripts/backup-to-sql.ts backup.json > restore.sql
+npx wrangler d1 execute calice-db --remote --file restore.sql
+```
+Il database deve avere le stesse migrazioni della copia (`backup.migrations`).
+D1 ha anche il suo ripristino a un istante preciso (Time Travel,
+`wrangler d1 time-travel restore`), utile per errori di pochi giorni fa.
