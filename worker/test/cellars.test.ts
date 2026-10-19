@@ -36,7 +36,7 @@ describe('cellars', () => {
     const auth = signup('del@b.com');
     const [cellar] = await (await app.request('/api/cellars', { headers: auth }, env)).json<any[]>();
     const user = await env.DB.prepare('select id from users where email = ?').bind('del@b.com').first<{ id: number }>();
-    const wine = await env.DB.prepare(`insert into wines (name, producer, country, type, source) values ('Barolo', 'Altare', 'Italia', 'rosso', 'custom') returning id`).first<{ id: number }>();
+    const wine = await env.DB.prepare(`insert into wines (name, producer, country, type, source, created_by) values ('Barolo', 'Altare', 'Italia', 'rosso', 'custom', ?) returning id`).bind(user!.id).first<{ id: number }>();
     await env.DB.prepare('insert into bottles (cellar_id, wine_id, quantity, added_by) values (?, ?, 2, ?)').bind(cellar.id, wine!.id, user!.id).run();
     await env.DB.prepare(`insert into cellar_elements (cellar_id, kind, name) values (?, 'Cella', 'Cucina')`).bind(cellar.id).run();
 
@@ -51,6 +51,8 @@ describe('cellars', () => {
     expect((await env.DB.prepare('select count(*) as n from bottles where cellar_id = ?').bind(cellar.id).first<any>()).n).toBe(0);
     expect((await env.DB.prepare('select count(*) as n from cellar_elements where cellar_id = ?').bind(cellar.id).first<any>()).n).toBe(0);
     expect((await env.PHOTOS.list({ prefix: `restore-safety/${user!.id}/` })).objects).toHaveLength(1);
+    // The wine stays in the shared catalogue, no longer tied to the user.
+    expect(await env.DB.prepare('select name, created_by from wines where id = ?').bind(wine!.id).first()).toEqual({ name: 'Barolo', created_by: null });
   });
 
   it('renames a cellar via PATCH', async () => {

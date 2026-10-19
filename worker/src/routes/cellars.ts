@@ -24,7 +24,10 @@ cellarRoutes.get('/', async (c) => {
 
 // No POST: one cellar per user (lib/cellars.ts). Deleting it empties
 // everything in it and leaves a new empty one; the current state is saved
-// first under restore-safety/ like before a restore.
+// first under restore-safety/ like before a restore. What is the user's own
+// (bottles with price and places, notes and ratings, wishlist) goes; the
+// wines themselves stay in the shared catalogue for everyone's searches,
+// no longer tied to the user (created_by).
 cellarRoutes.delete('/:id', async (c) => {
   const id = Number(c.req.param('id'));
   const userId = c.get('userId');
@@ -33,6 +36,8 @@ cellarRoutes.delete('/:id', async (c) => {
   const db = c.env.DB;
   const bottles = 'select id from bottles where cellar_id = ?';
   await db.batch([
+    db.prepare(`update wines set created_by = null where created_by = ?
+                and id in (select wine_id from bottles where cellar_id = ? union select wine_id from wishlist_items where cellar_id = ?)`).bind(userId, id, id),
     db.prepare(`delete from bottle_places where bottle_id in (${bottles})`).bind(id),
     db.prepare(`delete from photos where bottle_id in (${bottles})`).bind(id),
     db.prepare(`delete from tasting_notes where bottle_id in (${bottles})`).bind(id),

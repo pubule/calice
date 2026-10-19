@@ -1576,7 +1576,10 @@ questo file è il riassunto "dove eravamo rimasti".
     nome e conteggi, **Rinomina** ed **Elimina cantina**:
     `DELETE /api/cellars/:id` salva prima una copia in `restore-safety/`,
     cancella tutto il contenuto in una transazione e lascia una cantina
-    vuota "Casa". Il ripristino da backup mette tutto nell'unica cantina
+    vuota "Casa" (build 155: i vini restano nel catalogo comune come
+    memoria per le ricerche di tutti, con `created_by` azzerato; spariscono
+    solo i dati personali, che stanno su bottiglie, note e desideri). Il
+    ripristino da backup mette tutto nell'unica cantina
     (un vecchio file con più cantine viene unito). Inoltre:
     - tolto il tab "Dalla community" nella scheda vino (solo "Le tue note");
     - tolto l'avviso "Scorte in esaurimento" in Home (scattava per 35 vini

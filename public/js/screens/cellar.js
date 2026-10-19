@@ -535,7 +535,7 @@ async function renameCellar() {
 async function deleteCellar() {
   const cellar = cellars.find((c) => c.id === currentCellarId);
   const ok = await confirmModal(
-    `Vini, bottiglie, posizioni, elementi, note e desideri di «${cellar.name}» vengono cancellati. Resta una cantina vuota. Se vuoi tenerne una copia, prima scarica un backup da Profilo.`,
+    `Bottiglie, prezzi, posizioni, elementi, note, voti e desideri di «${cellar.name}» vengono cancellati. Nome, produttore, annata e foto dei vini restano nel catalogo comune per le ricerche, senza legami con te. Resta una cantina vuota. Se vuoi tenerne una copia, prima scarica un backup da Profilo.`,
     { title: 'Eliminare la cantina?', confirmLabel: 'Elimina cantina', danger: true },
   );
   if (!ok) return;
