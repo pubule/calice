@@ -21,6 +21,15 @@ export const FLAVOR_CATEGORIES = [
       'Litchi', 'Uva', 'Cassis', 'Ciliegia nera', 'Mirtillo rosso', 'Lime', "Scorza d'arancia", 'Nettarina',
       'Mela cotogna', 'Uva spina', 'Prugna secca', 'Albicocca secca', "Marmellata d'arancia", 'Kirsch', 'Dattero',
     ],
+    // The note composer shows Frutta's 42 aromas in these sub-groups (every
+    // tag in exactly one); `tags` above stays the flat list everyone else reads.
+    groups: [
+      { label: 'Frutti rossi e neri', tags: ['Fragola', 'Lampone', 'Ciliegia', 'Amarena', 'Ribes', 'Frutti di bosco', 'Mora', 'Mirtillo', 'Prugna', 'Cassis', 'Ciliegia nera', 'Mirtillo rosso'] },
+      { label: 'Agrumi', tags: ['Agrumi', 'Limone', 'Pompelmo', 'Arancia', 'Lime', "Scorza d'arancia"] },
+      { label: 'Frutta bianca e gialla', tags: ['Mela verde', 'Mela', 'Pera', 'Pesca', 'Albicocca', 'Nettarina', 'Mela cotogna', 'Uva spina', 'Uva', 'Melone'] },
+      { label: 'Tropicale', tags: ['Ananas', 'Mango', 'Frutto della passione', 'Banana', 'Litchi'] },
+      { label: 'Secca e cotta', tags: ['Fico', 'Uvetta', 'Frutta cotta', 'Confettura', 'Prugna secca', 'Albicocca secca', "Marmellata d'arancia", 'Kirsch', 'Dattero'] },
+    ],
   },
   {
     id: 'floreale', label: 'Floreale', bg: '#f5e9ef', fg: '#8a4a6a',
