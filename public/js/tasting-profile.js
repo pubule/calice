@@ -110,7 +110,7 @@ export const TASTE_AXES = [
 
 export const FOOD_PAIRINGS = [
   'Aperitivo', 'Antipasti', 'Crudi di mare', 'Frutti di mare', 'Crostacei', 'Sushi', 'Pesce', 'Pollame', 'Maiale',
-  'Manzo', 'Agnello', 'Selvaggina', 'Salumi', 'Formaggi freschi', 'Formaggi stagionati', 'Formaggi erborinati',
+  'Manzo', 'Bollito', 'Agnello', 'Selvaggina', 'Salumi', 'Formaggi freschi', 'Formaggi stagionati', 'Formaggi erborinati',
   'Pasta', 'Risotto', 'Pizza', 'Funghi e tartufo', 'Verdure', 'Legumi e zuppe', 'Piatti speziati', 'Cucina asiatica',
   'Grigliate', 'Fritti', 'Dolci', 'Pasticceria secca', 'Cioccolato', 'Frutta',
 ];

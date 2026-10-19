@@ -1823,6 +1823,13 @@ questo file è il riassunto "dove eravamo rimasti".
     Abbinamento con il numero di vini). L'Abbinamento è quindi a scelta
     singola (in build 166-167, con i chip, se ne potevano scegliere più
     insieme).
+88. **Abbinamento "Bollito"** (build 169, richiesta dell'utente). Nuovo chip
+    in `FOOD_PAIRINGS` (dopo Manzo). Scritto anche in produzione sulle note
+    dell'utente (id 9) per 18 bottiglie consigliate col bollito (Valpolicella,
+    Bardolino, Ripasso, Raboso, Pinot Nero/Blauburgunder, Barolo, alcune
+    bollicine pas dosé/rosé): aggiunto in coda alla nota più recente, o, per
+    le 3 bottiglie senza nota (id 46, 41, 23), creata una nota con solo
+    l'abbinamento e `rating 0`, come fa l'app.
 
 ## Cose note, non (ancora) da rifare
 
