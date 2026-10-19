@@ -593,31 +593,6 @@ async function renameCellar() {
   renderCellarSheet();
 }
 
-async function deleteCellar() {
-  const cellar = cellars.find((c) => c.id === currentCellarId);
-  const ok = await confirmModal(
-    `Bottiglie, prezzi, posizioni, elementi, note, voti e desideri di «${cellar.name}» vengono cancellati. Nome, produttore, annata e foto dei vini restano nel catalogo comune per le ricerche, senza legami con te. Resta una cantina vuota. Se vuoi tenerne una copia, prima scarica un backup da Profilo.`,
-    { title: 'Svuotare la cantina?', confirmLabel: 'Svuota cantina', danger: true },
-  );
-  if (!ok) return;
-  const sure = await confirmModal(
-    'Sei davvero sicuro? Tutti i dati della cantina andranno persi e non si possono recuperare dall'app.',
-    { title: 'Ultima conferma', confirmLabel: 'Sì, svuota tutto', danger: true },
-  );
-  if (!sure) return;
-  try {
-    await api.del(`/api/cellars/${cellar.id}`);
-  } catch (err) {
-    console.error('delete cellar failed', err);
-    await alertModal('Operazione non riuscita: non è stato cambiato niente. Riprova.', { title: 'Svuota cantina' });
-    return;
-  }
-  closeSheet('cellar-sheet');
-  currentCellarId = null;
-  await mountCellar();
-  showToast('Cantina svuotata');
-}
-
 async function loadCellarData() {
   document.getElementById('cellar-list').innerHTML = Array.from({ length: 4 }, skeletonRowHtml).join('');
   currentBottles = await api.get(`/api/cellars/${currentCellarId}/bottles`);
@@ -1239,7 +1214,6 @@ function wireStaticControls() {
     openSheet('cellar-sheet');
   });
   document.getElementById('rename-cellar-btn')?.addEventListener('click', renameCellar);
-  document.getElementById('delete-cellar-btn')?.addEventListener('click', deleteCellar);
   document.getElementById('cellar-sheet-close')?.addEventListener('click', () => closeSheet('cellar-sheet'));
   document.getElementById('cellar-filter-btn')?.addEventListener('click', () => openSheet('filter-sheet'));
   document.getElementById('filter-sheet-close')?.addEventListener('click', () => closeSheet('filter-sheet'));
