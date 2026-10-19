@@ -49,6 +49,7 @@ const PREVIEW_COUNT = 5;
 // without a re-fetch — reset on every mount, read only by the render*
 // functions below.
 let soonBottles = [];
+const NO_REGION = 'Regione non indicata';
 let regionEntries = [];
 let activityRows = [];
 const expanded = { soon: false, regions: false, feed: false };
@@ -203,12 +204,13 @@ export async function mountHome() {
 
   const byRegion = {};
   for (const b of bottles) {
-    const key = b.region || b.country;
+    // A country is not a region: wines without one are counted apart, last.
+    const key = b.region || NO_REGION;
     byRegion[key] = (byRegion[key] || 0) + b.quantity;
   }
 
   soonBottles = inCellar;
-  regionEntries = Object.entries(byRegion).sort((a, b) => b[1] - a[1]);
+  regionEntries = Object.entries(byRegion).sort((a, b) => (a[0] === NO_REGION) - (b[0] === NO_REGION) || b[1] - a[1]);
   activityRows = activity;
   expanded.soon = false;
   expanded.regions = false;

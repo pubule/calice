@@ -6,6 +6,9 @@ const TYPE_LABEL = { rosso: 'Rosso', bianco: 'Bianco', bollicine: 'Bollicine', r
 const TYPE_COLOR = { rosso: '#5b2333', bianco: '#b9a750', bollicine: '#6b7a4f', rosato: '#a24a5a' };
 const DEFAULT_COLOR = '#5b2333';
 
+// A country is not a region: wines without one are counted apart.
+const NO_REGION = 'Regione non indicata';
+
 function groupBy(bottles, keyFn) {
   const map = {};
   for (const b of bottles) {
@@ -18,10 +21,12 @@ function groupBy(bottles, keyFn) {
 // Region/country names are attacker-controllable (backend has no
 // validation), so they're escaped here — group-by keys are exactly the kind
 // of thing that gets missed.
-function barRows(map) {
+// `last`: a catch-all row ("Regione non indicata") that goes at the bottom
+// whatever its count.
+function barRows(map, last) {
   const total = Object.values(map).reduce((a, b) => a + b, 0) || 1;
   return Object.entries(map)
-    .sort((a, b) => b[1] - a[1])
+    .sort((a, b) => (a[0] === last) - (b[0] === last) || b[1] - a[1])
     .map(
       ([name, n]) => `
       <div class="region-row"><span class="rname">${escapeHtml(name)}</span>
@@ -104,7 +109,7 @@ export async function mountStats() {
 
   document.getElementById('stats-type').innerHTML = typeRows(bottles);
   document.getElementById('stats-country').innerHTML = barRows(groupBy(bottles, (b) => b.country));
-  document.getElementById('stats-region').innerHTML = barRows(groupBy(bottles, (b) => b.region || b.country));
+  document.getElementById('stats-region').innerHTML = barRows(groupBy(bottles, (b) => b.region || NO_REGION), NO_REGION);
 
   revealSections();
 }

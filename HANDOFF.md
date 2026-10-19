@@ -1528,6 +1528,17 @@ questo file è il riassunto "dove eravamo rimasti".
     Non provato su iPhone: il foglio di condivisione e la scelta del file
     da File/iCloud vanno confermati sul device.
 
+70. **Regioni: il paese non è una regione** (build 151). Home (tab Regioni)
+    e Statistiche usavano `b.region || b.country`, quindi i vini senza
+    regione finivano sotto "Italia". Ora vanno in "Regione non indicata",
+    sempre in fondo. In produzione completati 13 vini senza regione: Veneto
+    dalle denominazioni (Valpolicella, Bardolino, Piave, Conegliano-
+    Valdobbiadene, Rosso Veronese) e Le Lore come gli altri suoi vini;
+    Le Due Torri → Friuli-Venezia Giulia (come gli altri suoi);
+    Colli Morenici (Garda DOC, interregionale) → Lombardia, sede a Ponti
+    sul Mincio (MN). Le bollicine rosé restano "bollicine" (scelta
+    dell'utente: niente categoria né badge in più).
+
 ## Cose note, non (ancora) da rifare
 
 - `status-bar-style` è `black-translucent` (non più `default`), `.screen`
