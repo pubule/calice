@@ -23,7 +23,7 @@ test.describe('Cantina — search and filters', () => {
     await page.fill('#cellar-search-input', redName);
     await expect(page.locator('.cellar-row', { hasText: redName })).toBeVisible();
     await expect(page.locator('.cellar-row', { hasText: whiteName })).not.toBeVisible();
-    await expect(page.locator('#cellar-results-count')).toHaveText('1 bottiglia');
+    await expect(page.locator('#cellar-results-count')).toHaveText('1 vino · 1 bottiglia');
 
     await page.fill('#cellar-search-input', 'no wine matches this string at all zzz');
     await expect(page.locator('#cellar-list .empty-note')).toHaveText('Nessun vino trovato con questi filtri.');

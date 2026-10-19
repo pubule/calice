@@ -124,13 +124,16 @@ test.describe('Dettaglio bottiglia', () => {
     const row = page.locator('.cellar-row', { hasText: deleteName });
     await expect(row).toBeVisible();
 
-    await row.locator('.delete-btn').click();
+    // Elimina sits at the bottom of the sheet's "Il vino" tab (the list row
+    // has it behind a swipe).
+    await row.click();
+    await page.click('#detail-delete-btn');
     await expect(page.locator('#app-modal-title')).toHaveText('Elimina bottiglia');
     await expect(page.locator('#app-modal-message')).toContainText(deleteName);
     await cancelModal(page);
-    await expect(row).toBeVisible(); // cancelling must not delete
+    await expect(page.locator('#detail-overlay')).toHaveClass(/open/); // cancelling must not delete
 
-    await row.locator('.delete-btn').click();
+    await page.click('#detail-delete-btn');
     await confirmModal(page);
     await expect(page.locator('.cellar-row', { hasText: deleteName })).not.toBeVisible();
   });

@@ -1796,10 +1796,11 @@ questo file è il riassunto "dove eravamo rimasti".
 
 - Secret `TAVILY_API_KEY`, `VAPID_*` cancellati il 19 ottobre; la chiave
   Tavily va revocata anche dal sito di Tavily (lo fa l'utente).
-- **E2E**: 24 test su 44 falliscono da prima dell'audit (stesso elenco prima e
-  dopo): seguiti, inviti, più cantine, finestra "quante bottiglie", ecc. sono
-  funzioni tolte. Vanno riscritti o cancellati.
-
+- **E2E**: dal 19 ottobre tutti verdi (38). Tolti i test di funzioni rimosse
+  (seguiti, inviti, notifiche, più cantine), riscritti gli altri sull'interfaccia
+  di oggi. Il database di sviluppo tiene le bottiglie di ogni esecuzione,
+  quindi il caricamento iniziale in locale è lento: un test che apre l'app
+  da zero aspetta `#app-loader` staccato prima di controllare.
 - `e2e/bottle-detail.spec.ts` › "deleting a bottle…" è rotto da prima del
   build 158: cerca `.delete-btn` sulla riga, che dal build 85 sta dietro lo
   swipe. Va riscritto con lo swipe o col pulsante nella scheda.

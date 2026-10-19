@@ -28,13 +28,9 @@ test.describe('Statistiche', () => {
 });
 
 test.describe('Profilo', () => {
-  test('shows identity, cellar count, and can generate an invite link', async ({ page }) => {
+  test('shows who is signed in', async ({ page }) => {
     await gotoScreen(page, 'profile');
     await expect(page.locator('#profile-name')).not.toHaveText('…');
     await expect(page.locator('#profile-email')).toContainText('@');
-    await expect(page.locator('#profile-cellar-count')).not.toHaveText('0');
-
-    await page.click('#invite-btn');
-    await expect(page.locator('#invite-result')).toContainText('/#/invite/');
   });
 });

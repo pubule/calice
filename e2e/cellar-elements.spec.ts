@@ -10,7 +10,8 @@ test.describe('Cantina — elementi', () => {
     const cellarId = await myCellarId(request);
     bottleName = `Elementi Test Wine ${runId}`;
     const wine = await seedWine(request, { name: bottleName, producer: 'Cantina Test', type: 'rosso' });
-    await seedBottle(request, cellarId, wine.id);
+    // Several bottles: each test places one, and a bottle has one spot.
+    await seedBottle(request, cellarId, wine.id, { quantity: 6 });
   });
 
   test('create a Scaffale, fill a slot via the reverse picker, open the bottle popup, cancel then confirm delete', async ({ page }) => {
@@ -52,10 +53,10 @@ test.describe('Cantina — elementi', () => {
     const filledSlot = page.locator('.slot-circle.filled[data-t="1"][data-c="0"][data-d="1"]');
     await expect(filledSlot).toBeVisible();
 
-    // Tapping a filled slot shows the bottle popup, not the picker.
+    // Tapping a filled slot opens its card (Apri / Stappa / Sposta / Libera), not the picker.
     await filledSlot.click();
-    await expect(page.locator('#bottle-popup')).toHaveClass(/show/);
-    await expect(page.locator('#bottle-popup .bname')).toHaveText(bottleName);
+    await expect(page.locator('#slot-card')).toBeVisible();
+    await expect(page.locator('#slot-card .elem-name')).toHaveText(bottleName);
 
     // Cancelling the delete confirmation must not delete anything.
     await page.click('#delete-element-btn');
@@ -83,7 +84,8 @@ test.describe('Cantina — elementi', () => {
 
     await page.click('#elements-kind-chips .chip:has-text("Scaffale")');
     await expect(page.locator('.elem-row', { hasText: boxName })).not.toBeVisible();
-    await expect(page.locator('#elements-list .empty-note')).toBeVisible();
+    // Only shelves left (the dev database keeps elements from earlier runs).
+    for (const sub of await page.locator('#elements-list .elem-sub').allTextContents()) expect(sub).toMatch(/^Scaffale/);
 
     await page.click('#elements-kind-chips .chip:has-text("Tutti")');
     await expect(page.locator('.elem-row', { hasText: boxName })).toBeVisible();
@@ -135,6 +137,7 @@ test.describe('Cantina — elementi', () => {
     await page.click(`.cellar-row:has-text("${bottleName}")`);
     await expect(page.locator('#detail-overlay')).toHaveClass(/open/);
 
+    await page.click('#detail-tabs button:has-text("In cantina")');
     await page.click('#loc-edit-btn');
     await expect(page.locator('#elements-overlay')).toHaveClass(/open/);
     await expect(page.locator('#elements-title')).toHaveText('Scegli dove riporla');

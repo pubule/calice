@@ -6,8 +6,8 @@ import type { Page, APIRequestContext } from '@playwright/test';
 // auth in production; the dev-email header/var bypass stands in for it
 // locally, same mechanism the worker's own vitest suite uses).
 
-export async function gotoScreen(page: Page, view: 'home' | 'cellar' | 'add' | 'stats' | 'profile') {
-  const label = { home: 'Home', cellar: 'Cantina', add: 'Aggiungi', stats: 'Statistiche', profile: 'Profilo' }[view];
+export async function gotoScreen(page: Page, view: 'home' | 'cellar' | 'stats' | 'profile') {
+  const label = { home: 'Home', cellar: 'Cantina', stats: 'Statistiche', profile: 'Profilo' }[view];
   // First navigation of a test needs a real page load; subsequent screen
   // switches go through the navbar like a real user would.
   if (page.url() === 'about:blank') await page.goto('/');
