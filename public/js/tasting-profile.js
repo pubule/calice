@@ -115,62 +115,90 @@ export const FOOD_PAIRINGS = [
   'Grigliate', 'Fritti', 'Dolci', 'Pasticceria secca', 'Cioccolato', 'Frutta',
 ];
 
-const DEFAULT_VALUE = 50;
+// A keyboard press on a never-set axis starts it at the middle.
+const MIDDLE_VALUE = 50;
 
 // The sliders move in ten steps, 1 to 10 — a free 0-100 slider asked for a
 // precision nobody has on the palate. Storage stays 0-100 (step × 10), so
 // notes saved before the change keep their meaning and are shown on the
-// nearest step. 5 (= 50) is the untouched middle.
+// nearest step. An axis nobody touched is null ("non segnato"), never 50.
 export const TASTE_STEPS = 10;
 export const toStep = (value) => Math.min(TASTE_STEPS, Math.max(1, Math.round(Number(value) / 10)));
 export const fromStep = (step) => Math.min(TASTE_STEPS, Math.max(1, Math.round(step))) * 10;
 // Thumb position for a step, inset by the thumb's width so it stays on the track.
 export const stepLeft = (step, thumbW) => `calc((100% - ${thumbW}px) * ${(step - 1) / (TASTE_STEPS - 1)})`;
 
+const SUB_TABS = [['aromi', 'Aromi'], ['gusto', 'Gusto'], ['cibo', 'Cibo'], ['testo', 'Testo']];
+const fold = (s) => s.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
+const familyOf = (tag) => FLAVOR_CATEGORIES.find((c) => c.tags.includes(tag));
+const toggleChip = (tag) => `<div class="chip" data-toggle role="button" tabindex="0" aria-pressed="false">${tag}</div>`;
+
+// The note module: four sub-tabs (Aromi · Gusto · Cibo · Testo), one panel
+// at a time, so aromas, taste, pairings and text are never all on screen.
+// It owns the note's text field; the hosts keep only their stars.
 export function tastingProfileHtml() {
+  const tabs = SUB_TABS.map(([id, label], i) => `
+    <button type="button" role="tab" data-tp-tab="${id}" aria-selected="${i === 0}"${i === 0 ? ' class="active"' : ''}>${label}<span class="tp-count"></span></button>`).join('');
   const flavorCards = FLAVOR_CATEGORIES.map(
     (cat, i) => `
     <div class="flavor-card${i === 0 ? ' active' : ''}" data-cat="${cat.id}" role="button" tabindex="0" aria-pressed="${i === 0}" style="background:${cat.bg};color:${cat.fg};">
       ${cat.icon}
       <span>${cat.label}</span>
+      <b class="tp-badge" style="background:${cat.fg};"></b>
     </div>`,
   ).join('');
-  const flavorPanels = FLAVOR_CATEGORIES.map(
-    (cat, i) => `
-    <div class="flavor-chip-panel${i === 0 ? '' : ' hidden'}" data-cat="${cat.id}">
-      ${cat.tags.map((t) => `<div class="chip" data-toggle role="button" tabindex="0" aria-pressed="false">${t}</div>`).join('')}
-    </div>`,
-  ).join('');
+  const flavorPanels = FLAVOR_CATEGORIES.map((cat, i) => {
+    const body = cat.groups
+      ? cat.groups.map((g) => `<div class="tp-group-label">${g.label}</div><div class="tp-group">${g.tags.map(toggleChip).join('')}</div>`).join('')
+      : `<div class="tp-group">${cat.tags.map(toggleChip).join('')}</div>`;
+    return `<div class="flavor-chip-panel${i === 0 ? '' : ' hidden'}" data-cat="${cat.id}">${body}</div>`;
+  }).join('');
   const sliders = TASTE_AXES.map(
     (axis) => `
-    <div class="taste-slider" data-axis="${axis.id}" data-value="${DEFAULT_VALUE}">
+    <div class="taste-slider" data-axis="${axis.id}" data-unset>
+      <div class="taste-name">${axis.name}</div>
+      <div class="taste-track" role="slider" tabindex="0" aria-label="${axis.name}" aria-valuemin="1" aria-valuemax="10"><div class="taste-thumb"></div><span class="taste-unset">non segnato · tocca</span></div>
       <div class="taste-labels"><span class="tl-left">${axis.left}</span><span class="tl-right">${axis.right}</span></div>
-      <div class="taste-track" role="slider" tabindex="0" aria-label="${axis.name}" aria-valuemin="1" aria-valuemax="10" aria-valuenow="${toStep(DEFAULT_VALUE)}"><div class="taste-thumb">${toStep(DEFAULT_VALUE)}</div></div>
     </div>`,
   ).join('');
-  const pairingChips = FOOD_PAIRINGS.map((p) => `<div class="chip" data-toggle role="button" tabindex="0" aria-pressed="false">${p}</div>`).join('');
 
   return `
-    <div>
-      <div class="field-label" style="margin-bottom:8px;">Profilo aromatico</div>
+    <div class="segmented tp-tabs" role="tablist" aria-label="Parti della nota">${tabs}</div>
+    <div class="tp-panel" data-tp-panel="aromi" role="tabpanel">
+      <div class="tp-chosen hidden"><span class="tp-chosen-label">Scelti:</span></div>
       <div class="flavor-row">${flavorCards}</div>
-      <div style="margin-top:12px;">${flavorPanels}</div>
+      <input type="search" class="tp-search" aria-label="Cerca un aroma" placeholder="Cerca un aroma…" autocomplete="off">
+      <div class="tp-results flavor-chip-panel hidden"></div>
+      <div class="tp-family-panels">${flavorPanels}</div>
     </div>
-    <div style="display:flex;flex-direction:column;gap:14px;">
-      <div class="field-label">Caratteristiche di gusto</div>
+    <div class="tp-panel hidden" data-tp-panel="gusto" role="tabpanel">
       ${sliders}
+      <button type="button" class="tp-reset-taste">Azzera il gusto</button>
     </div>
-    <div>
-      <div class="field-label" style="margin-bottom:8px;">Si abbina bene con</div>
-      <div class="chip-row">${pairingChips}</div>
+    <div class="tp-panel hidden" data-tp-panel="cibo" role="tabpanel">
+      <div class="chip-row">${FOOD_PAIRINGS.map(toggleChip).join('')}</div>
+    </div>
+    <div class="tp-panel hidden" data-tp-panel="testo" role="tabpanel">
+      <textarea class="tp-text" aria-label="Nota di degustazione" placeholder="Scrivi una nota di degustazione…"></textarea>
     </div>`;
 }
 
-// 0 is a legitimate slider value, so `Number(x) || DEFAULT_VALUE` (which
-// turns 0 into 50) can't be used to read it.
+// null = never touched. 0 is a legitimate stored value, so no `|| default`.
 function sliderValue(slider) {
+  if (slider.hasAttribute('data-unset')) return null;
   const n = Number(slider.dataset.value);
-  return Number.isNaN(n) ? DEFAULT_VALUE : n;
+  return Number.isNaN(n) ? null : n;
+}
+
+function setSlider(slider, value) {
+  if (value == null) {
+    slider.setAttribute('data-unset', '');
+    delete slider.dataset.value;
+  } else {
+    slider.removeAttribute('data-unset');
+    slider.dataset.value = String(value);
+  }
+  positionThumb(slider);
 }
 
 function positionThumb(slider) {
@@ -179,6 +207,13 @@ function positionThumb(slider) {
   const leftLabel = slider.querySelector('.tl-left');
   const rightLabel = slider.querySelector('.tl-right');
   const value = sliderValue(slider);
+  if (value == null) {
+    track.removeAttribute('aria-valuenow');
+    track.setAttribute('aria-valuetext', 'non segnato');
+    leftLabel.classList.remove('dominant');
+    rightLabel.classList.remove('dominant');
+    return;
+  }
   const step = toStep(value);
   track.setAttribute('aria-valuenow', String(step));
   track.setAttribute('aria-valuetext', `${step} su 10, ${value < 40 ? leftLabel.textContent : value > 60 ? rightLabel.textContent : 'equilibrato'}`);
@@ -188,105 +223,170 @@ function positionThumb(slider) {
   rightLabel.classList.toggle('dominant', value > 60);
 }
 
+const pressed = (el, on) => { el.classList.toggle('active', on); el.setAttribute('aria-pressed', String(on)); };
+const flavorChips = (root) => root.querySelectorAll('.tp-family-panels .chip[data-toggle]');
+
+function selectSubTab(root, tab) {
+  root.querySelectorAll('.tp-tabs [data-tp-tab]').forEach((b) => {
+    b.classList.toggle('active', b.dataset.tpTab === tab);
+    b.setAttribute('aria-selected', String(b.dataset.tpTab === tab));
+  });
+  root.querySelectorAll('.tp-panel').forEach((p) => p.classList.toggle('hidden', p.dataset.tpPanel !== tab));
+}
+
+function selectFamily(root, catId) {
+  root.querySelectorAll('.flavor-card').forEach((c) => pressed(c, c.dataset.cat === catId));
+  root.querySelectorAll('.tp-family-panels .flavor-chip-panel').forEach((p) => p.classList.toggle('hidden', p.dataset.cat !== catId));
+}
+
+// Everything derived from the current picks: the "Scelti" row, the family
+// badges, the sub-tab counters and the search results' pressed state.
+function refresh(root) {
+  const chosen = Array.from(flavorChips(root)).filter((c) => c.classList.contains('active')).map((c) => c.textContent);
+  const row = root.querySelector('.tp-chosen');
+  row.querySelectorAll('button').forEach((b) => b.remove());
+  for (const tag of chosen) {
+    const fam = familyOf(tag);
+    const b = Object.assign(document.createElement('button'), { type: 'button', className: 'tp-chosen-chip', textContent: tag });
+    b.dataset.tag = tag;
+    b.style.background = fam?.bg ?? '';
+    b.style.color = fam?.fg ?? '';
+    b.setAttribute('aria-label', `Togli ${tag}`);
+    const x = Object.assign(document.createElement('span'), { textContent: '×' });
+    x.setAttribute('aria-hidden', 'true');
+    b.append(x);
+    row.append(b);
+  }
+  row.classList.toggle('hidden', chosen.length === 0);
+  for (const cat of FLAVOR_CATEGORIES) {
+    const n = chosen.filter((t) => cat.tags.includes(t)).length;
+    root.querySelector(`.flavor-card[data-cat="${cat.id}"] .tp-badge`).textContent = n ? String(n) : '';
+  }
+  const counts = {
+    aromi: chosen.length,
+    gusto: Array.from(root.querySelectorAll('.taste-slider')).filter((s) => sliderValue(s) != null).length,
+    cibo: root.querySelectorAll('[data-tp-panel="cibo"] .chip.active').length,
+  };
+  root.querySelectorAll('.tp-tabs [data-tp-tab]').forEach((b) => {
+    const n = counts[b.dataset.tpTab];
+    b.querySelector('.tp-count').textContent = n ? String(n) : '';
+  });
+  root.querySelectorAll('.tp-results .chip').forEach((c) => pressed(c, chosen.includes(c.dataset.tag)));
+}
+
+function runSearch(root) {
+  const q = fold(root.querySelector('.tp-search').value.trim());
+  const results = root.querySelector('.tp-results');
+  root.querySelector('.tp-family-panels').classList.toggle('hidden', !!q);
+  results.classList.toggle('hidden', !q);
+  results.replaceChildren();
+  if (!q) return;
+  for (const tag of FLAVOR_CATEGORIES.flatMap((c) => c.tags).filter((t) => fold(t).includes(q))) {
+    // A copy without data-toggle: readTastingProfile only counts the originals.
+    const chip = Object.assign(document.createElement('div'), { className: 'chip', textContent: tag, tabIndex: 0 });
+    chip.dataset.tag = tag;
+    chip.setAttribute('role', 'button');
+    results.append(chip);
+  }
+  refresh(root);
+}
+
+function originalChip(root, tag) {
+  return Array.from(flavorChips(root)).find((c) => c.textContent === tag);
+}
+
 // Wired once per sheet (the markup is inserted a single time, not re-rendered
 // per open) — resetTastingProfile() below handles returning to a blank state
-// on every subsequent open, instead of re-wiring listeners each time.
+// on every subsequent open, instead of re-wiring listeners each time. Every
+// lookup is scoped to `root`: the module is mounted twice in the page.
 export function wireTastingProfile(root) {
-  root.querySelectorAll('.chip[data-toggle]').forEach((chip) => {
-    chip.addEventListener('click', () => chip.setAttribute('aria-pressed', String(chip.classList.toggle('active'))));
+  root.addEventListener('click', (e) => {
+    const t = e.target;
+    const tab = t.closest('[data-tp-tab]');
+    if (tab) { selectSubTab(root, tab.dataset.tpTab); return; }
+    const card = t.closest('.flavor-card');
+    if (card) { selectFamily(root, card.dataset.cat); return; }
+    const chosen = t.closest('.tp-chosen-chip');
+    if (chosen) { pressed(originalChip(root, chosen.dataset.tag), false); refresh(root); return; }
+    const result = t.closest('.tp-results .chip');
+    if (result) { const c = originalChip(root, result.dataset.tag); pressed(c, !c.classList.contains('active')); refresh(root); return; }
+    const chip = t.closest('.chip[data-toggle]');
+    if (chip) { pressed(chip, !chip.classList.contains('active')); refresh(root); return; }
+    if (t.closest('.tp-reset-taste')) { root.querySelectorAll('.taste-slider').forEach((s) => setSlider(s, null)); refresh(root); }
   });
-
-  const cards = root.querySelectorAll('.flavor-card');
-  const panels = root.querySelectorAll('.flavor-chip-panel');
-  cards.forEach((card) => {
-    card.addEventListener('click', () => {
-      cards.forEach((c) => { c.classList.remove('active'); c.setAttribute('aria-pressed', 'false'); });
-      card.classList.add('active');
-      card.setAttribute('aria-pressed', 'true');
-      panels.forEach((p) => p.classList.toggle('hidden', p.dataset.cat !== card.dataset.cat));
-    });
-  });
+  root.querySelector('.tp-search').addEventListener('input', () => runSearch(root));
 
   root.querySelectorAll('.taste-slider').forEach((slider) => {
     const track = slider.querySelector('.taste-track');
-    const setValue = (clientX) => {
+    const setFromX = (clientX) => {
       const rect = track.getBoundingClientRect();
       const ratio = (clientX - rect.left - 23) / (rect.width - 46);
-      slider.dataset.value = fromStep(1 + ratio * (TASTE_STEPS - 1));
-      positionThumb(slider);
+      setSlider(slider, fromStep(1 + ratio * (TASTE_STEPS - 1)));
+      refresh(root);
     };
     track.addEventListener('pointerdown', (e) => {
       track.setPointerCapture(e.pointerId);
-      setValue(e.clientX);
-      const onMove = (ev) => setValue(ev.clientX);
+      setFromX(e.clientX);
+      const onMove = (ev) => setFromX(ev.clientX);
       const onEnd = () => track.removeEventListener('pointermove', onMove);
       track.addEventListener('pointermove', onMove);
       track.addEventListener('pointerup', onEnd, { once: true });
       track.addEventListener('pointercancel', onEnd, { once: true });
     });
-    // Keyboard / VoiceOver: arrows nudge the same dataset.value the pointer sets.
+    // Keyboard / VoiceOver: arrows nudge the value; the first press on a
+    // never-set axis starts it at the middle.
     track.addEventListener('keydown', (e) => {
       const delta = { ArrowRight: 1, ArrowUp: 1, ArrowLeft: -1, ArrowDown: -1, PageUp: 2, PageDown: -2 }[e.key];
+      const current = sliderValue(slider);
       let next;
-      if (delta != null) next = toStep(sliderValue(slider)) + delta;
+      if (delta != null) next = current == null ? toStep(MIDDLE_VALUE) : toStep(current) + delta;
       else if (e.key === 'Home') next = 1;
       else if (e.key === 'End') next = TASTE_STEPS;
       else return;
       e.preventDefault();
-      slider.dataset.value = fromStep(next);
-      positionThumb(slider);
+      setSlider(slider, fromStep(next));
+      refresh(root);
     });
     positionThumb(slider);
   });
 }
 
 // Always returns the widget to a blank slate: called every time a sheet is
-// opened (add, edit, or a fresh note) so a previous session's picks never
-// leak into the next one — notes are append-only journal entries, not a
-// single mutable record, so there is never saved profile data to restore
-// here even when editing an existing wine's other fields.
+// opened so a previous session's picks never leak into the next one.
 export function resetTastingProfile(root) {
-  root.querySelectorAll('.chip.active[data-toggle]').forEach((chip) => { chip.classList.remove('active'); chip.setAttribute('aria-pressed', 'false'); });
-  const cards = root.querySelectorAll('.flavor-card');
-  const panels = root.querySelectorAll('.flavor-chip-panel');
-  cards.forEach((c, i) => { c.classList.toggle('active', i === 0); c.setAttribute('aria-pressed', String(i === 0)); });
-  panels.forEach((p, i) => p.classList.toggle('hidden', i !== 0));
-  root.querySelectorAll('.taste-slider').forEach((slider) => {
-    slider.dataset.value = String(DEFAULT_VALUE);
-    positionThumb(slider);
-  });
+  root.querySelectorAll('.chip.active[data-toggle]').forEach((chip) => pressed(chip, false));
+  root.querySelectorAll('.taste-slider').forEach((slider) => setSlider(slider, null));
+  root.querySelector('.tp-text').value = '';
+  root.querySelector('.tp-search').value = '';
+  runSearch(root);
+  selectSubTab(root, 'aromi');
+  selectFamily(root, FLAVOR_CATEGORIES[0].id);
+  refresh(root);
 }
 
-// Loads a saved note into the widget (the inverse of readTastingProfile): the
-// bottle sheet opens with the user's own note already filled in, ready to be
-// updated. Axes the note never set stay at the untouched middle.
+// Loads a saved note into the widget (the inverse of readTastingProfile).
+// A null axis stays "non segnato"; any number is a value someone chose.
 export function setTastingProfile(root, note) {
   resetTastingProfile(root);
   const flavor = new Set(Array.isArray(note.flavor_tags) ? note.flavor_tags : []);
   const pairings = new Set(Array.isArray(note.food_pairings) ? note.food_pairings : []);
-  root.querySelectorAll('.flavor-chip-panel .chip[data-toggle]').forEach((chip) => {
-    if (flavor.has(chip.textContent)) { chip.classList.add('active'); chip.setAttribute('aria-pressed', 'true'); }
-  });
-  root.querySelectorAll('.chip-row .chip[data-toggle]').forEach((chip) => {
-    if (pairings.has(chip.textContent)) { chip.classList.add('active'); chip.setAttribute('aria-pressed', 'true'); }
-  });
-  // Open the family of the first chosen aroma, so what was picked is visible.
+  flavorChips(root).forEach((chip) => { if (flavor.has(chip.textContent)) pressed(chip, true); });
+  root.querySelectorAll('.chip-row .chip[data-toggle]').forEach((chip) => { if (pairings.has(chip.textContent)) pressed(chip, true); });
+  // Open the family of the first chosen aroma.
   const first = FLAVOR_CATEGORIES.find((c) => c.tags.some((t) => flavor.has(t)));
-  if (first) {
-    root.querySelectorAll('.flavor-card').forEach((c) => { const on = c.dataset.cat === first.id; c.classList.toggle('active', on); c.setAttribute('aria-pressed', String(on)); });
-    root.querySelectorAll('.flavor-chip-panel').forEach((p) => p.classList.toggle('hidden', p.dataset.cat !== first.id));
-  }
+  if (first) selectFamily(root, first.id);
   root.querySelectorAll('.taste-slider').forEach((slider) => {
     const v = note[`taste_${slider.dataset.axis}`];
-    slider.dataset.value = String(v == null ? DEFAULT_VALUE : fromStep(toStep(v)));
-    positionThumb(slider);
+    setSlider(slider, v == null ? null : fromStep(toStep(v)));
   });
+  root.querySelector('.tp-text').value = note.text ?? '';
+  refresh(root);
 }
 
 export function readTastingProfile(root) {
-  const flavorTags = Array.from(root.querySelectorAll('.flavor-chip-panel .chip.active[data-toggle]')).map((c) => c.textContent);
+  const flavorTags = Array.from(root.querySelectorAll('.tp-family-panels .chip.active[data-toggle]')).map((c) => c.textContent);
   const foodPairings = Array.from(root.querySelectorAll('.chip-row .chip.active[data-toggle]')).map((c) => c.textContent);
-  const profile = { flavorTags, foodPairings };
+  const profile = { flavorTags, foodPairings, text: root.querySelector('.tp-text').value.trim() };
   root.querySelectorAll('.taste-slider').forEach((slider) => {
     const axis = TASTE_AXES.find((x) => x.id === slider.dataset.axis);
     if (axis) profile[axis.key] = sliderValue(slider);
@@ -298,7 +398,8 @@ export function isTastingProfileEmpty(profile) {
   return (
     profile.flavorTags.length === 0 &&
     profile.foodPairings.length === 0 &&
-    TASTE_AXES.every((axis) => profile[axis.key] === DEFAULT_VALUE)
+    !profile.text &&
+    TASTE_AXES.every((axis) => profile[axis.key] == null)
   );
 }
 

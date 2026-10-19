@@ -396,6 +396,29 @@
   .flavor-card.active{border-color:#5b2333;}
   .flavor-chip-panel{display:flex; flex-wrap:wrap; gap:8px;}
   .flavor-chip-panel.hidden{display:none;}
+  /* Note module (tasting-profile.js): sub-tabs, chosen row, search, groups. */
+  .tp-count:not(:empty){margin-left:5px; color:#5b2333;}
+  .tp-panel{display:flex; flex-direction:column; gap:12px;}
+  .tp-panel.hidden, .tp-results.hidden, .tp-family-panels.hidden, .tp-chosen.hidden{display:none;}
+  .tp-chosen{display:flex; flex-wrap:wrap; align-items:center; gap:6px;}
+  .tp-chosen-label{font-size:calc(12rem/17); color:#736a5d; margin-right:2px;}
+  .tp-chosen-chip{position:relative; display:inline-flex; align-items:center; gap:6px; min-height:32px; padding:0 9px 0 12px; border:none; border-radius:9999px; font-family:'Archivo',sans-serif; font-size:calc(12.5rem/17); font-weight:500; cursor:pointer;}
+  .tp-chosen-chip::after{content:''; position:absolute; inset:-6px -2px;}
+  .flavor-card{position:relative;}
+  .tp-badge{position:absolute; top:6px; right:6px; min-width:18px; height:18px; padding:0 4px; box-sizing:border-box; border-radius:9px; color:#ffffff; font-size:calc(11rem/17); font-weight:600; display:flex; align-items:center; justify-content:center;}
+  .tp-badge:empty{display:none;}
+  .tp-search{width:100%; box-sizing:border-box; min-height:42px; padding:0 14px; border-radius:9999px; border:1px solid #e2e0d8; background:#ffffff; font-family:'Archivo',sans-serif; font-size:max(16px, calc(16rem/17)); color:#241e1a;}
+  .tp-family-panels .flavor-chip-panel{flex-direction:column; flex-wrap:nowrap; gap:8px;}
+  .tp-group{display:flex; flex-wrap:wrap; gap:10px 8px;}
+  .tp-group-label{margin-top:4px; font-family:'JetBrains Mono',monospace; font-size:calc(11rem/17); font-weight:600; letter-spacing:.12em; text-transform:uppercase; color:#736a5d;}
+  .taste-name{font-size:calc(13rem/17); font-weight:600; color:#241e1a;}
+  .taste-unset{position:absolute; inset:0; display:none; align-items:center; justify-content:center; font-size:calc(12rem/17); color:#736a5d; pointer-events:none;}
+  .taste-slider[data-unset] .taste-track{background:transparent; box-shadow:inset 0 0 0 1.5px #d8d2c6; background-image:none;}
+  .taste-slider[data-unset] .taste-thumb{display:none;}
+  .taste-slider[data-unset] .taste-unset{display:flex;}
+  .taste-slider[data-unset] .taste-name{color:#736a5d; font-weight:500;}
+  .tp-reset-taste{align-self:flex-start; min-height:44px; padding:0; border:none; background:none; font-family:'Archivo',sans-serif; font-size:calc(12.5rem/17); font-weight:600; color:#5b2333; cursor:pointer;}
+  .tp-text{width:100%; box-sizing:border-box; min-height:120px; padding:11px 14px; border:1px solid #e2e0d8; border-radius:12px; background:#ffffff; resize:vertical; font-family:'Archivo',sans-serif; font-size:max(16px, calc(16rem/17)); color:#241e1a;}
   .taste-slider{display:flex; flex-direction:column; gap:7px;}
   .taste-labels{display:flex; justify-content:space-between; font-size:calc(11.5rem/17); color:#736a5d;}
   .taste-labels span.dominant{color:#241e1a; font-weight:600;}

@@ -1160,7 +1160,6 @@ if (recognizeTaste) {
 }
 
 function resetNoteComposer() {
-  document.getElementById('rec-note-text').value = '';
   document.querySelectorAll('#rec-note-stars span').forEach((s) => {
     s.classList.remove('on');
     s.setAttribute('aria-checked', 'false');
@@ -1290,7 +1289,6 @@ function closeRecognizeSheet() {
 }
 
 function prefillNoteComposer(note) {
-  document.getElementById('rec-note-text').value = note.text ?? '';
   document.querySelectorAll('#rec-note-stars span').forEach((s, i) => {
     const on = i < Math.round(note.rating ?? 0);
     s.classList.toggle('on', on);
@@ -1298,7 +1296,7 @@ function prefillNoteComposer(note) {
   });
   if (recognizeTaste) {
     setTastingProfile(recognizeTaste, {
-      flavor_tags: note.flavorTags, food_pairings: note.foodPairings,
+      flavor_tags: note.flavorTags, food_pairings: note.foodPairings, text: note.text,
       ...Object.fromEntries(TASTE_AXES.map((a) => [`taste_${a.id}`, note[a.key]])),
     });
   }
@@ -1306,9 +1304,9 @@ function prefillNoteComposer(note) {
 
 // The composer as a note body, or null when nothing was written.
 function composerNote() {
-  const text = document.getElementById('rec-note-text').value.trim();
   const starsOn = document.querySelectorAll('#rec-note-stars span.on').length;
   const profile = recognizeTaste ? readTastingProfile(recognizeTaste) : null;
+  const text = profile?.text ?? '';
   const profileEmpty = !profile || isTastingProfileEmpty(profile);
   if (!text && starsOn === 0 && profileEmpty) return null;
   // A tasting's half stars (4,5) survive when the stars were not touched.
