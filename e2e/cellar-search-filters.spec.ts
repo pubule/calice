@@ -39,9 +39,9 @@ test.describe('Cantina — search and filters', () => {
 
     await page.click('#cellar-filter-btn');
     await expect(page.locator('#filter-sheet')).toHaveClass(/open/);
-    await expect(page.locator('#cellar-chips-type .chip')).toContainText(['Tutti']);
+    await expect(page.locator('#cellar-sel-type option').first()).toHaveText('Tutti');
 
-    await page.click('#cellar-chips-type .chip:has-text("Bianco")');
+    await page.selectOption('#cellar-sel-type', 'bianco');
     await expect(page.locator('#cellar-filter-badge')).toHaveClass(/show/);
     await expect(page.locator('#cellar-filter-badge')).toHaveText('1');
 
@@ -73,48 +73,43 @@ test.describe('Cantina — abbinamenti', () => {
 
     await gotoScreen(page, 'cellar');
     await page.click('#cellar-filter-btn');
-    const chip = (label: string) => page.locator('#cellar-chips-food .chip', { hasText: label });
-    await chip('Manzo').click();
+    await page.selectOption('#cellar-sel-food', 'Manzo');
     await page.click('#filter-sheet-close');
     await expect(page.locator('.cellar-row', { hasText: names.both })).toBeVisible();
     await expect(page.locator('.cellar-row', { hasText: names.one })).not.toBeVisible();
     await expect(page.locator('#cellar-filter-badge')).toHaveText('1');
 
-    // Two dishes: the wine must suit both.
+    // Another dish replaces the first (a menu picks one).
     await page.click('#cellar-filter-btn');
-    await chip('Pesce').click();
+    await page.selectOption('#cellar-sel-food', 'Pesce');
     await page.click('#filter-sheet-close');
     await expect(page.locator('.cellar-row', { hasText: names.both })).not.toBeVisible();
-    await expect(page.locator('.cellar-row', { hasText: names.one })).not.toBeVisible();
+    await expect(page.locator('.cellar-row', { hasText: names.one })).toBeVisible();
 
-    // The search box finds a dish too.
+    // Back to all, then the search box finds a dish too.
     await page.click('#cellar-filter-btn');
-    await chip('Manzo').click();
-    await chip('Pesce').click(); // both off
+    await page.selectOption('#cellar-sel-food', '');
     await page.click('#filter-sheet-close');
-    await page.fill('#cellar-search-input', `Abbina ${runId} pesce`.replace(`Abbina ${runId} `, ''));
+    await expect(page.locator('#cellar-filter-badge')).not.toHaveClass(/show/);
+    await page.fill('#cellar-search-input', 'pesce');
     await expect(page.locator('.cellar-row', { hasText: names.one })).toBeVisible();
     await expect(page.locator('.cellar-row', { hasText: names.none })).not.toBeVisible();
   });
 });
 
 test.describe('Cantina — foglio filtri', () => {
-  test('the dishes wrap onto lines instead of scrolling sideways', async ({ page, request }) => {
+  test('the dishes are one menu with the number of wines of each', async ({ page, request }) => {
     const cellarId = await myCellarId(request);
-    const wine = await seedWine(request, { name: `Abbina Righe ${runId}`, producer: 'Abbinamenti', type: 'rosso' });
+    const wine = await seedWine(request, { name: `Abbina Menu ${runId}`, producer: 'Abbinamenti', type: 'rosso' });
     const bottle = await seedBottle(request, cellarId, wine.id);
-    await apiPost(request, `/api/bottles/${bottle.id}/notes`, { rating: 0, text: '', foodPairings: ['Aperitivo', 'Antipasti', 'Crudi di mare', 'Frutti di mare', 'Crostacei', 'Sushi', 'Pesce', 'Pollame', 'Maiale', 'Manzo', 'Agnello', 'Selvaggina'] });
+    await apiPost(request, `/api/bottles/${bottle.id}/notes`, { rating: 0, text: '', foodPairings: ['Sushi', 'Agnello'] });
     await gotoScreen(page, 'cellar');
     await page.click('#cellar-filter-btn');
-    const row = page.locator('#cellar-chips-food');
-    await expect(row.locator('.chip').first()).toBeVisible();
-    const { wraps, scrolls, hintFont } = await row.evaluate((el) => ({
-      wraps: new Set([...el.children].map((c) => (c as HTMLElement).offsetTop)).size > 1,
-      scrolls: el.scrollWidth > el.clientWidth + 1,
-      hintFont: getComputedStyle(document.querySelector('#cellar-food-block .chip-hint')!).fontFamily,
-    }));
-    expect(wraps).toBe(true);
-    expect(scrolls).toBe(false);
-    expect(hintFont).not.toMatch(/mono/i);
+    const options = await page.locator('#cellar-sel-food option').allTextContents();
+    expect(options[0]).toBe('Tutti');
+    expect(options.find((o) => o.startsWith('Sushi'))).toMatch(/^Sushi \(\d+\)$/);
+    // Menus, not chips: same look as every other menu in the app.
+    await expect(page.locator('#cellar-sel-food')).toHaveClass(/search/);
+    await expect(page.locator('#filter-sheet .chip')).toHaveCount(0);
   });
 });

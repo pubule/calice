@@ -165,56 +165,49 @@ function capitalize(s) {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
-// Chips are built from the values actually present in this cellar, not a
+// The menus are built from the values actually present in this cellar, not a
 // fixed hardcoded list — an empty/small cellar only ever shows filters that
 // mean something for it.
 function renderChips() {
   const groups = [
-    { id: 'cellar-chips-type', key: 'type', field: 'type', allLabel: 'Tutti' },
-    { id: 'cellar-chips-country', key: 'country', field: 'country', allLabel: 'Tutti' },
-    { id: 'cellar-chips-region', key: 'region', field: 'region', allLabel: 'Tutte' },
+    { id: 'cellar-sel-type', key: 'type', field: 'type', allLabel: 'Tutti' },
+    { id: 'cellar-sel-country', key: 'country', field: 'country', allLabel: 'Tutti' },
+    { id: 'cellar-sel-region', key: 'region', field: 'region', allLabel: 'Tutte' },
   ];
   for (const g of groups) {
     const values = [...new Set(currentBottles.map((b) => b[g.field]).filter(Boolean))].sort();
+    if (activeChips[g.key] && !values.includes(activeChips[g.key])) activeChips[g.key] = null; // its last wine is gone
     const el = document.getElementById(g.id);
     el.innerHTML =
-      `<div class="chip active" data-v="" role="button" tabindex="0" aria-pressed="true">${g.allLabel}</div>` +
-      values.map((v) => `<div class="chip" data-v="${escapeHtml(v)}" role="button" tabindex="0" aria-pressed="false">${escapeHtml(capitalize(v))}</div>`).join('');
-    el.querySelectorAll('.chip').forEach((chip) =>
-      chip.addEventListener('click', () => {
-        el.querySelectorAll('.chip').forEach((c) => { c.classList.remove('active'); c.setAttribute('aria-pressed', 'false'); });
-        chip.classList.add('active');
-        chip.setAttribute('aria-pressed', 'true');
-        activeChips[g.key] = chip.dataset.v || null;
-        updateFilterBadge();
-        applyFilters();
-      }),
-    );
+      `<option value="">${g.allLabel}</option>` +
+      values.map((v) => `<option value="${escapeHtml(v)}">${escapeHtml(capitalize(v))}</option>`).join('');
+    el.value = activeChips[g.key] ?? '';
+    el.onchange = () => {
+      activeChips[g.key] = el.value || null;
+      updateFilterBadge();
+      applyFilters();
+    };
   }
 }
 
 // "Abbinamento": the dishes the user wrote in their own notes for the wines
-// of this cellar (only those, like the other groups). Several can be chosen.
+// of this cellar (only those, like the other menus), with how many wines.
 function renderFoodChips() {
-  const el = document.getElementById('cellar-chips-food');
+  const el = document.getElementById('cellar-sel-food');
   const block = document.getElementById('cellar-food-block');
   if (!el) return;
   const counts = new Map();
   for (const b of currentBottles) for (const f of b.my_food_pairings ?? []) counts.set(f, (counts.get(f) ?? 0) + 1);
   for (const f of [...activeFood]) if (!counts.has(f)) activeFood.delete(f);
   block.classList.toggle('hidden', counts.size === 0);
-  el.innerHTML = [...counts].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'it')).map(([f, n]) =>
-    `<div class="chip${activeFood.has(f) ? ' active' : ''}" data-v="${escapeHtml(f)}" role="button" tabindex="0" aria-pressed="${activeFood.has(f)}">${escapeHtml(f)} <span class="chip-n">${n}</span></div>`).join('');
-  el.querySelectorAll('.chip').forEach((chip) =>
-    chip.addEventListener('click', () => {
-      const v = chip.dataset.v;
-      if (activeFood.has(v)) activeFood.delete(v); else activeFood.add(v);
-      chip.classList.toggle('active', activeFood.has(v));
-      chip.setAttribute('aria-pressed', String(activeFood.has(v)));
-      updateFilterBadge();
-      applyFilters();
-    }),
-  );
+  el.innerHTML = '<option value="">Tutti</option>' + [...counts].sort((a, b) => a[0].localeCompare(b[0], 'it'))
+    .map(([f, n]) => `<option value="${escapeHtml(f)}">${escapeHtml(f)} (${n})</option>`).join('');
+  el.value = [...activeFood][0] ?? '';
+  el.onchange = () => {
+    activeFood = el.value ? new Set([el.value]) : new Set();
+    updateFilterBadge();
+    applyFilters();
+  };
 }
 
 function updateFilterBadge() {

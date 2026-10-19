@@ -172,9 +172,9 @@
   .chip .chip-n{margin-left:6px; font-size:calc(11rem/17); opacity:.7; font-variant-numeric:tabular-nums;}
   .chip-label .chip-hint{display:block; margin-top:3px; font-family:'Archivo',sans-serif; font-size:calc(11rem/17); letter-spacing:0; text-transform:none; color:#736a5d;}
   #cellar-food-block.hidden{display:none;}
-  /* Many dishes: they wrap onto lines instead of a sideways scroller. */
-  #cellar-chips-food{flex-wrap:wrap; overflow:visible; margin:0; padding:0;}
-  #cellar-chips-food .chip{white-space:normal;}
+  /* Filter sheet: a label over a full-width menu. */
+  .filter-field{display:flex; flex-direction:column; gap:6px;}
+  .filter-field select.search{width:100%;}
   /* Wrapping chip groups: a long label wraps inside the chip rather than push the page wider than the screen (the horizontal .chips scroller keeps nowrap). */
   .chip-row .chip, .flavor-chip-panel .chip, .occasion-chips .chip{white-space:normal; max-width:100%;}
   .chip-label{font-family:'JetBrains Mono',monospace; font-size:calc(11rem/17); letter-spacing:.08em; text-transform:uppercase; color:#736a5d; margin:2px 0 -4px;}
