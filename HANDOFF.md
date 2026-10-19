@@ -1781,11 +1781,19 @@ questo file è il riassunto "dove eravamo rimasti".
     Test: `worker/test/user-backup.test.ts` ("a crafted backup file…"), ognuno
     fallisce senza la correzione. Restano aperti (vedi "Cose note").
 
+84. **Vini per utente, ricerca comune** (migrazione 0020, solo server; scelta
+    dell'utente dopo l'audit: prima chiunque avesse una bottiglia di un vino
+    poteva cambiarlo per tutti). `wines.owner_id`; modifica, foto e annata solo
+    sui propri vini. La ricerca di "Aggiungi" resta comune ma senza doppioni:
+    un risultato per nome+produttore+annata, con i dati del record più
+    completo. Scegliendo il vino di un altro si crea la propria copia, già
+    completa; se lo si ha già, i suoi campi vuoti si riempiono
+    (`lib/wine-owner.ts`). Il ripristino da backup aggiorna solo vini propri.
+    In produzione al 19 ottobre: 45 vini, un solo utente, nessuno da
+    separare. Test: `worker/test/wine-owner.test.ts`.
+
 ## Cose note, non (ancora) da rifare
 
-- **Catalogo condiviso**: chiunque aggiunga una bottiglia di un vino del
-  catalogo può modificarlo per tutti. Deciso dall'utente: catalogo per utente,
-  condivisa solo la ricerca (lavoro in corso dopo la build 165).
 - Secret `TAVILY_API_KEY`, `VAPID_*` cancellati il 19 ottobre; la chiave
   Tavily va revocata anche dal sito di Tavily (lo fa l'utente).
 - **E2E**: 24 test su 44 falliscono da prima dell'audit (stesso elenco prima e

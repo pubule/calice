@@ -931,8 +931,19 @@ Elementi cantina. `ensureCellar()` (`worker/src/lib/cellars.ts`) garantisce
 che ogni utente ne abbia sempre esattamente una, quindi il codice può usare
 `cellars[0]`. Non reintrodurre la creazione di cantine né un selettore. App
 solo personale: niente inviti, persone seguite, notifiche push o note "della
-community" (tolti in build 153-154); l'unica cosa comune fra utenti è il
-catalogo `wines` e la memoria delle ricerche `search_cache`.
+community" (tolti in build 153-154).
+
+## Vini per utente, ricerca comune (scelta dell'utente, 19 ottobre)
+
+Ogni vino ha un proprietario (`wines.owner_id`, migrazione 0020): modifica,
+foto e annata toccano solo i vini di chi chiama (`ownsWine`). Comuni restano
+solo la ricerca di "Aggiungi" (`GET /api/wines/search`: i vini di tutti, uno
+per nome+produttore+annata, con i dati del record più completo, e l'id del
+chiamante se ce l'ha) e `search_cache` (Vivino). Ogni route che riceve un
+`wineId` da salvare (bottiglia, desiderio, annata) passa da `ownWineId()`
+(`lib/wine-owner.ts`): usa il vino del chiamante o ne crea una copia, e ne
+completa i campi vuoti dal record più completo. Una nuova route così deve
+fare lo stesso, mai salvare l'id ricevuto così com'è.
 
 ## Sfondi dei vini: zone scelte a mano, foto in R2
 

@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { requireAuth } from '../lib/session';
 import { isCellarMember } from '../lib/cellars';
 import { wineOfVintage } from '../lib/wine-vintage';
+import { ownWineId } from '../lib/wine-owner';
 import type { Env } from '../index';
 
 export const cellarBottleRoutes = new Hono<{ Bindings: Env; Variables: { userId: number } }>();
@@ -38,12 +39,15 @@ cellarBottleRoutes.post('/:cellarId/bottles', async (c) => {
   if (body.disgorgedAt != null && !(typeof body.disgorgedAt === 'string' && /^\d{4}-(0[1-9]|1[0-2])$/.test(body.disgorgedAt))) {
     return c.json({ error: 'disgorgedAt must be YYYY-MM' }, 400);
   }
+  // Another user's wine (a search result) becomes the caller's own.
+  const wineId = Number.isInteger(body.wineId) ? await ownWineId(c.env.DB, body.wineId, userId) : null;
+  if (wineId == null) return c.json({ error: 'wine not found' }, 404);
   const bottle = await c.env.DB
     .prepare(
       `insert into bottles (cellar_id, wine_id, quantity, price_paid, shelf_location, drink_from, drink_until, disgorged_at, added_by)
        values (?, ?, ?, ?, ?, ?, ?, ?, ?) returning *`,
     )
-    .bind(cellarId, body.wineId, body.quantity, body.pricePaid ?? null, body.shelfLocation ?? null, body.drinkFrom ?? null, body.drinkUntil ?? null, body.disgorgedAt ?? null, userId)
+    .bind(cellarId, wineId, body.quantity, body.pricePaid ?? null, body.shelfLocation ?? null, body.drinkFrom ?? null, body.drinkUntil ?? null, body.disgorgedAt ?? null, userId)
     .first();
   return c.json(bottle);
 });

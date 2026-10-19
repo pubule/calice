@@ -13,8 +13,8 @@ async function setup(email: string) {
   const h = auth(email);
   const me = await (await app.request('/api/auth/me', { headers: h }, env)).json<{ id: number }>();
   const cellarId = (await (await app.request('/api/cellars', { headers: h }, env)).json<any[]>())[0].id;
-  const wine = await env.DB.prepare(`insert into wines (name, producer, country, type, vintage, image_url, source)
-    values ('Barolo', 'Altare', 'Italia', 'rosso', 2020, '/api/wine-images/' || ?, 'custom') returning id`).bind(encodeURIComponent('wines/x/foto')).first<{ id: number }>();
+  const wine = await env.DB.prepare(`insert into wines (name, producer, country, type, vintage, image_url, source, owner_id)
+    values ('Barolo', 'Altare', 'Italia', 'rosso', 2020, '/api/wine-images/' || ?, 'custom', ?) returning id`).bind(encodeURIComponent('wines/x/foto'), me.id).first<{ id: number }>();
   await env.PHOTOS.put('wines/x/foto', PNG);
   const element = await env.DB.prepare(`insert into cellar_elements (cellar_id, kind, name, tiers, cols, depth) values (?, 'Cella', 'Cella cucina', 2, 3, 1) returning id`).bind(cellarId).first<{ id: number }>();
   const bottle = await env.DB.prepare(`insert into bottles (cellar_id, wine_id, quantity, price_paid, added_by, disgorged_at) values (?, ?, 2, 50, ?, null) returning id`).bind(cellarId, wine!.id, me.id).first<{ id: number }>();

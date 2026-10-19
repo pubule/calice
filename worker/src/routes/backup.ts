@@ -123,19 +123,15 @@ export async function restoreUserBackup(env: Env, userId: number, b: UserBackup)
   const db = env.DB;
   const target = await ensureCellar(db, userId);
   const fileKeys = JSON.stringify(b.photos.map((p) => String(p.r2_key)));
-  const [meRes, maxRes, winesRes, sharedRes, takenRes] = await db.batch<Row>([
+  const [meRes, maxRes, winesRes, takenRes] = await db.batch<Row>([
     db.prepare('select email from users where id = ?').bind(userId),
     db.prepare(`select ${['cellars', 'cellar_elements', 'bottles', 'bottle_places', 'tasting_notes', 'photos', 'wishlist_items', 'wines', 'tastings']
       .map((t) => `(select coalesce(max(id), 0) from ${t}) as ${t}`).join(', ')}`),
-    db.prepare('select id, name, producer from wines where id in (select value from json_each(?))').bind(ids(b.wines)),
-    // Catalog wines someone else has: the file must not rewrite them.
-    db.prepare(`select wine_id from bottles where cellar_id != ?1 and wine_id in (select value from json_each(?2))
-                union select wine_id from wishlist_items where cellar_id != ?1 and wine_id in (select value from json_each(?2))`).bind(target, ids(b.wines)),
+    db.prepare('select id, name, producer, owner_id from wines where id in (select value from json_each(?))').bind(ids(b.wines)),
     // Photo files that belong to another cellar's bottles.
     db.prepare(`select r2_key from photos where r2_key in (select value from json_each(?2))
                 and bottle_id not in (select id from bottles where cellar_id = ?1)`).bind(target, fileKeys),
   ]);
-  const shared = new Set(sharedRes.results.map((r) => Number(r.wine_id)));
   const taken = new Set(takenRes.results.map((r) => String(r.r2_key)));
   const myEmail = String(meRes.results[0].email);
   const max = maxRes.results[0] as Record<string, number>;
@@ -179,18 +175,17 @@ export async function restoreUserBackup(env: Env, userId: number, b: UserBackup)
   );
   stmts.push(db.prepare('update cellars set name = ? where id = ?').bind(String(b.cellars[0].name ?? '') || 'Casa', target));
 
-  // Wines are shared rows: the same id is updated when it is still that wine
-  // (or free), otherwise the file's wine comes back under a new id. A wine
-  // another user has stays as it is (the caller's bottles point at it).
+  // Every wine in the file is the caller's (wines.owner_id): the same id is
+  // updated when it is still the caller's same wine (or free), otherwise it
+  // comes back under a new id. Another user's wine is never touched.
   const existing = new Map(winesRes.results.map((w) => [Number(w.id), w]));
   const wineMap = new Map<unknown, number>();
   for (const w of b.wines) {
     const now = existing.get(Number(w.id));
-    const same = !now || (now.name === w.name && now.producer === w.producer);
+    const same = !now || (Number(now.owner_id) === userId && now.name === w.name && now.producer === w.producer);
     const id = same ? Number(w.id) : next('wines');
     wineMap.set(w.id, id);
-    if (same && now && shared.has(id)) continue;
-    insert('wines', w, { id, created_by: userOr(w.created_by, null), search_text: null, ...safeWineLinks(w) }, same);
+    insert('wines', w, { id, created_by: userId, owner_id: userId, search_text: null, ...safeWineLinks(w) }, same);
   }
 
   const elementMap = new Map<unknown, number>();

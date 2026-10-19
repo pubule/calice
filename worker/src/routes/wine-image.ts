@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { requireAuth } from '../lib/session';
 import { fetchWithTimeout } from '../lib/fetch-timeout';
 import { detectImageType } from './photos';
+import { ownsWine } from '../lib/wine-owner';
 import type { Env } from '../index';
 
 // The wine's main photo (wines.image_url, the one in the wine's sheet and in
@@ -14,16 +15,8 @@ const MAX_BYTES = 5_000_000;
 const PREFIX = '/api/wine-images/';
 const UA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1';
 
-async function hasWineAccess(env: Env, wineId: number, userId: number): Promise<boolean> {
-  const row = await env.DB
-    .prepare(
-      `select 1 from bottles join cellar_members on cellar_members.cellar_id = bottles.cellar_id
-       where bottles.wine_id = ? and cellar_members.user_id = ? limit 1`,
-    )
-    .bind(wineId, userId)
-    .first();
-  return row !== null;
-}
+// Each user changes only their own wines' photo (wines.owner_id).
+const hasWineAccess = (env: Env, wineId: number, userId: number) => ownsWine(env.DB, wineId, userId);
 
 // The bytes of an image link, or an error message for the user.
 export async function downloadImage(url: string, fetchImpl: typeof fetch = fetch): Promise<ArrayBuffer | string> {

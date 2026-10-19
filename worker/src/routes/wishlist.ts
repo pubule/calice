@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { requireAuth } from '../lib/session';
 import { isCellarMember } from '../lib/cellars';
+import { ownWineId } from '../lib/wine-owner';
 import { validateNote, type NoteBody } from './notes';
 import type { Env } from '../index';
 
@@ -37,13 +38,14 @@ cellarWishlistRoutes.post('/:cellarId/wishlist', async (c) => {
     if (error) return c.json({ error }, 400);
   }
   const note = body.note != null ? JSON.stringify(body.note) : null;
-  const wine = await c.env.DB.prepare('select id from wines where id = ?').bind(body.wineId).first();
-  if (!wine) return c.json({ error: 'wine not found' }, 404);
+  // Another user's wine (a search result) becomes the caller's own.
+  const wineId = await ownWineId(c.env.DB, body.wineId, userId);
+  if (wineId == null) return c.json({ error: 'wine not found' }, 404);
   // The same wine twice in one cellar's wishlist is one wish: adding it again
   // only updates the target price and the note (when given).
   const existing = await c.env.DB
     .prepare('select id from wishlist_items where cellar_id = ? and wine_id = ? limit 1')
-    .bind(cellarId, body.wineId)
+    .bind(cellarId, wineId)
     .first<{ id: number }>();
   if (existing) {
     const item = await c.env.DB
@@ -54,7 +56,7 @@ cellarWishlistRoutes.post('/:cellarId/wishlist', async (c) => {
   }
   const item = await c.env.DB
     .prepare('insert into wishlist_items (cellar_id, wine_id, target_price, added_by, note) values (?, ?, ?, ?, ?) returning *')
-    .bind(cellarId, body.wineId, body.targetPrice ?? null, userId, note)
+    .bind(cellarId, wineId, body.targetPrice ?? null, userId, note)
     .first<Record<string, unknown>>();
   return c.json({ ...item, note: parseWishNote(item?.note) });
 });

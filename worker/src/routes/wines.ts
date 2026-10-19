@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { requireAuth } from '../lib/session';
 import { wineOfVintage } from '../lib/wine-vintage';
 import { copyImageToR2 } from './wine-image';
+import { completeness, ownWineId, ownsWine } from '../lib/wine-owner';
 import type { Env } from '../index';
 
 export const wineRoutes = new Hono<{ Bindings: Env; Variables: { userId: number } }>();
@@ -75,8 +76,8 @@ async function refreshSearchText(db: D1Database) {
 wineRoutes.get('/search', async (c) => {
   const barcode = c.req.query('barcode');
   if (barcode) {
-    const rows = await c.env.DB.prepare('select * from wines where barcode = ? limit 20').bind(barcode).all();
-    return c.json(rows.results);
+    const rows = await c.env.DB.prepare('select * from wines where barcode = ? limit 200').bind(barcode).all<Record<string, unknown>>();
+    return c.json(oneWineEach(rows.results, c.get('userId')).slice(0, 20));
   }
   // An empty q must not fall through to `like '%%'`, which matches every
   // row and hands back the whole catalogue as if it were a result set. The
@@ -87,11 +88,28 @@ wineRoutes.get('/search', async (c) => {
   if (!words.length) return c.json([]);
   await refreshSearchText(c.env.DB);
   const rows = await c.env.DB
-    .prepare(`select * from wines where ${words.map(() => "search_text like ? escape '\\'").join(' and ')} order by name limit 20`)
+    .prepare(`select * from wines where ${words.map(() => "search_text like ? escape '\\'").join(' and ')} order by name limit 200`)
     .bind(...words.map((w) => `%${w.replace(/[\\%_]/g, (ch) => '\\' + ch)}%`))
     .all<Record<string, unknown>>();
-  return c.json(rows.results.map(({ search_text: _, ...wine }) => wine));
+  return c.json(oneWineEach(rows.results, c.get('userId')).slice(0, 20));
 });
+
+// The search is shared by all users (their wines are the catalogue) but each
+// user has their own rows: one result per wine (name + producer + vintage),
+// with the data of its most complete record. When the caller has that wine,
+// the result carries the caller's own id (adding it fills its gaps, see
+// ownWineId), so "already in the cellar" still recognises it.
+function oneWineEach(rows: Record<string, unknown>[], userId: number) {
+  const key = (w: Record<string, unknown>) => `${foldSearch(String(w.name))}|${foldSearch(String(w.producer))}|${w.vintage ?? ''}`;
+  const groups = new Map<string, Record<string, unknown>[]>();
+  for (const w of rows) groups.set(key(w), [...(groups.get(key(w)) ?? []), w]);
+  return [...groups.values()].map((same) => {
+    const best = same.reduce((a, b) => (completeness(b) > completeness(a) ? b : a));
+    const mine = same.find((w) => w.owner_id === userId);
+    const { search_text: _s, owner_id: _o, created_by: _c, ...data } = best;
+    return mine ? { ...data, id: mine.id } : data;
+  });
+}
 
 // A web image becomes our copy before the wine goes back to the app.
 async function withOwnImage(c: { env: Env }, wine: Record<string, unknown> | null) {
@@ -154,10 +172,10 @@ wineRoutes.post('/', async (c) => {
   const existing = await c.env.DB
     .prepare(
       `select id from wines
-       where lower(trim(name)) = lower(trim(?)) and lower(trim(producer)) = lower(trim(?)) and vintage is ?
-       order by id limit 1`,
+       where lower(trim(name)) = lower(trim(?)) and lower(trim(producer)) = lower(trim(?)) and vintage is ? and (owner_id = ? or owner_id is null)
+       order by owner_id is null, id limit 1`,
     )
-    .bind(body.name, body.producer, body.vintage ?? null)
+    .bind(body.name, body.producer, body.vintage ?? null, c.get('userId'))
     .first<{ id: number }>();
   if (existing) {
     const wine = await c.env.DB
@@ -165,11 +183,11 @@ wineRoutes.post('/', async (c) => {
         `update wines set region = coalesce(region, ?), barcode = coalesce(barcode, ?), grape_variety = coalesce(grape_variety, ?),
            denomination = coalesce(denomination, ?), image_url = coalesce(image_url, ?), search_text = null,
            vivino_rating = coalesce(?, vivino_rating), vivino_ratings_count = coalesce(?, vivino_ratings_count),
-           alcohol = coalesce(alcohol, ?), producer_url = coalesce(producer_url, ?)
+           alcohol = coalesce(alcohol, ?), producer_url = coalesce(producer_url, ?), owner_id = coalesce(owner_id, ?)
          where id = ? returning *`,
       )
       .bind(body.region ?? null, body.barcode ?? null, body.grapeVariety ?? null, body.denomination ?? null, body.imageUrl ?? null,
-        vivinoRating, vivinoCount, extras.alcohol, extras.producerUrl, existing.id)
+        vivinoRating, vivinoCount, extras.alcohol, extras.producerUrl, c.get('userId'), existing.id)
       .first();
     return c.json(await withOwnImage(c, wine));
   }
@@ -177,31 +195,20 @@ wineRoutes.post('/', async (c) => {
   const wine = await c.env.DB
     .prepare(
       `insert into wines (name, producer, region, country, type, vintage, barcode, grape_variety, denomination, image_url,
-         vivino_rating, vivino_ratings_count, alcohol, producer_url, source, created_by)
-       values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'custom', ?) returning *`,
+         vivino_rating, vivino_ratings_count, alcohol, producer_url, source, created_by, owner_id)
+       values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'custom', ?, ?) returning *`,
     )
     .bind(
       body.name, body.producer, body.region ?? null, body.country, type, body.vintage ?? null, body.barcode ?? null,
       body.grapeVariety ?? null, body.denomination ?? null, body.imageUrl ?? null, vivinoRating, vivinoCount,
-      extras.alcohol, extras.producerUrl, c.get('userId'),
+      extras.alcohol, extras.producerUrl, c.get('userId'), c.get('userId'),
     )
     .first();
   return c.json(await withOwnImage(c, wine));
 });
 
-// A wine row can be referenced by bottles across several cellars (it's a
-// shared catalog entry, not per-cellar), so editing it is allowed to anyone
-// who has it in a cellar they belong to — not just whoever first created it.
-async function hasWineAccess(env: Env, wineId: number, userId: number): Promise<boolean> {
-  const row = await env.DB
-    .prepare(
-      `select 1 from bottles join cellar_members on cellar_members.cellar_id = bottles.cellar_id
-       where bottles.wine_id = ? and cellar_members.user_id = ? limit 1`,
-    )
-    .bind(wineId, userId)
-    .first();
-  return row !== null;
-}
+// Each user edits only their own wines (wines.owner_id).
+const hasWineAccess = (env: Env, wineId: number, userId: number) => ownsWine(env.DB, wineId, userId);
 
 // Full overwrite, not the coalesce-if-provided pattern bottles.ts uses for
 // its plain PATCH /:id — the edit sheet always submits the whole form, and
@@ -216,9 +223,9 @@ wineRoutes.post('/:id/vintage', async (c) => {
   if (vintage !== null && !(Number.isInteger(vintage) && vintage >= 1900 && vintage <= 2100)) {
     return c.json({ error: 'vintage must be an integer between 1900 and 2100, or null' }, 400);
   }
-  const exists = await c.env.DB.prepare('select 1 from wines where id = ?').bind(id).first();
-  if (!exists) return c.json({ error: 'not found' }, 404);
-  const targetId = await wineOfVintage(c.env.DB, id, vintage, c.get('userId'));
+  const own = await ownWineId(c.env.DB, id, c.get('userId'));
+  if (own == null) return c.json({ error: 'not found' }, 404);
+  const targetId = await wineOfVintage(c.env.DB, own, vintage, c.get('userId'));
   return c.json(await c.env.DB.prepare('select * from wines where id = ?').bind(targetId).first());
 });
 
