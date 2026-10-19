@@ -1609,6 +1609,19 @@ questo file è il riassunto "dove eravamo rimasti".
     aromi delle note nei desideri. Dopo, si arriva in Cantina sulla scheda
     del vino o sui Desideri (`showAfterMount` in `cellar.js`).
 
+74. **Incolla direttamente sulla foto della bottiglia** (build 157,
+    proposta dell'utente dopo i mockup A/B/C, non scelti). Tolta la finestra
+    con riquadro (`pasteModal`). Nel foglio Modifica/Rivedi la foto è dentro
+    `#rec-photo-frame`, `contenteditable` con `inputmode="none"` (niente
+    tastiera): tenendola premuta iOS mostra "Incolla"; `beforeinput` rifiuta
+    ogni altra modifica e la foto si ridisegna da `pendingPhoto`. Gestisce
+    file, link e l'`<img>` che iOS a volte inserisce senza dati (ridisegnata
+    in un file). "Incolla dal web" prova ancora a leggere gli appunti; se iOS
+    rifiuta, mette il fuoco sulla foto e dice "Tieni premuta la bottiglia e
+    scegli Incolla". **Da verificare su iPhone**: in Chromium il paste
+    simulato funziona, ma il menu "Incolla" su un `contenteditable` senza
+    tastiera si vede solo sul device.
+
 ## Cose note, non (ancora) da rifare
 
 - `status-bar-style` è `black-translucent` (non più `default`), `.screen`

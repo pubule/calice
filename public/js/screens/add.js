@@ -1,7 +1,7 @@
 import { api } from '../api-client.js';
 import { escapeHtml, photoClass, priceText } from '../util.js';
 import { estimatedWindow } from '../drink-window.js';
-import { alertModal, promptModal, pasteModal, quantityModal } from '../modal.js';
+import { alertModal, promptModal, quantityModal } from '../modal.js';
 import { MAX_QUANTITY, WHOLE_NUMBER_ATTRS, parseDecimal, parsePrice, PRICE_ERROR, parseVintage, VINTAGE_ERROR, parseQuantity, quantityError, quantityStepperHtml, wireQuantitySteppers, parseDisgorged, DISGORGED_HINT } from '../fields.js';
 import { showToast } from '../toast.js';
 import { tastingProfileHtml, wireTastingProfile, resetTastingProfile, readTastingProfile, setTastingProfile, isTastingProfileEmpty, TASTE_AXES } from '../tasting-profile.js';
@@ -1605,15 +1605,73 @@ async function pastePhoto() {
     console.error('clipboard read failed', err);
   }
   // Reading the clipboard from a button is refused or comes back empty on
-  // some iPhones: a box to paste into with the system's own Incolla always
-  // works.
-  const pasted = await pasteModal();
-  if (pasted?.file) await choosePhotoBlob(pasted.file);
-  else if (pasted?.url) {
-    pendingPhoto = { url: pasted.url };
-    showReviewPhoto(pasted.url);
-  }
+  // some iPhones: the photo itself takes the system's own Incolla.
+  photoFrame?.focus({ preventScroll: true });
+  showToast('Tieni premuta la bottiglia e scegli Incolla');
 }
+
+// ---- the photo itself takes a paste (#rec-photo-frame) ----
+// Editable without a keyboard (inputmode=none) only so that holding it brings
+// up iOS's Incolla; every other edit is refused and the photo is redrawn from
+// pendingPhoto, never from what the paste left in the DOM.
+const photoFrame = document.getElementById('rec-photo-frame');
+
+function usePastedUrl(url) {
+  pendingPhoto = { url };
+  showReviewPhoto(url);
+}
+
+// An <img> that iOS put in the frame itself: a web link is used as such,
+// anything else (blob:, data:, webkit-fake-url:) is redrawn into a file,
+// since only this page can read it.
+async function usePastedImg(img) {
+  if (/^https?:\/\//i.test(img.src)) return usePastedUrl(img.src);
+  try {
+    if (!img.complete) await new Promise((ok, ko) => { img.onload = ok; img.onerror = ko; });
+    const canvas = document.createElement('canvas');
+    canvas.width = img.naturalWidth;
+    canvas.height = img.naturalHeight;
+    canvas.getContext('2d').drawImage(img, 0, 0);
+    const blob = await new Promise((r) => canvas.toBlob(r, 'image/png'));
+    if (blob) return choosePhotoBlob(blob);
+  } catch (err) {
+    console.error('pasted image unreadable', err);
+  }
+  showToast("Non è un'immagine: copia la foto (tienila premuta, Copia) e riprova");
+}
+
+photoFrame?.addEventListener('beforeinput', (e) => {
+  if (e.inputType !== 'insertFromPaste') e.preventDefault();
+});
+photoFrame?.addEventListener('keydown', (e) => {
+  if (!e.metaKey && !e.ctrlKey) e.preventDefault();
+});
+photoFrame?.addEventListener('paste', (e) => {
+  const data = e.clipboardData;
+  const file = [...(data?.files ?? [])].find((f) => f.type.startsWith('image/'))
+    ?? [...(data?.items ?? [])].find((i) => i.kind === 'file' && i.type.startsWith('image/'))?.getAsFile();
+  const html = data?.getData('text/html') ?? '';
+  const src = html.match(/<img[^>]+src="([^"]+)"/i)?.[1];
+  const text = (data?.getData('text/uri-list') || data?.getData('text/plain') || '').trim();
+  const url = [src, text].find((u) => u && /^https?:\/\/\S+$/i.test(u));
+  if (file || url) {
+    e.preventDefault();
+    photoFrame.blur();
+    if (file) choosePhotoBlob(file);
+    else usePastedUrl(url);
+    return;
+  }
+  // iOS often hands over neither a file nor a link: it pastes the image as
+  // an <img>. Let it land, read it, then take it out again.
+  setTimeout(() => {
+    const landed = [...photoFrame.querySelectorAll('img')].find((img) => img.id !== 'recognize-photo');
+    [...photoFrame.childNodes].forEach((n) => { if (n.nodeType === Node.TEXT_NODE || (n !== landed && !n.id)) n.remove(); });
+    landed?.remove();
+    photoFrame.blur();
+    if (landed) usePastedImg(landed);
+    else showToast("Non è un'immagine: copia la foto (tienila premuta, Copia) e riprova");
+  }, 60);
+});
 
 // Saved once the wine exists (and is in the user's cellar).
 async function savePendingPhoto(wineId, doneLabel) {

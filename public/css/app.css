@@ -143,8 +143,8 @@
   .photo-act{min-height:44px; padding:0 16px; border-radius:999px; border:1px solid #e2e0d8; background:#fff; color:#241e1a; font:inherit; font-size:calc(13rem/17); font-weight:600; cursor:pointer;}
   .photo-act.danger{color:#8a3244;}
   .photo-act:active{opacity:.55;}
-  .paste-box{min-height:120px; margin:4px 0 14px; padding:14px; border:1.5px dashed #d2c9b8; border-radius:12px; background:#fff; color:#736a5d; font-size:max(16px, calc(14rem/17)); line-height:1.4; outline:none; -webkit-user-select:text; user-select:text;}
-  .paste-box:focus{border-color:#5b2333;}
+  .rec-photo-frame{outline:none; caret-color:transparent; border-radius:12px;}
+  .rec-photo-frame:focus-visible{box-shadow:0 0 0 3px rgba(91,35,51,.18);}
   .rec-photo-placeholder{width:96px; height:128px; margin:0 auto; border-radius:12px;}
   /* Non c'è una regola .hidden globale: ogni componente ha la sua. */
   .rec-photo-placeholder.hidden, .photo-act.hidden, .land-credit.hidden{display:none;}

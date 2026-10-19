@@ -47,8 +47,6 @@ function showModal({ title, message, confirmLabel, cancelLabel, showInput, input
   msgEl.textContent = message ?? '';
   msgEl.style.display = message ? '' : 'none';
   input.style.display = showInput ? 'block' : 'none';
-  const pasteBox = document.getElementById('app-modal-paste');
-  if (pasteBox && !document.getElementById('app-modal').classList.contains('open')) pasteBox.style.display = 'none';
   const qtySlot = document.getElementById('app-modal-qty');
   if (qtySlot) qtySlot.style.display = 'none'; // quantityModal() shows it again after this
   input.type = inputType ?? 'text';
@@ -106,95 +104,6 @@ export function promptModal(message, { title, defaultValue = '', placeholder = '
     inputType,
     inputMode,
   });
-}
-
-// A box to paste into with the system's own "Incolla" (long press): the one
-// way to paste that always works on iOS, where reading the clipboard from a
-// button can come back empty. Resolves { file } for an image, { url } for a
-// link to one, or null if cancelled.
-export function pasteModal({ title = 'Incolla la foto', message = 'Tieni premuto nel riquadro e scegli Incolla.' } = {}) {
-  ensureModal();
-  const sheet = document.querySelector('#app-modal .modal-sheet');
-  let box = document.getElementById('app-modal-paste');
-  if (!box) {
-    box = document.createElement('div');
-    box.id = 'app-modal-paste';
-    box.className = 'paste-box';
-    box.contentEditable = 'true';
-    box.setAttribute('role', 'textbox');
-    box.setAttribute('aria-label', 'Riquadro dove incollare la foto');
-    sheet.insertBefore(box, sheet.querySelector('.modal-actions'));
-  }
-  box.textContent = '';
-  const shown = showModal({ title, message, confirmLabel: 'Fatto', cancelLabel: 'Annulla' });
-  box.style.display = '';
-  const close = (value) => {
-    box.style.display = 'none';
-    resolvePaste(value);
-  };
-  let resolvePaste;
-  const result = new Promise((r) => { resolvePaste = r; });
-  let handled = false;
-  const done = (value) => {
-    if (handled) return;
-    handled = true;
-    document.getElementById('app-modal-confirm').onclick();
-    close(value);
-  };
-  const fail = () => {
-    box.textContent = 'Non è un\'immagine: copia la foto (tienila premuta, Copia) e riprova.';
-  };
-  // An <img> that iOS put in the box itself: a web link is sent as such,
-  // anything else (blob:, data:, iOS's internal webkit-fake-url:) is redrawn
-  // here into a file, since only this page can read it.
-  const fromImg = async (img) => {
-    if (/^https?:\/\//i.test(img.src)) return done({ url: img.src });
-    try {
-      if (!img.complete) await new Promise((ok, ko) => { img.onload = ok; img.onerror = ko; });
-      const canvas = document.createElement('canvas');
-      canvas.width = img.naturalWidth;
-      canvas.height = img.naturalHeight;
-      canvas.getContext('2d').drawImage(img, 0, 0);
-      const blob = await new Promise((r) => canvas.toBlob(r, 'image/png'));
-      if (blob) return done({ file: blob });
-    } catch (err) {
-      console.error('pasted image unreadable', err);
-    }
-    fail();
-  };
-  // The keyboard's "Incolla da Foto" suggestion inserts the image without a
-  // paste event: catch it when it lands in the box.
-  box.oninput = () => {
-    const img = box.querySelector('img');
-    if (img) fromImg(img);
-  };
-  box.onpaste = (e) => {
-    const data = e.clipboardData;
-    const file = [...(data?.files ?? [])].find((f) => f.type.startsWith('image/'))
-      ?? [...(data?.items ?? [])].find((i) => i.kind === 'file' && i.type.startsWith('image/'))?.getAsFile();
-    if (file) {
-      e.preventDefault();
-      return done({ file });
-    }
-    const html = data?.getData('text/html') ?? '';
-    const src = html.match(/<img[^>]+src="([^"]+)"/i)?.[1];
-    const text = (data?.getData('text/uri-list') || data?.getData('text/plain') || '').trim();
-    const url = [src, text].find((u) => u && /^https?:\/\/\S+$/i.test(u));
-    if (url) {
-      e.preventDefault();
-      return done({ url });
-    }
-    // iOS often hands over neither a file nor a link: it pastes the image
-    // into the box as an <img>. Let the paste happen, then read that.
-    box.textContent = '';
-    setTimeout(() => {
-        const img = box.querySelector('img');
-      if (img) fromImg(img);
-      else if (!handled) fail();
-    }, 60);
-  };
-  shown.then(() => close(null));
-  return result;
 }
 
 // "Quante bottiglie?" with the app's one quantity control (− n +). Resolves
