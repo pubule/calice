@@ -1650,6 +1650,29 @@ questo file è il riassunto "dove eravamo rimasti".
     Modifica. Il voto Vivino resta solo nei numeri in alto (build 159:
     era duplicato nel tab). `e2e/bottle-detail.spec.ts` aggiornato.
 
+77. **Tab "Sentori e note": prima si legge, poi si modifica** (build 161,
+    mockup S2 scelto dall'utente; spec
+    `docs/superpowers/specs/2026-10-19-sentori-tab-design.md`, piano
+    `docs/superpowers/plans/2026-10-19-sentori-tab.md`). Il tab mostra la
+    nota come card (`renderNoteCard()` in `detail.js`): titolo e data, poi
+    **solo le parti con un valore** (voto, testo, aromi per famiglia, assi del
+    gusto segnati, abbinamenti) e "Modifica la nota" (senza nota: "Scrivi una
+    nota"). La modifica è un foglio `#note-overlay` sopra la scheda, con
+    Annulla/Salva; Annulla chiede "Scartare le modifiche?" solo se qualcosa è
+    cambiato. Le stelle non salvano più da sole: si salvano con la nota.
+    - Il modulo condiviso `tasting-profile.js` è a sotto-tab **Aromi · Gusto ·
+      Cibo · Testo** con contatori, riga "Scelti:" (× toglie), contatore sulle
+      card famiglia, ricerca su tutte le famiglie, Frutta divisa in 5 gruppetti
+      (`groups` su `FLAVOR_CATEGORIES`; `tags` resta la lista piatta). Possiede
+      anche il campo testo (`.tp-text`): tolto `#rec-note-text` da "Rivedi e
+      conferma", che usa lo stesso modulo.
+    - **Asse del gusto non toccato = `null`** ("non segnato · tocca"), mai
+      più 50. Nessuna conversione: in produzione al 2026-10-19 nessuna nota
+      aveva un asse a 50.
+    - Assaggio guidato e Ruota degli aromi invariati.
+    - Test: `e2e/tasting-profile.spec.ts`, `e2e/tasting-profile-data.spec.ts`,
+      `e2e/bottle-detail.spec.ts` (test "Sentori…").
+
 ## Cose note, non (ancora) da rifare
 
 - `e2e/bottle-detail.spec.ts` › "deleting a bottle…" è rotto da prima del

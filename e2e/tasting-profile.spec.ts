@@ -74,6 +74,28 @@ test.describe('Modulo della nota (foglio Rivedi e conferma)', () => {
     expect([p.tasteBody, p.empty]).toEqual([null, true]);
   });
 
+  test("nota dall'Assaggio guidato: assi null restano non segnati, testo nel sotto-tab Testo", async ({ page }) => {
+    await page.route('**/api/wines/recognize', (route) => route.fulfill({ json: { candidates: [] } }));
+    await page.goto('/');
+    await page.waitForSelector('.nav-add');
+    await page.evaluate(async () => {
+      const { openAddSheet } = await import('/js/screens/add.js');
+      openAddSheet({ query: '', tasting: { mode: 'cellar', done: () => {}, note: {
+        rating: 4, text: "Dall'assaggio", flavorTags: ['Amarena'], foodPairings: [],
+        tasteAcidity: null, tasteSweetness: null, tasteTannin: 70, tasteBody: null, tasteAlcohol: null, tasteIntensity: null, tasteFinish: null } } });
+    });
+    await page.fill('#add-search-input', `zzz${runId}assaggio`);
+    await page.click('[data-manual]');
+    await expect(page.locator('#recognize-overlay')).toHaveClass(/open/);
+    const tp = page.locator('#recognize-taste');
+    await expect(tp.locator('.tp-chosen')).toContainText('Amarena');
+    await tp.locator('[data-tp-tab="gusto"]').click();
+    await expect(tp.locator('.taste-slider[data-axis="body"]')).toHaveAttribute('data-unset', '');
+    await expect(tp.locator('.taste-slider[data-axis="tannin"]')).not.toHaveAttribute('data-unset', '');
+    await tp.locator('[data-tp-tab="testo"]').click();
+    await expect(tp.locator('.tp-text')).toHaveValue("Dall'assaggio");
+  });
+
   test('salvataggio dal foglio manda testo e assi null', async ({ page }) => {
     const tp = await openManualSheet(page);
     await page.fill('#rec-name', `Nota Modulo ${runId}`);

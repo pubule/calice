@@ -921,3 +921,16 @@ completo o desiderio). Ogni nuovo modo di aggiungere un vino dentro
 stanno in `wishlist_items.note` (stessa forma del corpo di
 `POST /api/bottles/:id/notes`) e passano alla bottiglia con "Comprato:
 sposta in cantina".
+
+## Nota di degustazione: un solo modulo, asse non segnato = null
+
+`tasting-profile.js` è il modulo della nota per **ogni** posto dove se ne
+scrive una (foglio `#note-overlay` della scheda vino, "Rivedi e conferma"
+in `add.js`): sotto-tab Aromi · Gusto · Cibo · Testo, e possiede anche il
+campo di testo (`.tp-text`, letto da `readTastingProfile().text`). Un ospite
+nuovo monta il modulo e tiene solo le sue stelle; non aggiunge un secondo
+campo di testo. Un asse del gusto mai toccato vale `null` ("non segnato") in
+lettura, in salvataggio e nella card: non usare 50 come "vuoto", altrimenti
+un 5 scelto davvero e un cursore mai toccato tornano indistinguibili (era
+così fino al build 160). I chip dei risultati di ricerca sono copie senza
+`data-toggle`: `readTastingProfile` conta solo gli originali.
