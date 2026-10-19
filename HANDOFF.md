@@ -1542,6 +1542,33 @@ questo file è il riassunto "dove eravamo rimasti".
     sul Mincio (MN). Le bollicine rosé restano "bollicine" (scelta
     dell'utente: niente categoria né badge in più).
 
+71. **Profilo ripulito, app solo personale** (build 153, migrazione 0018).
+    Su richiesta dell'utente, dopo un'analisi delle voci di Profilo:
+    - **Tolte le notifiche push** (mai attivate: 0 iscrizioni; avrebbero
+      mandato ~35 "scorte in esaurimento" al giorno). Via toggle, chiave
+      VAPID nella pagina, `routes/push.ts`, `cron.ts` (scansione e avviso
+      spazio R2, che usava solo le push), listener `push` in `sw.js`,
+      dipendenza `web-push`. Il cron resta solo per il backup settimanale.
+      Gli avvisi restano quelli dentro la Home.
+    - **Tolti inviti, persone seguite e tab Attività della Home** (3 inviti
+      mai accettati, 0 persone seguite): `invite.js`, la rotta
+      `#/invite/:code`, `routes/follows.ts`, `POST /:id/invite`, la
+      scrittura in `activity_feed`, la clausola "follower" nelle note.
+      Le tabelle (`follows`, `cellar_invites`, `activity_feed`,
+      `push_subscriptions`) restano nel database, inutilizzate: eliminarle
+      con una migrazione solo se serve.
+    - **Tolta "Le mie cantine"** (doppione della scheda Cantina).
+    - **Aiuto riscritto** (cinque punti; `.modal-message` ora va a capo
+      sui `\n`).
+    - **Memoria comune delle ricerche** (`search_cache`, `recognize.ts`):
+      la stessa ricerca per nome (testo piegato come `foldSearch`) viene
+      servita da D1 per 30 giorni senza chiamare Vivino (né Wikidata), per
+      tutti gli utenti. Si salvano solo risposte con candidati. Il catalogo
+      `wines` era già comune: i vini aggiunti da chiunque escono nella
+      ricerca di tutti. Esclusa dal backup settimanale (`SKIP`).
+    - **Cancellati gli account di prova** 5 ("") e 7 ("Debug") con le loro
+      cantine vuote. Restano Fabio (9) e mikela1982.mb (12, cantina vuota).
+
 ## Cose note, non (ancora) da rifare
 
 - `status-bar-style` è `black-translucent` (non più `default`), `.screen`

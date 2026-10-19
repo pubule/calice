@@ -39,8 +39,6 @@ function showLoadingSkeletons() {
     <div class="list-row">${skeletonBar('8px', 8)}<div class="lbody">${skeletonBar('70%', 12)}<div style="margin-top:4px;">${skeletonBar('45%', 9)}</div></div></div>`).join('');
   document.getElementById('home-regions').innerHTML = Array.from({ length: 3 }, () => `
     <div class="region-row">${skeletonBar('74px', 10)}${skeletonBar('100%', 8)}${skeletonBar('22px', 10)}</div>`).join('');
-  document.getElementById('home-feed').innerHTML = Array.from({ length: 3 }, () => `
-    <div class="feed-row"><div class="rev-avatar skeleton"></div>${skeletonBar('70%', 11)}</div>`).join('');
 }
 
 const PREVIEW_COUNT = 5;
@@ -51,8 +49,7 @@ const PREVIEW_COUNT = 5;
 let soonBottles = [];
 const NO_REGION = 'Regione non indicata';
 let regionEntries = [];
-let activityRows = [];
-const expanded = { soon: false, regions: false, feed: false };
+const expanded = { soon: false, regions: false };
 
 function toggleLink(id, key, count, expandLabel) {
   const link = document.getElementById(id);
@@ -127,23 +124,9 @@ function renderRegions() {
   toggleLink('home-regions-toggle', 'regions', regionEntries.length, 'vedi tutte');
 }
 
-function renderFeed() {
-  const list = expanded.feed ? activityRows : activityRows.slice(0, PREVIEW_COUNT);
-  document.getElementById('home-feed').innerHTML = list
-    .map(
-      (a) => `
-      <div class="feed-row"><div class="rev-avatar">${escapeHtml(a.actor_name.slice(0, 2).toUpperCase())}</div>
-        <div class="txt"><b>${escapeHtml(a.actor_name)}</b> ha aggiunto ${escapeHtml(a.wine_name)}</div>
-        <span class="time">${new Date(a.created_at).toLocaleDateString('it-IT')}</span></div>`,
-    )
-    .join('');
-  toggleLink('home-feed-toggle', 'feed', activityRows.length, 'vedi tutto');
-}
-
 function renderAll() {
   renderSoon();
   renderRegions();
-  renderFeed();
 }
 
 const REVEAL_IDS = ['home-greet-name', 'home-stats', 'home-alerts', 'home-explore-links', 'home-tabs-block'];
@@ -170,7 +153,7 @@ export async function mountHome() {
   // All four sources fetched in parallel (was four sequential awaits) so
   // every section becomes ready at the same instant — the only staggering
   // left is the deliberate one in revealSections() below.
-  const [user, bottles, activity] = await Promise.all([
+  const [user, bottles] = await Promise.all([
     me(),
     api.get('/api/cellars').then((cellars) =>
       // quantity/price_paid come from the API as unvalidated JSON (no
@@ -183,7 +166,6 @@ export async function mountHome() {
         price_paid: b.price_paid != null ? Number(b.price_paid) || 0 : null,
       }))),
     ),
-    api.get('/api/me/activity'),
   ]);
 
   document.getElementById('home-greet-name').textContent = user.name;
@@ -211,10 +193,8 @@ export async function mountHome() {
 
   soonBottles = inCellar;
   regionEntries = Object.entries(byRegion).sort((a, b) => (a[0] === NO_REGION) - (b[0] === NO_REGION) || b[1] - a[1]);
-  activityRows = activity;
   expanded.soon = false;
   expanded.regions = false;
-  expanded.feed = false;
   renderAll();
 
   document.getElementById('home-alerts').innerHTML = ''; // populated below, one banner per condition

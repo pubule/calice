@@ -5,7 +5,6 @@ import { mountCellar } from './screens/cellar.js';
 import { openAddSheet } from './screens/add.js';
 import { mountStats } from './screens/stats.js';
 import { mountProfile } from './screens/profile.js';
-import { mountInviteAccept } from './screens/invite.js';
 import { mountExplore } from './screens/explore.js';
 import { mountAromas } from './screens/aromas.js';
 import { mountTasting } from './screens/tasting.js';
@@ -16,7 +15,7 @@ import { warmUp } from './warmup.js';
 // Esplora is a sub-section opened from Home, so it keeps Home lit. The raised
 // "+" is not a tab: it opens the "Aggiungi un vino" sheet over the current
 // screen (screens/add.js).
-const TAB_FOR_VIEW = { 'view-explore': 'view-home', 'view-aromas': 'view-home', 'view-tasting': 'view-home', 'view-invite': 'view-home' };
+const TAB_FOR_VIEW = { 'view-explore': 'view-home', 'view-aromas': 'view-home', 'view-tasting': 'view-home' };
 
 // Tab → route, explicit rather than derived from the view id (routes are not
 // all `#/<name>`: Esplora lives at #/esplora).
@@ -192,7 +191,6 @@ registerRoute('#/add', async () => {
 });
 registerRoute('#/stats', async () => { showView('view-stats'); await mountStats(); });
 registerRoute('#/profile', async () => { showView('view-profile'); await mountProfile(); });
-registerRoute('#/invite/:code', async (search, params) => { showView('view-invite'); await mountInviteAccept(search, params); });
 registerRoute('#/esplora', async () => { showView('view-explore'); await mountExplore(); });
 registerRoute('#/aromi', async () => { showView('view-aromas'); await mountAromas(); });
 registerRoute('#/assaggio', async (search) => { showView('view-tasting'); await mountTasting(search); });

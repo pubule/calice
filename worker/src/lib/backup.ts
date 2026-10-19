@@ -7,8 +7,9 @@
 export const BACKUP_PREFIX = 'backups/';
 const KEEP = 8;
 const EVERY_DAYS = 7;
-// Internal tables: D1's own bookkeeping, recreated by the migrations.
-const SKIP = /^(sqlite_|_cf_|d1_migrations$)/;
+// Internal tables (D1's own bookkeeping, recreated by the migrations) and
+// caches that refill by themselves.
+const SKIP = /^(sqlite_|_cf_|d1_migrations$|search_cache$)/;
 
 export type Backup = {
   format: 'calice-backup';

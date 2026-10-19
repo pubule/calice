@@ -27,7 +27,7 @@ beforeEach(async () => {
 });
 
 describe('bottles', () => {
-  it('creates, lists (with null score), and the list includes activity feed side effect', async () => {
+  it('creates and lists (with null score)', async () => {
     const auth = signup('b1@b.com');
     const cellarId = await myCellarId(auth);
 
@@ -48,9 +48,6 @@ describe('bottles', () => {
     // just the ones already selected here before this feature existed.
     expect(bottles[0].grape_variety).toBe('Nebbiolo');
     expect(bottles[0].denomination).toBe('Barolo DOCG');
-
-    const feed = await env.DB.prepare('select count(*) as n from activity_feed where action = ?').bind('added').first<{ n: number }>();
-    expect(feed!.n).toBe(1);
   });
 
   it('computes score as the average tasting_notes rating', async () => {

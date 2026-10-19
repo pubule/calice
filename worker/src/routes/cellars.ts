@@ -41,32 +41,3 @@ cellarRoutes.patch('/:id', async (c) => {
   const cellar = await c.env.DB.prepare('update cellars set name = ? where id = ? returning *').bind(name, id).first();
   return c.json(cellar);
 });
-
-cellarRoutes.post('/:id/invite', async (c) => {
-  const cellarId = Number(c.req.param('id'));
-  const userId = c.get('userId');
-  if (!(await isCellarMember(c.env.DB, cellarId, userId))) return c.json({ error: 'not a member' }, 403);
-  const code = crypto.randomUUID();
-  await c.env.DB
-    .prepare('insert into cellar_invites (code, cellar_id, created_by) values (?, ?, ?)')
-    .bind(code, cellarId, userId)
-    .run();
-  return c.json({ code });
-});
-
-export const inviteRoutes = new Hono<{ Bindings: Env; Variables: { userId: number } }>();
-inviteRoutes.use('*', requireAuth);
-
-inviteRoutes.post('/:code/accept', async (c) => {
-  const code = c.req.param('code');
-  const invite = await c.env.DB
-    .prepare('select cellar_id from cellar_invites where code = ?')
-    .bind(code)
-    .first<{ cellar_id: number }>();
-  if (!invite) return c.json({ error: 'invalid invite code' }, 404);
-  await c.env.DB
-    .prepare('insert or ignore into cellar_members (cellar_id, user_id, role) values (?, ?, ?)')
-    .bind(invite.cellar_id, c.get('userId'), 'member')
-    .run();
-  return c.json({ cellarId: invite.cellar_id });
-});

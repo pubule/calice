@@ -703,6 +703,10 @@ Richiesta esplicita dell'utente: l'app non deve **mai** far pagare nulla.
   dentro l'allocazione gratuita; oltre, il foglio si apre da compilare a mano
   con un avviso. Qualunque nuova chiamata a un servizio a consumo va
   protetta allo stesso modo.
+- **Ricerca per nome**: le risposte di Vivino sono tenute 30 giorni in
+  `search_cache` (comune a tutti gli utenti, `recognize.ts`). Una nuova
+  fonte esterna per la ricerca va messa dentro la stessa memoria, non
+  chiamata a ogni tasto.
 - Il resto (Workers, D1, R2, Access, GitHub Actions) è nei piani gratuiti;
   l'utente controlla da sé il piano Cloudflare (Billing).
 

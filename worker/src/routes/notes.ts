@@ -159,7 +159,6 @@ noteRoutes.get('/:bottleId/notes', async (c) => {
        where tasting_notes.bottle_id = ?
          and (
            tasting_notes.user_id = ?
-           or tasting_notes.user_id in (select followee_id from follows where follower_id = ?)
            or (
              tasting_notes.user_id in (select user_id from cellar_members where cellar_id = bottles.cellar_id)
              and ? in (select user_id from cellar_members where cellar_id = bottles.cellar_id)
@@ -167,7 +166,7 @@ noteRoutes.get('/:bottleId/notes', async (c) => {
          )
        order by tasting_notes.created_at desc`,
     )
-    .bind(bottleId, userId, userId, userId)
+    .bind(bottleId, userId, userId)
     .all();
   return c.json(rows.results.map(parseNote));
 });

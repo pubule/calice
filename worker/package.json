@@ -10,8 +10,7 @@
     "db:seed": "wrangler d1 execute calice-db --file=./seed/wines.sql"
   },
   "dependencies": {
-    "hono": "^4.6.0",
-    "web-push": "^3.6.7"
+    "hono": "^4.6.0"
   },
   "devDependencies": {
     "@cloudflare/vitest-pool-workers": "^0.6.0",

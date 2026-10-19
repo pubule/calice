@@ -5,6 +5,7 @@ import { enrichFromWikidata as defaultEnrichFromWikidata } from '../lib/wikidata
 import { runVisionOcr as defaultRunVisionOcr } from '../lib/vision-ocr';
 import { searchVivino as defaultSearchVivino, queryVivino } from '../lib/vivino-search';
 import { findProducerImages } from '../lib/producer-site';
+import { foldSearch } from './wines';
 import type { Env } from '../index';
 
 export type { WineCandidate } from '../lib/vivino-search';
@@ -58,11 +59,31 @@ async function takeOcrSlot(env: Env): Promise<boolean> {
   return row != null;
 }
 
+// A name search (no barcode, no photo) asked again is answered from
+// search_cache, shared by every user, for SEARCH_CACHE_DAYS: fewer calls to
+// Vivino. Only answers with candidates are kept, so a miss or a Vivino
+// failure is retried next time.
+const SEARCH_CACHE_DAYS = 30;
+
+async function cachedSearch(db: D1Database, term: string): Promise<Suggestion | null> {
+  const row = await db
+    .prepare(`select suggestion from search_cache where term = ? and fetched_at > datetime('now', ?)`)
+    .bind(term, `-${SEARCH_CACHE_DAYS} days`)
+    .first<{ suggestion: string }>();
+  return row ? (JSON.parse(row.suggestion) as Suggestion) : null;
+}
+
 export async function buildSuggestion(
   env: Env,
   body: { barcode?: string; photoBase64?: string; query?: string },
   deps: RecognizeDeps = defaultDeps(env),
 ): Promise<Suggestion> {
+  const term = body.query && !body.barcode && !body.photoBase64 ? foldSearch(body.query) : '';
+  if (term) {
+    const cached = await cachedSearch(env.DB, term);
+    // The name comes back as typed this time, not as typed the first time.
+    if (cached) return { ...cached, name: body.query };
+  }
   const suggestion: Suggestion = {};
 
   if (body.barcode) {
@@ -117,6 +138,13 @@ export async function buildSuggestion(
     if (wd?.grapeVariety) suggestion.grapeVariety = wd.grapeVariety;
   }
 
+  if (term && suggestion.candidates?.length) {
+    await env.DB
+      .prepare(`insert into search_cache (term, suggestion, fetched_at) values (?, ?, datetime('now'))
+                on conflict(term) do update set suggestion = excluded.suggestion, fetched_at = excluded.fetched_at`)
+      .bind(term, JSON.stringify(suggestion))
+      .run();
+  }
   return suggestion;
 }
 

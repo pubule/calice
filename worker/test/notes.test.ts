@@ -29,7 +29,7 @@ beforeEach(async () => {
 });
 
 describe('tasting notes visibility', () => {
-  it('a note is visible to its author, a follower, a cellar-mate, and hidden from a stranger', async () => {
+  it('a note is visible to its author and a cellar-mate, and hidden from a stranger', async () => {
     const author = await signup('author@notes.com');
     await env.DB.prepare('insert into cellar_members (cellar_id, user_id, role) values (?, ?, ?)').bind(cellarId, author.userId, 'member').run();
 
@@ -42,12 +42,6 @@ describe('tasting notes visibility', () => {
     // author sees own note
     const authorView = await (await app.request(`/api/bottles/${bottleId}/notes`, { headers: author.auth }, env)).json<any[]>();
     expect(authorView).toHaveLength(1);
-
-    // follower sees it
-    const follower = await signup('follower@notes.com');
-    await env.DB.prepare('insert into follows (follower_id, followee_id) values (?, ?)').bind(follower.userId, author.userId).run();
-    const followerView = await (await app.request(`/api/bottles/${bottleId}/notes`, { headers: follower.auth }, env)).json<any[]>();
-    expect(followerView).toHaveLength(1);
 
     // cellar-mate sees it (author is already a cellar member)
     const cellarMate = await signup('mate@notes.com');

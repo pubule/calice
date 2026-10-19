@@ -104,6 +104,23 @@ describe('buildSuggestion', () => {
     }
   });
 
+  it('answers the same name search again from the shared cache, without Vivino', async () => {
+    await env.DB.exec('DELETE FROM search_cache;');
+    const vivino = [{ title: 'Masi Campofiorin', sourceUrl: 'https://www.vivino.com/w/1' }];
+    let calls = 0;
+    const searchVivino = async () => { calls++; return vivino; };
+    const enrichFromWikidata = async () => ({ grapeVariety: 'Corvina' });
+    await buildSuggestion(env, { query: 'Campofiorin' }, { searchVivino, enrichFromWikidata } as any);
+    const again = await buildSuggestion(env, { query: 'campofiorìn ' }, { searchVivino, enrichFromWikidata } as any);
+    expect(calls).toBe(1);
+    expect(again).toEqual({ name: 'campofiorìn ', candidates: vivino, grapeVariety: 'Corvina' });
+    // A miss is not remembered: asked again next time.
+    const none = async () => { calls++; return null; };
+    await buildSuggestion(env, { query: 'introvabile' }, { searchVivino: none, enrichFromWikidata } as any);
+    await buildSuggestion(env, { query: 'introvabile' }, { searchVivino: none, enrichFromWikidata } as any);
+    expect(calls).toBe(3);
+  });
+
   it('reads at most OCR_DAILY_LIMIT label photos a day, then asks to fill in by hand', async () => {
     await env.DB.exec('DELETE FROM ai_usage;');
     let calls = 0;

@@ -45,10 +45,6 @@ cellarBottleRoutes.post('/:cellarId/bottles', async (c) => {
     )
     .bind(cellarId, body.wineId, body.quantity, body.pricePaid ?? null, body.shelfLocation ?? null, body.drinkFrom ?? null, body.drinkUntil ?? null, body.disgorgedAt ?? null, userId)
     .first();
-  await c.env.DB
-    .prepare('insert into activity_feed (user_id, cellar_id, wine_id, action) values (?, ?, ?, ?)')
-    .bind(userId, cellarId, body.wineId, 'added')
-    .run();
   return c.json(bottle);
 });
 
