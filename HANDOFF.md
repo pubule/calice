@@ -1801,6 +1801,15 @@ questo file è il riassunto "dove eravamo rimasti".
     `000001b1-00000000-00005109-4432a6a636e9920b6cda5ad5bab46a7a`. L'utente 12
     (cantina vuota) resta: scelta dell'utente.
 
+86. **Prezzi stimati in produzione** (solo dati, 19 ottobre). L'utente non
+    ricordava quanto aveva pagato: 32 bottiglie senza prezzo hanno ora
+    `price_paid` = prezzo medio di mercato (listino dello shop del produttore,
+    altrimenti mediana delle enoteche online; 4 convertiti da £/$ o di una
+    linea simile). Non toccati i 9 prezzi inseriti dall'utente; senza prezzo
+    Campo Reale e i tre Le Lore (vendita solo diretta). Valore cantina:
+    1.524,45 €. Bookmark D1 prima:
+    `000001b5-00000000-00005109-352431e03fbb0064c3092fd2f9dc2e18`.
+
 ## Cose note, non (ancora) da rifare
 
 - Secret `TAVILY_API_KEY`, `VAPID_*` cancellati il 19 ottobre; la chiave
