@@ -1830,6 +1830,10 @@ questo file è il riassunto "dove eravamo rimasti".
     bollicine pas dosé/rosé): aggiunto in coda alla nota più recente, o, per
     le 3 bottiglie senza nota (id 46, 41, 23), creata una nota con solo
     l'abbinamento e `rating 0`, come fa l'app.
+89. **"Elimina cantina" → "Svuota cantina"** (build 170). La route
+    `DELETE /api/cellars/:id` non elimina davvero: svuota e ricrea una cantina
+    vuota (una sola per utente). Rinominati solo bottone, titolo/conferma,
+    errore e toast; server e id (`delete-cellar-btn`) invariati; aggiunta una seconda conferma ("Ultima conferma") che avvisa che tutti i dati andranno persi.
 
 - **Ponytail nelle sessioni cloud**: le sue skill sono copiate in
   `.claude/skills/` e sempre attive tramite CLAUDE.md (scelta dell'utente:

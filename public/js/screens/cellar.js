@@ -597,20 +597,25 @@ async function deleteCellar() {
   const cellar = cellars.find((c) => c.id === currentCellarId);
   const ok = await confirmModal(
     `Bottiglie, prezzi, posizioni, elementi, note, voti e desideri di «${cellar.name}» vengono cancellati. Nome, produttore, annata e foto dei vini restano nel catalogo comune per le ricerche, senza legami con te. Resta una cantina vuota. Se vuoi tenerne una copia, prima scarica un backup da Profilo.`,
-    { title: 'Eliminare la cantina?', confirmLabel: 'Elimina cantina', danger: true },
+    { title: 'Svuotare la cantina?', confirmLabel: 'Svuota cantina', danger: true },
   );
   if (!ok) return;
+  const sure = await confirmModal(
+    'Sei davvero sicuro? Tutti i dati della cantina andranno persi e non si possono recuperare dall'app.',
+    { title: 'Ultima conferma', confirmLabel: 'Sì, svuota tutto', danger: true },
+  );
+  if (!sure) return;
   try {
     await api.del(`/api/cellars/${cellar.id}`);
   } catch (err) {
     console.error('delete cellar failed', err);
-    await alertModal('Eliminazione non riuscita: non è stato cambiato niente. Riprova.', { title: 'Elimina cantina' });
+    await alertModal('Operazione non riuscita: non è stato cambiato niente. Riprova.', { title: 'Svuota cantina' });
     return;
   }
   closeSheet('cellar-sheet');
   currentCellarId = null;
   await mountCellar();
-  showToast('Cantina eliminata');
+  showToast('Cantina svuotata');
 }
 
 async function loadCellarData() {
