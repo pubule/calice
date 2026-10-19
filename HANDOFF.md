@@ -1499,12 +1499,34 @@ questo file è il riassunto "dove eravamo rimasti".
     (`scheduled` in `index.ts`, 08:00 UTC) chiama `runWeeklyBackup()`
     (`worker/src/lib/backup.ts`): se la copia più recente ha almeno una
     settimana, salva tutto il database in R2 come
-    `backups/AAAA-MM-GG.json` (tutte le tabelle tranne quelle interne di
-    D1) e tiene le ultime 8. Le foto non vengono copiate (sono già in R2,
-    la copia ne conserva le chiavi). Ripristino: vedi CLAUDE.md, sezione
-    "Backup". Scelto dall'utente insieme al punto B (backup scaricabile da
-    Profilo con ripristino): **mockup in attesa di scelta**, non ancora
-    implementato.
+    `backups/AAAA-MM-GG.json` e tiene le ultime 8. Ripristino: CLAUDE.md,
+    sezione "Backup". Prima copia attesa il 20 ottobre dopo le 08:00 UTC:
+    verificarla con `wrangler r2 object list` / dashboard R2.
+69. **Backup scaricabile e ripristino da Profilo** (build 150, migrazione
+    0017, scelta B1 + R1 sul mockup). Due righe dopo "Esporta CSV":
+    - "Scarica backup": `GET /api/backup` (`routes/backup.ts`) dà le righe
+      di tutte le cantine dell'utente (vini, bottiglie, posizioni, elementi,
+      tutte le note, foto, desideri) + le sue degustazioni + gli utenti
+      citati (per email); il client scarica le foto (`files`) e le mette nel
+      file in base64, poi il foglio di condivisione ("Salva in File") —
+      avviato dentro il tocco tramite `onConfirm` di `confirmModal`, perché
+      iOS lo vuole in un gesto. Se salvato, `POST /api/backup/saved`
+      (`users.last_backup_at`); sotto l'etichetta "Ultimo backup N giorni
+      fa", bordeaux oltre 30 giorni o se mai fatto.
+    - "Ripristina da backup": file scelto → conferma (pericolosa) →
+      `POST /api/backup/restore`. Sostituisce: ogni cantina del file di cui
+      l'utente è ancora membro viene svuotata e riempita, le altre tornano
+      come cantine nuove; vini aggiornati sullo stesso id se è ancora lo
+      stesso vino, altrimenti con id nuovo; utenti abbinati per email (note
+      di persone assenti saltate). Tutto in un `db.batch` (transazione).
+      Prima salva lo stato attuale in R2 `restore-safety/<userId>/` (ultime
+      5) e non cancella mai niente da R2. Poi il client ricarica solo le foto
+      che R2 non ha più (`PUT /api/backup/files/:key`, solo chiavi citate
+      dalle righe delle sue cantine, solo immagini, mai sovrascrive).
+    Provato in locale con Playwright (scarica → elimina un vino →
+    ripristina → di nuovo tutto); 5 test in `user-backup.test.ts`.
+    Non provato su iPhone: il foglio di condivisione e la scelta del file
+    da File/iCloud vanno confermati sul device.
 
 ## Cose note, non (ancora) da rifare
 

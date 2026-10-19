@@ -8,6 +8,6 @@ export const authRoutes = new Hono<{ Bindings: Env; Variables: { userId: number 
 // site before any request reaches the Worker. requireAuth creates the user
 // row (and their first cellar) on their very first authenticated request.
 authRoutes.get('/me', requireAuth, async (c) => {
-  const user = await c.env.DB.prepare('select id, email, name from users where id = ?').bind(c.get('userId')).first();
+  const user = await c.env.DB.prepare('select id, email, name, last_backup_at from users where id = ?').bind(c.get('userId')).first();
   return c.json(user);
 });

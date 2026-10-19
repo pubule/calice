@@ -884,3 +884,14 @@ npx wrangler d1 execute calice-db --remote --file restore.sql
 Il database deve avere le stesse migrazioni della copia (`backup.migrations`).
 D1 ha anche il suo ripristino a un istante preciso (Time Travel,
 `wrangler d1 time-travel restore`), utile per errori di pochi giorni fa.
+
+**Backup scaricabile da Profilo** (`worker/src/routes/backup.ts`): una
+**nuova tabella legata a una cantina o all'utente va aggiunta** a
+`buildUserBackup()` e a `restoreUserBackup()` (cancellazione per le cantine
+sostituite + inserimento con id rimappati), altrimenti il file non la
+contiene e il ripristino la lascia com'è. Una nuova colonna invece passa da
+sola (si copiano le righe intere). D1 rifiuta `select` con troppi `union`
+("too many terms in compound SELECT"): unire liste di id in JS.
+Un'azione che il browser concede solo dentro un tocco (foglio di
+condivisione) va avviata da `confirmModal(..., { onConfirm })`, non dopo
+l'`await` della conferma.

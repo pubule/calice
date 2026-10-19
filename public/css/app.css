@@ -246,6 +246,9 @@
   .settings-row:last-child{border-bottom:none;}
   .settings-row svg{stroke:#8f8474;}
   .settings-row .lbl{flex:1;}
+  .settings-row .sub{display:block; font-size:calc(12rem/17); color:#736a5d;}
+  .settings-row .sub.late{color:#8a3244; font-weight:600;}
+  .restore-file{display:none;}
   .settings-row .chev{stroke:#c9bfae; width:15px; height:15px;}
   .logout{color:#8a3244; text-align:center; font-size:calc(12.5rem/17); font-weight:600; padding:12px;}
   /* Shown so the running build can be identified from a screenshot — deploys

@@ -15,6 +15,7 @@ import { landscapeRoutes } from './routes/landscape';
 import { wineImageRoutes, wineImageFileRoutes } from './routes/wine-image';
 import { runNotificationScan, checkPhotoStorageUsage } from './cron';
 import { runWeeklyBackup } from './lib/backup';
+import { backupRoutes } from './routes/backup';
 
 export type Env = {
   DB: D1Database;
@@ -53,6 +54,7 @@ app.route('/api/me', activityRoutes);
 app.route('/api/me', palateRoutes);
 app.route('/api/push', pushRoutes);
 app.route('/api/tastings', tastingRoutes);
+app.route('/api/backup', backupRoutes);
 
 export default {
   fetch: app.fetch,

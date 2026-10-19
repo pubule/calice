@@ -33,7 +33,7 @@ function ensureModal() {
   });
 }
 
-function showModal({ title, message, confirmLabel, cancelLabel, showInput, inputValue, inputPlaceholder, inputType, inputMode, danger }) {
+function showModal({ title, message, confirmLabel, cancelLabel, showInput, inputValue, inputPlaceholder, inputType, inputMode, danger, onConfirm }) {
   ensureModal();
   const overlay = document.getElementById('app-modal');
   const titleEl = document.getElementById('app-modal-title');
@@ -72,7 +72,10 @@ function showModal({ title, message, confirmLabel, cancelLabel, showInput, input
       overlay.classList.remove('open');
       resolve(value);
     };
-    confirmBtn.onclick = () => finish(showInput ? input.value : true);
+    confirmBtn.onclick = () => {
+      onConfirm?.(); // inside the tap: what needs a user gesture (share sheet) must start here
+      finish(showInput ? input.value : true);
+    };
     cancelBtn.onclick = () => finish(showInput ? null : false);
     overlay.onclick = (e) => {
       if (e.target === overlay) cancelBtn.onclick();
@@ -87,8 +90,8 @@ export function alertModal(message, { title } = {}) {
   return showModal({ title, message, confirmLabel: 'OK', cancelLabel: null });
 }
 
-export function confirmModal(message, { title, confirmLabel = 'Conferma', cancelLabel = 'Annulla', danger = false } = {}) {
-  return showModal({ title, message, confirmLabel, cancelLabel, danger });
+export function confirmModal(message, { title, confirmLabel = 'Conferma', cancelLabel = 'Annulla', danger = false, onConfirm } = {}) {
+  return showModal({ title, message, confirmLabel, cancelLabel, danger, onConfirm });
 }
 
 export function promptModal(message, { title, defaultValue = '', placeholder = '', confirmLabel = 'Salva', cancelLabel = 'Annulla', inputType = 'text', inputMode } = {}) {

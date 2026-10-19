@@ -22,7 +22,7 @@ async function request(method, path, body) {
 // empties the whole memory, so what the user just changed is always read
 // fresh. Searches are never kept: they depend on what is being typed.
 const FRESH_MS = 30_000;
-const NO_CACHE = /\/search|\/lookup|\/recognize|debug/;
+const NO_CACHE = /\/search|\/lookup|\/recognize|debug|\/api\/backup/;
 const cache = new Map(); // path → { at, promise, ok, refreshing }
 
 function get(path) {

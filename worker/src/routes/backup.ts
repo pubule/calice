@@ -1,0 +1,278 @@
+import { Hono } from 'hono';
+import { requireAuth } from '../lib/session';
+import { detectImageType } from './photos';
+import type { Env } from '../index';
+
+// "Scarica backup" / "Ripristina da backup" in Profilo: everything about the
+// caller's cellars (wines, bottles, places, elements, every note, wishlist,
+// photos) plus their own tastings, as one file the user keeps. The photos'
+// bytes are added by the client (it downloads `files`), so this JSON stays
+// small; on restore the client re-uploads only the photos R2 no longer has.
+// Restore replaces (choice R1): each cellar in the file goes back exactly as
+// it was. It never deletes anything from R2, and it first saves the current
+// state under restore-safety/<userId>/, so a restore can itself be undone.
+
+const FORMAT = 'calice-user-backup';
+const WINE_IMAGE = '/api/wine-images/';
+const SAFETY_PREFIX = 'restore-safety/';
+const SAFETY_KEEP = 5;
+const MAX_FILE_BYTES = 5_000_000;
+const COLUMN = /^[a-z_][a-z0-9_]*$/;
+
+type Row = Record<string, unknown>;
+const TABLES = ['cellars', 'cellar_elements', 'bottles', 'bottle_places', 'tasting_notes', 'photos', 'wishlist_items', 'wines', 'tastings', 'users'] as const;
+type Table = (typeof TABLES)[number];
+export type UserBackup = {
+  format: typeof FORMAT;
+  version: 1;
+  createdAt: string;
+  user: { email: string; name: string };
+  files: { key: string; url: string }[];
+} & Record<Table, Row[]>;
+
+const MINE = 'select cellar_id from cellar_members where user_id = ?1';
+const MY_BOTTLES = `select id from bottles where cellar_id in (${MINE})`;
+
+export async function buildUserBackup(db: D1Database, userId: number): Promise<UserBackup> {
+  const q = (sql: string) => db.prepare(sql).bind(userId);
+  const results = await db.batch<Row>([
+    q(`select * from cellars where id in (${MINE}) order by id`),
+    q(`select * from cellar_elements where cellar_id in (${MINE}) order by id`),
+    q(`select * from bottles where cellar_id in (${MINE}) order by id`),
+    q(`select * from bottle_places where bottle_id in (${MY_BOTTLES}) order by id`),
+    q(`select * from tasting_notes where bottle_id in (${MY_BOTTLES}) order by id`),
+    q(`select * from photos where bottle_id in (${MY_BOTTLES}) order by id`),
+    q(`select * from wishlist_items where cellar_id in (${MINE}) order by id`),
+    q(`select * from wines where id in (select wine_id from bottles where cellar_id in (${MINE})
+                                      union select wine_id from wishlist_items where cellar_id in (${MINE})) order by id`),
+    q('select * from tastings where user_id = ?1 order by id'),
+  ]);
+  const t = Object.fromEntries(TABLES.filter((n) => n !== 'users').map((name, i) => [name, results[i].results])) as Record<Table, Row[]>;
+  // Everyone the rows point at, to match them by email on restore.
+  const people = new Set<unknown>([userId, ...t.tasting_notes.map((r) => r.user_id), ...t.bottles.map((r) => r.added_by),
+    ...t.wishlist_items.map((r) => r.added_by), ...t.photos.map((r) => r.uploaded_by), ...t.cellars.map((r) => r.owner_id)]);
+  t.users = (await db.prepare('select id, email, name from users where id in (select value from json_each(?))').bind(JSON.stringify([...people])).all<Row>()).results;
+  for (const w of t.wines) delete w.search_text; // derived, rebuilt by the search
+  const me = t.users.find((u) => u.id === userId)!;
+  const files = new Map<string, string>();
+  for (const p of t.photos) files.set(String(p.r2_key), `/api/photos/${encodeURIComponent(String(p.r2_key))}`);
+  for (const w of t.wines) {
+    const url = String(w.image_url ?? '');
+    if (url.startsWith(WINE_IMAGE)) files.set(decodeURIComponent(url.slice(WINE_IMAGE.length)), url);
+  }
+  return {
+    format: FORMAT, version: 1, createdAt: new Date().toISOString(),
+    user: { email: String(me.email), name: String(me.name) },
+    files: [...files].map(([key, url]) => ({ key, url })),
+    ...t,
+  };
+}
+
+// A file from the user: only plain rows of plain values get through.
+function readBackup(body: unknown): UserBackup | null {
+  const b = body as Partial<UserBackup> | null;
+  if (!b || b.format !== FORMAT || b.version !== 1 || typeof b.user?.email !== 'string') return null;
+  for (const name of TABLES) {
+    const rows = b[name] ?? [];
+    if (!Array.isArray(rows)) return null;
+    for (const row of rows) {
+      if (!row || typeof row !== 'object' || Array.isArray(row)) return null;
+      for (const [k, v] of Object.entries(row)) {
+        if (!COLUMN.test(k) || !(v === null || typeof v === 'string' || typeof v === 'number')) return null;
+      }
+    }
+    (b as Record<string, unknown>)[name] = rows;
+  }
+  return b as UserBackup;
+}
+
+const ids = (rows: Row[], key = 'id') => JSON.stringify(rows.map((r) => r[key]));
+const wineImageKey = (url: unknown) => (typeof url === 'string' && url.startsWith(WINE_IMAGE) ? decodeURIComponent(url.slice(WINE_IMAGE.length)) : null);
+
+async function saveSafetyCopy(env: Env, userId: number) {
+  const prefix = `${SAFETY_PREFIX}${userId}/`;
+  await env.PHOTOS.put(`${prefix}${new Date().toISOString()}.json`, JSON.stringify(await buildUserBackup(env.DB, userId)), {
+    httpMetadata: { contentType: 'application/json' },
+  });
+  const keys = (await env.PHOTOS.list({ prefix })).objects.map((o) => o.key).sort();
+  const old = keys.slice(0, Math.max(0, keys.length - SAFETY_KEEP));
+  if (old.length) await env.PHOTOS.delete(old);
+}
+
+export async function restoreUserBackup(env: Env, userId: number, b: UserBackup) {
+  const db = env.DB;
+  const [meRes, mineRes, maxRes, winesRes, usersRes] = await db.batch<Row>([
+    db.prepare('select email from users where id = ?').bind(userId),
+    db.prepare('select cellar_id from cellar_members where user_id = ?').bind(userId),
+    db.prepare(`select ${['cellars', 'cellar_elements', 'bottles', 'bottle_places', 'tasting_notes', 'photos', 'wishlist_items', 'wines', 'tastings']
+      .map((t) => `(select coalesce(max(id), 0) from ${t}) as ${t}`).join(', ')}`),
+    db.prepare('select id, name, producer from wines where id in (select value from json_each(?))').bind(ids(b.wines)),
+    db.prepare('select id, email from users where email in (select value from json_each(?))').bind(ids(b.users, 'email')),
+  ]);
+  const myEmail = String(meRes.results[0].email);
+  const mine = new Set(mineRes.results.map((r) => Number(r.cellar_id)));
+  const max = maxRes.results[0] as Record<string, number>;
+  const next = (table: string) => ++max[table];
+
+  // Who is who: by email, so a file works on another database too.
+  const userByEmail = new Map(usersRes.results.map((u) => [String(u.email), Number(u.id)]));
+  userByEmail.set(myEmail, userId);
+  const userMap = new Map<unknown, number>();
+  for (const u of b.users) {
+    const id = userByEmail.get(String(u.email));
+    if (id) userMap.set(u.id, id);
+  }
+  const userOr = (old: unknown, fallback: number | null) => userMap.get(old) ?? fallback;
+
+  const stmts: D1PreparedStatement[] = [];
+  const insert = (table: string, row: Row, override: Row, upsert = false) => {
+    const data: Row = { ...row, ...override };
+    const cols = Object.keys(data).filter((c) => COLUMN.test(c));
+    const conflict = upsert ? ` on conflict(id) do update set ${cols.filter((c) => c !== 'id').map((c) => `"${c}" = excluded."${c}"`).join(', ')}` : '';
+    stmts.push(db.prepare(`insert into ${table} (${cols.map((c) => `"${c}"`).join(', ')}) values (${cols.map(() => '?').join(', ')})${conflict}`)
+      .bind(...cols.map((c) => data[c] ?? null)));
+  };
+
+  // Cellars: one the caller is still in is emptied and refilled; any other
+  // (deleted since, or another database) comes back as a new one.
+  const cellarMap = new Map<unknown, number>();
+  const replaced: number[] = [];
+  for (const c of b.cellars) {
+    if (mine.has(Number(c.id))) {
+      cellarMap.set(c.id, Number(c.id));
+      replaced.push(Number(c.id));
+    } else {
+      const id = next('cellars');
+      cellarMap.set(c.id, id);
+      insert('cellars', c, { id, owner_id: userId });
+      stmts.push(db.prepare(`insert into cellar_members (cellar_id, user_id, role) values (?, ?, 'owner')`).bind(id, userId));
+    }
+  }
+  if (!cellarMap.size) return { error: 'Nel file non c\'è nessuna cantina.' } as const;
+
+  // Children first (foreign keys), parents last.
+  const R = JSON.stringify(replaced);
+  const inR = 'select value from json_each(?)';
+  const rBottles = `select id from bottles where cellar_id in (${inR})`;
+  const sameUser = b.user.email === myEmail;
+  stmts.unshift(
+    db.prepare(`delete from bottle_places where bottle_id in (${rBottles})`).bind(R),
+    db.prepare(`delete from photos where bottle_id in (${rBottles})`).bind(R),
+    db.prepare(`delete from tasting_notes where bottle_id in (${rBottles})`).bind(R),
+    db.prepare(`delete from bottles where cellar_id in (${inR})`).bind(R),
+    db.prepare(`delete from wishlist_items where cellar_id in (${inR})`).bind(R),
+    db.prepare(`delete from cellar_elements where cellar_id in (${inR})`).bind(R),
+    ...(sameUser ? [db.prepare('delete from tastings where user_id = ?').bind(userId)] : []),
+  );
+  for (const c of b.cellars) if (replaced.includes(Number(c.id))) stmts.push(db.prepare('update cellars set name = ? where id = ?').bind(c.name ?? '', c.id));
+
+  // Wines are shared rows: the same id is updated when it is still that wine
+  // (or free), otherwise the file's wine comes back under a new id.
+  const existing = new Map(winesRes.results.map((w) => [Number(w.id), w]));
+  const wineMap = new Map<unknown, number>();
+  for (const w of b.wines) {
+    const now = existing.get(Number(w.id));
+    const same = !now || (now.name === w.name && now.producer === w.producer);
+    const id = same ? Number(w.id) : next('wines');
+    wineMap.set(w.id, id);
+    insert('wines', w, { id, created_by: userOr(w.created_by, null), search_text: null }, same);
+  }
+
+  const elementMap = new Map<unknown, number>();
+  for (const e of b.cellar_elements) {
+    const cellar = cellarMap.get(e.cellar_id);
+    if (cellar == null) continue;
+    const id = next('cellar_elements');
+    elementMap.set(e.id, id);
+    insert('cellar_elements', e, { id, cellar_id: cellar });
+  }
+  const bottleMap = new Map<unknown, number>();
+  for (const bt of b.bottles) {
+    const cellar = cellarMap.get(bt.cellar_id);
+    const wine = wineMap.get(bt.wine_id);
+    if (cellar == null || wine == null) continue;
+    const id = next('bottles');
+    bottleMap.set(bt.id, id);
+    // The old one-place columns point at old element ids: places are in bottle_places.
+    insert('bottles', bt, { id, cellar_id: cellar, wine_id: wine, added_by: userOr(bt.added_by, userId), element_id: null, slot_tier: null, slot_col: null, slot_depth: null });
+  }
+  for (const p of b.bottle_places) {
+    const bottle = bottleMap.get(p.bottle_id);
+    const element = elementMap.get(p.element_id);
+    if (bottle != null && element != null) insert('bottle_places', p, { id: next('bottle_places'), bottle_id: bottle, element_id: element });
+  }
+  let notes = 0;
+  for (const n of b.tasting_notes) {
+    const bottle = bottleMap.get(n.bottle_id);
+    const user = userOr(n.user_id, null);
+    if (bottle == null || user == null) continue; // a friend who is not on this database
+    insert('tasting_notes', n, { id: next('tasting_notes'), bottle_id: bottle, user_id: user });
+    notes++;
+  }
+  const photoKeys: string[] = [];
+  for (const p of b.photos) {
+    const bottle = bottleMap.get(p.bottle_id);
+    if (bottle == null) continue;
+    insert('photos', p, { id: next('photos'), bottle_id: bottle, uploaded_by: userOr(p.uploaded_by, userId) });
+    photoKeys.push(String(p.r2_key));
+  }
+  for (const w of b.wishlist_items) {
+    const cellar = cellarMap.get(w.cellar_id);
+    const wine = wineMap.get(w.wine_id);
+    if (cellar != null && wine != null) insert('wishlist_items', w, { id: next('wishlist_items'), cellar_id: cellar, wine_id: wine, added_by: userOr(w.added_by, userId) });
+  }
+  if (sameUser) for (const t of b.tastings) insert('tastings', t, { id: next('tastings'), user_id: userId });
+
+  await saveSafetyCopy(env, userId);
+  await db.batch(stmts); // one transaction: all or nothing
+
+  const keys = new Set([...photoKeys, ...b.wines.map((w) => wineImageKey(w.image_url)).filter((k): k is string => !!k)]);
+  const missingFiles: string[] = [];
+  for (const key of keys) if (!(await env.PHOTOS.head(key))) missingFiles.push(key);
+  return { wines: bottleMap.size, notes, missingFiles } as const;
+}
+
+// May the caller put this photo back? Only a key a row of their cellars
+// points at, and only when R2 has lost it.
+async function fileWanted(env: Env, key: string, userId: number) {
+  const row = await env.DB
+    .prepare(
+      `select 1 from photos where r2_key = ?2 and bottle_id in (${MY_BOTTLES})
+       union select 1 from wines where image_url = ?3 and id in (select wine_id from bottles where cellar_id in (${MINE})
+                                                       union select wine_id from wishlist_items where cellar_id in (${MINE}))`,
+    )
+    .bind(userId, key, WINE_IMAGE + encodeURIComponent(key))
+    .first();
+  return row !== null;
+}
+
+export const backupRoutes = new Hono<{ Bindings: Env; Variables: { userId: number } }>();
+backupRoutes.use('*', requireAuth);
+
+backupRoutes.get('/', async (c) => c.json(await buildUserBackup(c.env.DB, c.get('userId'))));
+
+backupRoutes.post('/saved', async (c) => {
+  await c.env.DB.prepare(`update users set last_backup_at = datetime('now') where id = ?`).bind(c.get('userId')).run();
+  return c.json({ ok: true });
+});
+
+backupRoutes.post('/restore', async (c) => {
+  const backup = readBackup(await c.req.json().catch(() => null));
+  if (!backup) return c.json({ error: 'Questo file non è un backup di Calice.' }, 400);
+  const result = await restoreUserBackup(c.env, c.get('userId'), backup);
+  if ('error' in result) return c.json({ error: result.error }, 400);
+  return c.json(result);
+});
+
+backupRoutes.put('/files/:key', async (c) => {
+  const key = decodeURIComponent(c.req.param('key'));
+  const userId = c.get('userId');
+  if (!(await fileWanted(c.env, key, userId))) return c.json({ error: 'not found' }, 404);
+  if (await c.env.PHOTOS.head(key)) return c.json({ ok: true }); // never overwrite
+  const bytes = await c.req.arrayBuffer();
+  if (bytes.byteLength > MAX_FILE_BYTES) return c.json({ error: 'too big' }, 400);
+  const type = detectImageType(bytes);
+  if (!type) return c.json({ error: 'not an image' }, 400);
+  await c.env.PHOTOS.put(key, bytes, { httpMetadata: { contentType: type } });
+  return c.json({ ok: true });
+});

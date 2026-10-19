@@ -2,6 +2,7 @@ import { api } from '../api-client.js';
 import { escapeHtml, skeletonBar } from '../util.js';
 import { alertModal, confirmModal, promptModal } from '../modal.js';
 import { navigate } from '../router.js';
+import { showToast } from '../toast.js';
 import { drinkWindow, drinkSummary } from '../drink-window.js';
 import { TASTE_AXES, toStep } from '../tasting-profile.js';
 
@@ -149,6 +150,137 @@ document.getElementById('export-csv-row')?.addEventListener('click', async () =>
   URL.revokeObjectURL(url);
 });
 
+// Backup (worker/src/routes/backup.ts): one file with everything about the
+// user's cellars, photos included, kept by the user (Files / iCloud Drive).
+const BACKUP_LATE_DAYS = 30;
+
+function showBackupWhen(at) {
+  const el = document.getElementById('backup-when');
+  if (!el) return;
+  const days = at ? Math.floor((Date.now() - Date.parse(`${String(at).replace(' ', 'T')}Z`)) / 86_400_000) : null;
+  el.textContent = days == null ? 'Mai fatto' : days <= 0 ? 'Ultimo backup oggi' : days === 1 ? 'Ultimo backup ieri' : `Ultimo backup ${days} giorni fa`;
+  el.classList.toggle('late', days == null || days > BACKUP_LATE_DAYS);
+}
+
+function backupCounts(b, photos) {
+  const bottles = (b.bottles ?? []).reduce((n, r) => n + (Number(r.quantity) || 0), 0);
+  const notes = (b.tasting_notes ?? []).length + (b.tastings ?? []).length;
+  const parts = [`${(b.bottles ?? []).length} vini`, `${bottles} bottiglie`, `${notes} note`];
+  if (photos) parts.push(`${photos} foto`);
+  return parts.join(', ');
+}
+
+const blobToBase64 = (blob) => new Promise((resolve, reject) => {
+  const reader = new FileReader();
+  reader.onload = () => resolve(String(reader.result).split(',')[1]);
+  reader.onerror = reject;
+  reader.readAsDataURL(blob);
+});
+const base64ToBlob = ({ type, data }) => new Blob([Uint8Array.from(atob(data), (c) => c.charCodeAt(0))], { type });
+
+function downloadFile(file) {
+  const url = URL.createObjectURL(file);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = file.name;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  return true;
+}
+
+// The share sheet ("Salva in File") where there is one, a download otherwise.
+// Resolves false when the user closes the sheet without saving.
+function saveFile(file) {
+  if (navigator.canShare?.({ files: [file] })) {
+    return navigator.share({ files: [file] }).then(() => true, (err) => (err?.name === 'AbortError' ? false : downloadFile(file)));
+  }
+  return Promise.resolve(downloadFile(file));
+}
+
+let backupBusy = false;
+document.getElementById('backup-row')?.addEventListener('click', async () => {
+  if (backupBusy) return;
+  backupBusy = true;
+  const when = document.getElementById('backup-when');
+  when.textContent = 'Preparo il backup…';
+  when.classList.remove('late');
+  try {
+    const backup = await api.get('/api/backup');
+    const files = {};
+    let lost = 0;
+    for (const f of backup.files) {
+      try {
+        const res = await fetch(f.url, { credentials: 'include' });
+        if (!res.ok) throw new Error(String(res.status));
+        const blob = await res.blob();
+        files[f.key] = { type: blob.type, data: await blobToBase64(blob) };
+      } catch {
+        lost++;
+      }
+    }
+    backup.files = files;
+    const file = new File([JSON.stringify(backup)], `calice-backup-${new Date().toISOString().slice(0, 10)}.json`, { type: 'application/json' });
+    const size = file.size < 1_000_000 ? `${Math.max(1, Math.round(file.size / 1000))} KB` : `${(file.size / 1_000_000).toFixed(1).replace('.', ',')} MB`;
+    let saving = Promise.resolve(false);
+    const ok = await confirmModal(
+      `${backupCounts(backup, Object.keys(files).length)} (${size}).${lost ? ` ${lost} foto non sono state trovate.` : ''} Scegli «Salva in File» e mettilo in iCloud Drive.`,
+      { title: 'Backup pronto', confirmLabel: 'Salva in File', onConfirm: () => { saving = saveFile(file); } },
+    );
+    if (ok && (await saving)) {
+      await api.post('/api/backup/saved');
+      showToast('Backup salvato');
+    }
+  } catch (err) {
+    console.error('backup failed', err);
+    await alertModal('Backup non riuscito. Controlla la connessione e riprova.', { title: 'Scarica backup' });
+  } finally {
+    backupBusy = false;
+    showBackupWhen((await api.get('/api/auth/me').catch(() => ({}))).last_backup_at);
+  }
+});
+
+document.getElementById('restore-row')?.addEventListener('click', () => {
+  const input = document.getElementById('restore-file');
+  input.value = '';
+  input.click();
+});
+
+document.getElementById('restore-file')?.addEventListener('change', async (e) => {
+  const picked = e.target.files?.[0];
+  if (!picked) return;
+  let backup = null;
+  try {
+    backup = JSON.parse(await picked.text());
+  } catch {
+    backup = null;
+  }
+  if (backup?.format !== 'calice-user-backup') {
+    await alertModal('Questo file non è un backup di Calice.', { title: 'Ripristina da backup' });
+    return;
+  }
+  const { files = {}, ...rows } = backup;
+  const date = new Date(backup.createdAt).toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' });
+  const ok = await confirmModal(
+    `Le tue cantine tornano come il ${date}: ${backupCounts(rows, Object.keys(files).length)}. Quello aggiunto o cambiato dopo si perde. Prima salvo una copia di com'è adesso.`,
+    { title: `Ripristinare il backup del ${date}?`, confirmLabel: 'Ripristina', danger: true },
+  );
+  if (!ok) return;
+  try {
+    const result = await api.post('/api/backup/restore', rows);
+    let lost = 0;
+    for (const key of result.missingFiles) {
+      const f = files[key];
+      const res = f ? await fetch(`/api/backup/files/${encodeURIComponent(key)}`, { method: 'PUT', credentials: 'include', headers: { 'content-type': f.type }, body: base64ToBlob(f) }).catch(() => null) : null;
+      if (!res?.ok) lost++;
+    }
+    showToast(lost ? `Cantina ripristinata al ${date}; ${lost} foto non recuperate` : `Cantina ripristinata al ${date}`);
+    await mountProfile();
+  } catch (err) {
+    console.error('restore failed', err);
+    await alertModal(err.status === 400 ? 'Il file è danneggiato o non è un backup di Calice. Non è stato cambiato niente.' : 'Ripristino non riuscito: non è stato cambiato niente. Controlla la connessione e riprova.', { title: 'Ripristina da backup' });
+  }
+});
+
 document.getElementById('notif-toggle')?.addEventListener('change', async (e) => {
   if (!e.target.checked) return;
   try {
@@ -189,6 +321,7 @@ export async function mountProfile() {
   document.getElementById('profile-avatar').textContent = String(user.name).slice(0, 2).toUpperCase();
   document.getElementById('profile-name').textContent = user.name;
   document.getElementById('profile-email').textContent = user.email;
+  showBackupWhen(user.last_backup_at);
 
   const cellars = await api.get('/api/cellars');
   firstCellarId = cellars[0]?.id ?? null;
