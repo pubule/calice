@@ -43,6 +43,31 @@ export async function downloadImage(url: string, fetchImpl: typeof fetch = fetch
   return bytes;
 }
 
+// Every photo lives in our R2, never as a link to someone else's site (the
+// user's choice: a link can die, and the backups would miss it). A wine saved
+// with a web image (Vivino, Open Food Facts) gets a copy here; if the download
+// fails the link stays and the daily cron tries again. The update only lands
+// if the link is still the wine's photo, so a photo chosen meanwhile wins.
+export async function copyImageToR2(env: Pick<Env, 'DB' | 'PHOTOS'>, wineId: number, url: string, fetchImpl: typeof fetch = fetch): Promise<boolean> {
+  const got = await downloadImage(url, fetchImpl).catch(() => 'download failed');
+  if (typeof got === 'string') return false;
+  const type = detectImageType(got);
+  if (!type) return false;
+  const key = `wines/${wineId}/${crypto.randomUUID()}`;
+  await env.PHOTOS.put(key, got, { httpMetadata: { contentType: type } });
+  const done = await env.DB.prepare('update wines set image_url = ? where id = ? and image_url = ?').bind(PREFIX + encodeURIComponent(key), wineId, url).run();
+  if (!done.meta.changes) await env.PHOTOS.delete(key);
+  return !!done.meta.changes;
+}
+
+// Daily cron: the wines still showing a web link (download failed when saved).
+export async function copyExternalImages(env: Pick<Env, 'DB' | 'PHOTOS'>, fetchImpl: typeof fetch = fetch, limit = 25) {
+  const rows = await env.DB.prepare(`select id, image_url from wines where image_url like 'http%' order by id limit ?`).bind(limit).all<{ id: number; image_url: string }>();
+  let copied = 0;
+  for (const w of rows.results) if (await copyImageToR2(env, w.id, w.image_url, fetchImpl)) copied++;
+  return { copied, left: rows.results.length - copied };
+}
+
 export const wineImageRoutes = new Hono<{ Bindings: Env; Variables: { userId: number } }>();
 wineImageRoutes.use('*', requireAuth);
 

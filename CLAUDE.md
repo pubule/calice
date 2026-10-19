@@ -876,7 +876,16 @@ Gli interi di altri campi (livelli/colonne/profondità degli elementi, anni di
 
 `runWeeklyBackup()` (`worker/src/lib/backup.ts`, dal cron giornaliero) salva
 tutto D1 in `calice-photos/backups/AAAA-MM-GG.json` una volta a settimana e
-tiene le ultime 8. Una **nuova tabella** finisce nella copia da sola (legge
+tiene le ultime 8. Dentro c'è anche `files`: i byte di ogni foto citata da
+`photos.r2_key` e `wines.image_url` (richiesta dell'utente: i backup devono
+avere le foto; gli export CSV no). Un nuovo posto dove si salva una foto va
+aggiunto a `dumpPhotos()` e a `buildUserBackup()`.
+
+**Foto: mai link esterni.** Scelta dell'utente: ogni immagine sta nel nostro
+R2. Un `image_url` dal web viene copiato da `copyImageToR2()`
+(`routes/wine-image.ts`) al salvataggio, e il cron riprova quelli rimasti.
+Un nuovo modo di dare una foto a un vino deve passare da lì, non salvare il
+link. Una **nuova tabella** finisce nella copia da sola (legge
 `sqlite_master`); una tabella che non va copiata va aggiunta a `SKIP`.
 Ripristino (svuota e riempie ogni tabella della copia: si perde quanto
 scritto dopo quella data, quindi scaricare prima anche la copia attuale):
@@ -884,6 +893,7 @@ scritto dopo quella data, quindi scaricare prima anche la copia attuale):
 npx wrangler r2 object get calice-photos/backups/<data>.json --remote --file backup.json
 node worker/scripts/backup-to-sql.ts backup.json > restore.sql
 npx wrangler d1 execute calice-db --remote --file restore.sql
+node worker/scripts/backup-files.ts backup.json foto > put-foto.sh   # poi: sh put-foto.sh
 ```
 Il database deve avere le stesse migrazioni della copia (`backup.migrations`).
 D1 ha anche il suo ripristino a un istante preciso (Time Travel,

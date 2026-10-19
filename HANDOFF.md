@@ -1499,7 +1499,7 @@ questo file è il riassunto "dove eravamo rimasti".
     (`scheduled` in `index.ts`, 08:00 UTC) chiama `runWeeklyBackup()`
     (`worker/src/lib/backup.ts`): se la copia più recente ha almeno una
     settimana, salva tutto il database in R2 come
-    `backups/AAAA-MM-GG.json` e tiene le ultime 8. Ripristino: CLAUDE.md,
+    `backups/AAAA-MM-GG.json` (con le foto dal punto 79) e tiene le ultime 8. Ripristino: CLAUDE.md,
     sezione "Backup". Prima copia attesa il 20 ottobre dopo le 08:00 UTC:
     verificarla con `wrangler r2 object list` / dashboard R2.
 69. **Backup scaricabile e ripristino da Profilo** (build 150, migrazione
@@ -1672,6 +1672,38 @@ questo file è il riassunto "dove eravamo rimasti".
     - Assaggio guidato e Ruota degli aromi invariati.
     - Test: `e2e/tasting-profile.spec.ts`, `e2e/tasting-profile-data.spec.ts`,
       `e2e/bottle-detail.spec.ts` (test "Sentori…").
+
+78. **Note riempite dal web** (solo dati, scelta "2" dell'utente). Aromi e
+    abbinamenti presi dalle schede dei produttori (o dal web, con la fonte)
+    scritti come nota dell'utente su 37 bottiglie della cantina 9; gusto,
+    testo e voto lasciati vuoti (l'unico voto resta il 4,5 della nota 11).
+    Bookmark D1 prima della scrittura:
+    `00000198-00000000-00005109-b88a9d621f771d8e9a28e8c3dfa77a08`.
+
+79. **Foto solo in R2, mai link esterni; backup con le foto** (solo server,
+    richiesta dell'utente "Voglio le foto senza riferimenti esterni").
+    - `copyImageToR2()` (`routes/wine-image.ts`): un vino salvato con
+      un'immagine dal web (Vivino, Open Food Facts) ne riceve una copia in
+      `wines/<id>/<uuid>` prima che `POST /api/wines` risponda. Se il
+      download fallisce resta il link e ci riprova il cron giornaliero
+      (`copyExternalImages()`, 25 per volta, prima del backup). L'update
+      scatta solo se il link è ancora quello: una foto scelta nel frattempo
+      vince.
+    - `POST /api/wines` accetta anche `imageUrl` già nostro
+      (`/api/wine-images/…`): prima era 400, e il codice a barre di un vino
+      in catalogo con foto propria lo propone così.
+    - Backup settimanale: `files` con i byte (base64) di ogni foto citata
+      da `photos.r2_key` e `wines.image_url` (`dumpPhotos()` in
+      `lib/backup.ts`), stessa forma del backup di Profilo. Ripristino
+      foto: `worker/scripts/backup-files.ts`. Circa 8 MB a copia × 8.
+    - Produzione: le 20 immagini Vivino sono state copiate a mano in R2 (dalla
+      copia locale del 19 ottobre) e i vini aggiornati: 0 vini con link
+      esterno. Il backup "Scarica backup" di Profilo le include già (prende
+      ogni `/api/wine-images/`).
+    - Backup manuale completo del 19 ottobre (SQL + tutte le foto) in
+      `C:\Users\pubul\Documents\calice-backups\calice-2026-10-19-1559\`
+      sul PC dell'utente; lo SQL anche in R2
+      `manual-backups/calice-db-2026-10-19-1559.sql`.
 
 ## Cose note, non (ancora) da rifare
 

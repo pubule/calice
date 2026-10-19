@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { env } from 'cloudflare:test';
 import { app } from '../src/index';
-import { downloadImage } from '../src/routes/wine-image';
+import { downloadImage, copyImageToR2, copyExternalImages } from '../src/routes/wine-image';
 
 const signup = (email: string) => ({ 'X-Calice-Dev-Email': email });
 const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3, 4]);
@@ -52,3 +52,33 @@ describe('wine photo chosen by the user', () => {
     expect(await downloadImage('https://example.com/a.png', big)).toBe('too big');
   });
 });
+
+describe('web images copied into R2', () => {
+  const ok = (async () => new Response(PNG, { status: 200 })) as unknown as typeof fetch;
+  const down = (async () => new Response('no', { status: 404 })) as unknown as typeof fetch;
+  const imageOf = async (id: number) => (await env.DB.prepare('select image_url from wines where id = ?').bind(id).first<{ image_url: string }>())!.image_url;
+
+  it('the cron copies every web link, keeps a dead one, and never overwrites a newer photo', async () => {
+    const dead = await env.DB.prepare(`insert into wines (name, producer, country, type, source, image_url) values ('Morto', 'X', 'Italia', 'rosso', 'catalog', 'https://dead.example/x.png') returning id`).first<{ id: number }>();
+    const fetchImpl = (async (u: string) => (String(u).includes('dead') ? down('') : ok(''))) as unknown as typeof fetch;
+    expect(await copyExternalImages(env, fetchImpl)).toEqual({ copied: 1, left: 1 });
+    const url = await imageOf(wineId);
+    expect(url).toMatch(/^\/api\/wine-images\/wines%2F/);
+    expect(new Uint8Array(await (await app.request(url, { headers: auth }, env)).arrayBuffer())).toEqual(PNG);
+    expect(await imageOf(dead!.id)).toBe('https://dead.example/x.png');
+
+    // The link changed meanwhile (the user picked a photo): the copy is dropped.
+    await env.DB.prepare(`update wines set image_url = 'https://images.vivino.com/y.png' where id = ?`).bind(dead!.id).run();
+    expect(await copyImageToR2(env, dead!.id, 'https://images.vivino.com/old.png', ok)).toBe(false);
+    expect(await imageOf(dead!.id)).toBe('https://images.vivino.com/y.png');
+  });
+
+  it('a wine whose photo is already ours can be saved again with that photo', async () => {
+    const own = '/api/wine-images/wines%2F1%2Fabc';
+    const res = await app.request('/api/wines', { method: 'POST', headers: { ...auth, 'content-type': 'application/json' },
+      body: JSON.stringify({ name: 'Nuovo', producer: 'Y', country: 'Italia', type: 'rosso', imageUrl: own }) }, env);
+    expect(res.status).toBe(200);
+    expect((await res.json<any>()).image_url).toBe(own);
+  });
+});
+

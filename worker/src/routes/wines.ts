@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { requireAuth } from '../lib/session';
 import { wineOfVintage } from '../lib/wine-vintage';
+import { copyImageToR2 } from './wine-image';
 import type { Env } from '../index';
 
 export const wineRoutes = new Hono<{ Bindings: Env; Variables: { userId: number } }>();
@@ -92,6 +93,14 @@ wineRoutes.get('/search', async (c) => {
   return c.json(rows.results.map(({ search_text: _, ...wine }) => wine));
 });
 
+// A web image becomes our copy before the wine goes back to the app.
+async function withOwnImage(c: { env: Env }, wine: Record<string, unknown> | null) {
+  const url = wine?.image_url;
+  if (typeof url !== 'string' || !url.startsWith('http')) return wine;
+  if (!(await copyImageToR2(c.env, Number(wine!.id), url))) return wine;
+  return c.env.DB.prepare('select * from wines where id = ?').bind(wine!.id).first();
+}
+
 wineRoutes.post('/', async (c) => {
   const body = await c.req.json<{
     name: string; producer: string; region?: string; country: string; type: string; vintage?: number; barcode?: string;
@@ -111,7 +120,8 @@ wineRoutes.post('/', async (c) => {
   if (body.denomination != null && !isNonEmptyShortString(body.denomination)) {
     return c.json({ error: 'denomination must be 1-200 chars' }, 400);
   }
-  if (body.imageUrl != null) {
+  // A wine photo already in our R2 (suggested from the catalog) is kept as is.
+  if (body.imageUrl != null && !(isNonEmptyShortString(body.imageUrl) && body.imageUrl.startsWith('/api/wine-images/'))) {
     if (!isNonEmptyShortString(body.imageUrl)) {
       return c.json({ error: 'imageUrl must be a valid http(s) URL' }, 400);
     }
@@ -156,7 +166,7 @@ wineRoutes.post('/', async (c) => {
       .bind(body.region ?? null, body.barcode ?? null, body.grapeVariety ?? null, body.denomination ?? null, body.imageUrl ?? null,
         vivinoRating, vivinoCount, extras.alcohol, extras.producerUrl, existing.id)
       .first();
-    return c.json(wine);
+    return c.json(await withOwnImage(c, wine));
   }
 
   const wine = await c.env.DB
@@ -171,7 +181,7 @@ wineRoutes.post('/', async (c) => {
       extras.alcohol, extras.producerUrl, c.get('userId'),
     )
     .first();
-  return c.json(wine);
+  return c.json(await withOwnImage(c, wine));
 });
 
 // A wine row can be referenced by bottles across several cellars (it's a

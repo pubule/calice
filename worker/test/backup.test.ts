@@ -44,4 +44,13 @@ describe('runWeeklyBackup', () => {
     const wine = await env.DB.prepare('select name from wines').first<{ name: string }>();
     expect(wine?.name).toBe("L'Amarone");
   });
+
+  it('holds the bytes of the wine photos and bottle photos', async () => {
+    await env.PHOTOS.put('wines/1/abc', new Uint8Array([1, 2, 3]), { httpMetadata: { contentType: 'image/png' } });
+    await env.DB.prepare(`insert into wines (name, producer, country, type, source, image_url) values ('Foto', 'Z', 'Italia', 'rosso', 'catalog', '/api/wine-images/wines%2F1%2Fabc')`).run();
+    await env.DB.prepare(`insert into wines (name, producer, country, type, source, image_url) values ('Persa', 'Z', 'Italia', 'rosso', 'catalog', '/api/wine-images/wines%2F2%2Fgone')`).run();
+    const { made } = await runWeeklyBackup(env as any, new Date('2026-10-01T08:00:00Z'));
+    const backup = await (await env.PHOTOS.get(made!))!.json<Backup>();
+    expect(backup.files).toEqual({ 'wines/1/abc': { type: 'image/png', data: 'AQID' } });
+  });
 });

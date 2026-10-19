@@ -1,8 +1,9 @@
 // Weekly copy of the whole database, kept in R2 next to the photos
 // (backups/<date>.json, the newest KEEP only). It covers a bad deploy, a
-// wrong edit or a deletion; the photos themselves are not copied (they are
-// already in R2, the copy keeps their keys). To restore one, see
-// worker/scripts/backup-to-sql.ts.
+// wrong edit or a deletion. The photos (bottle photos and wine photos, all in
+// R2) go inside the copy as base64, same shape as the Profilo backup's
+// `files`, so a lost or overwritten photo comes back too. To restore, see
+// worker/scripts/backup-to-sql.ts and worker/scripts/backup-files.ts.
 
 export const BACKUP_PREFIX = 'backups/';
 const KEEP = 8;
@@ -17,7 +18,34 @@ export type Backup = {
   createdAt: string;
   migrations: string[];
   tables: Record<string, Record<string, unknown>[]>;
+  files?: Record<string, { type: string; data: string }>;
 };
+
+const WINE_IMAGE = '/api/wine-images/';
+
+function toBase64(bytes: ArrayBuffer): string {
+  const u8 = new Uint8Array(bytes);
+  let bin = '';
+  for (let i = 0; i < u8.length; i += 0x8000) bin += String.fromCharCode(...u8.subarray(i, i + 0x8000));
+  return btoa(bin);
+}
+
+// The bytes of every photo the rows point at. A key R2 no longer has is
+// simply missing from the result.
+export async function dumpPhotos(photos: R2Bucket, tables: Backup['tables']): Promise<NonNullable<Backup['files']>> {
+  const keys = new Set<string>();
+  for (const p of tables.photos ?? []) if (p.r2_key) keys.add(String(p.r2_key));
+  for (const w of tables.wines ?? []) {
+    const url = String(w.image_url ?? '');
+    if (url.startsWith(WINE_IMAGE)) keys.add(decodeURIComponent(url.slice(WINE_IMAGE.length)));
+  }
+  const files: NonNullable<Backup['files']> = {};
+  for (const key of keys) {
+    const object = await photos.get(key);
+    if (object) files[key] = { type: object.httpMetadata?.contentType ?? 'application/octet-stream', data: toBase64(await object.arrayBuffer()) };
+  }
+  return files;
+}
 
 export async function dumpDatabase(db: D1Database): Promise<Backup> {
   const names = await db.prepare(`select name from sqlite_master where type = 'table' order by name`).all<{ name: string }>();
@@ -49,6 +77,7 @@ export async function runWeeklyBackup(env: { DB: D1Database; PHOTOS: R2Bucket },
   if (!(age < EVERY_DAYS - 0.5)) {
     made = `${BACKUP_PREFIX}${now.toISOString().slice(0, 10)}.json`;
     const backup = await dumpDatabase(env.DB);
+    backup.files = await dumpPhotos(env.PHOTOS, backup.tables);
     await env.PHOTOS.put(made, JSON.stringify(backup), { httpMetadata: { contentType: 'application/json' } });
     if (!keys.includes(made)) keys.push(made);
   }

@@ -9,7 +9,7 @@ import { cellarWishlistRoutes, wishlistItemRoutes } from './routes/wishlist';
 import { noteRoutes, palateRoutes } from './routes/notes';
 import { photoRoutes, photoFileRoutes } from './routes/photos';
 import { landscapeRoutes } from './routes/landscape';
-import { wineImageRoutes, wineImageFileRoutes } from './routes/wine-image';
+import { wineImageRoutes, wineImageFileRoutes, copyExternalImages } from './routes/wine-image';
 import { runWeeklyBackup } from './lib/backup';
 import { backupRoutes } from './routes/backup';
 
@@ -48,6 +48,7 @@ app.route('/api/backup', backupRoutes);
 export default {
   fetch: app.fetch,
   scheduled: async (_event: ScheduledEvent, env: Env) => {
+    await copyExternalImages(env).catch(() => {}); // before the backup, so it holds the copies
     await runWeeklyBackup(env);
   },
 };
