@@ -10,6 +10,7 @@ import { mountAromas } from './screens/aromas.js';
 import { mountTasting } from './screens/tasting.js';
 import './sheet-gestures.js';
 import { warmUp } from './warmup.js';
+import { startLoaderGlass } from './loader-glass.js';
 
 // Views without a tab of their own light the tab they are reached from.
 // Esplora is a sub-section opened from Home, so it keeps Home lit. The raised
@@ -214,15 +215,14 @@ document.querySelector('.nav-add')?.addEventListener('click', () => openAddSheet
 // The start-up loader stays up while warmUp() fetches what every screen
 // needs; the first screen renders underneath, then the loader fades away.
 const loader = document.getElementById('app-loader');
+const glass = startLoaderGlass(document.getElementById('app-loader-glass'));
 const hideLoader = () => {
+  glass.set(1);
   loader?.classList.add('done');
-  setTimeout(() => loader?.remove(), 400);
+  setTimeout(() => { glass.stop(); loader?.remove(); }, 400);
 };
 me()
-  .then(() => warmUp((p) => {
-    const fill = document.getElementById('app-loader-fill');
-    if (fill) fill.style.width = `${Math.round(p * 100)}%`;
-  }))
+  .then(() => warmUp((p) => glass.set(p)))
   .then(() => startRouter())
   .then(() => requestAnimationFrame(hideLoader))
   .catch((err) => {

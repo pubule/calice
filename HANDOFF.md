@@ -1738,6 +1738,17 @@ questo file è il riassunto "dove eravamo rimasti".
       `index.ts` a `runWeeklyBackup`, le automatiche vengono da `landscapes`).
     - Poche foto valide su Commons per Piave (3, una sola del Piave vero),
       Lessini, Franciacorta, Friuli e Chianti (3-5).
+    - Il service worker tiene gli sfondi (`/api/landscape-images/`) nella sua
+      cache `calice-landscapes-v2` (la v1 aveva i link a Commons).
+
+81. **Caricamento: il calice si riempie di vino** (build 163, D1 scelto
+    dall'utente su `https://claude.ai/artifact/PbPkYUqM2GRosjLeLw3sZL`). Tolti
+    l'icona con il quadrato e la barra: c'è solo il disegno del logo
+    (`public/loader-glass.png`, l'icona senza quadrato e senza la riga del
+    vino) e il vino sale nel calice con la superficie che ondeggia
+    (`js/loader-glass.js`, canvas; `loader-bowl.png` è la forma interna del
+    bicchiere). L'avanzamento è quello di `warmUp()`, che si ferma a un quarto
+    finché non conosce le bottiglie. Con "Riduci movimento" niente onde.
 
 ## Cose note, non (ancora) da rifare
 

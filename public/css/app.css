@@ -282,12 +282,11 @@
   /* ---- caricamento iniziale (js/warmup.js) ---- */
   .app-loader{position:absolute; inset:0; z-index:100; background:#f7f5f0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; transition:opacity .3s ease;}
   .app-loader.done{opacity:0; pointer-events:none;}
-  .app-loader-icon{width:76px; height:76px; border-radius:18px; box-shadow:0 10px 24px -14px rgba(36,30,26,.45), 0 0 0 .5px rgba(36,30,26,.12);}
+  /* The logo's drawing, no square: the glass fills with wine (js/loader-glass.js). */
+  .app-loader-glass{width:104px; aspect-ratio:378/376; background:url(/loader-glass.png) center/contain no-repeat;}
   .app-loader-name{font-family:'Newsreader',serif; font-weight:500; font-size:calc(26rem/17); color:#241e1a; margin-top:4px;}
-  .app-loader-bar{width:140px; height:3px; border-radius:2px; background:#e2e0d8; overflow:hidden; margin-top:6px;}
-  .app-loader-bar span{display:block; height:100%; width:0; background:#5b2333; border-radius:2px; transition:width .25s ease;}
   .app-loader-text{font-size:calc(12rem/17); color:#736a5d;}
-  @media (prefers-reduced-motion: reduce){ .app-loader, .app-loader-bar span{transition:none;} }
+  @media (prefers-reduced-motion: reduce){ .app-loader{transition:none;} }
 
   /* ---- dettaglio vino: posizione fisica + recensioni (overlay) ---- */
   .detail-overlay{ position:absolute; inset:0; background:rgba(20,15,12,.4); z-index:20; display:flex; align-items:flex-end; opacity:0; pointer-events:none; transition:opacity .25s ease; }

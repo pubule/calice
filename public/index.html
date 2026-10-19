@@ -49,9 +49,8 @@
   <!-- Start-up loader (js/warmup.js): stays until the cellars, the landscapes
        and the bottle photos are loaded, so the app is smooth afterwards. -->
   <div class="app-loader" id="app-loader" role="status" aria-live="polite">
-    <img class="app-loader-icon" src="/apple-touch-icon.png" alt="">
+    <canvas class="app-loader-glass" id="app-loader-glass" aria-hidden="true"></canvas>
     <div class="app-loader-name">Calice</div>
-    <div class="app-loader-bar" aria-hidden="true"><span id="app-loader-fill"></span></div>
     <div class="app-loader-text">Preparo la cantina…</div>
   </div>
   <div class="view active" id="view-home">
@@ -206,7 +205,7 @@
     <input type="file" id="restore-file" class="restore-file" accept=".json,application/json" aria-hidden="true" tabindex="-1">
     <div class="logout" role="button" tabindex="0">Esci</div>
     <div class="app-footer">
-      <div class="app-build">build 162</div>
+      <div class="app-build">build 163</div>
       <div class="app-credit"><a href="https://www.flaticon.com/free-icons/wine" target="_blank" rel="noopener">Wine icons created by iconixar - Flaticon</a></div>
       <div class="app-credit">Foto dei paesaggi da <a href="https://commons.wikimedia.org/" target="_blank" rel="noopener">Wikimedia Commons</a>, autori e licenze nella scheda di ogni vino</div>
     </div>

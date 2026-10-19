@@ -1,4 +1,4 @@
-const CACHE = 'calice-shell-v162';
+const CACHE = 'calice-shell-v163';
 const SHELL_FILES = [
   '/', '/index.html', '/css/app.css',
   '/js/main.js', '/js/api-client.js', '/js/router.js', '/js/auth.js', '/js/util.js', '/js/modal.js',
@@ -6,6 +6,7 @@ const SHELL_FILES = [
   '/js/screens/home.js', '/js/screens/cellar.js', '/js/screens/add.js',
   '/js/screens/stats.js', '/js/screens/profile.js', '/js/screens/detail.js',
   '/js/screens/explore.js', '/js/screens/aromas.js', '/js/screens/tasting.js', '/js/wine-expectation.js', '/js/data/wine-atlas.js', '/js/data/aroma-guide.js',
+  '/js/loader-glass.js', '/loader-glass.png', '/loader-bowl.png',
   '/manifest.webmanifest', '/icon-192.png', '/icon-512.png', '/apple-touch-icon.png',
 ];
 
@@ -27,21 +28,20 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Landscape photos (Wikimedia Commons, see worker/src/lib/landscape.ts) never
-// change once chosen: kept in their own cache, served from it first, so a
-// wine's sheet shows its photo at once even after iOS empties the HTTP
-// cache. Fetched in CORS mode (Commons allows it) so the stored copy is a
-// normal response, not an opaque one that Safari counts as megabytes.
-const IMAGES = 'calice-landscapes-v1';
+// Landscape photos (our R2 copies, see worker/src/lib/landscape.ts) never
+// change once chosen (a key is never reused): kept in their own cache, served
+// from it first, so a wine's sheet shows its photo at once even after iOS
+// empties the HTTP cache. v1 held the old links to Wikimedia Commons.
+const IMAGES = 'calice-landscapes-v2';
 
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
-  if (url.hostname === 'upload.wikimedia.org' && event.request.method === 'GET') {
+  if (url.origin === location.origin && url.pathname.startsWith('/api/landscape-images/') && event.request.method === 'GET') {
     event.respondWith(
       caches.open(IMAGES).then(async (cache) => {
         const hit = await cache.match(url.href);
         if (hit) return hit;
-        const res = await fetch(url.href, { mode: 'cors', credentials: 'omit' });
+        const res = await fetch(event.request);
         if (res.ok) cache.put(url.href, res.clone()).catch(() => {});
         return res;
       }).catch(() => fetch(event.request)),
