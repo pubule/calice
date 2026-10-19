@@ -2,6 +2,8 @@ import { api } from '../api-client.js';
 import { escapeHtml, skeletonBar } from '../util.js';
 import { alertModal, confirmModal, promptModal } from '../modal.js';
 import { navigate } from '../router.js';
+import { drinkWindow, drinkSummary } from '../drink-window.js';
+import { TASTE_AXES, toStep } from '../tasting-profile.js';
 
 function urlBase64ToUint8Array(base64String) {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
@@ -75,23 +77,71 @@ document.getElementById('help-row')?.addEventListener('click', () => {
   );
 });
 
+// Excel in Italian reads ";" as the separator and "," as the decimal mark;
+// the BOM makes it read accents as UTF-8.
 function csvField(value) {
   const s = String(value ?? '');
-  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  return /[";\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 
+const decimal = (n) => (n == null || n === '' ? '' : String(Math.round(Number(n) * 100) / 100).replace('.', ','));
+const capitalized = (t) => (t ? t[0].toUpperCase() + t.slice(1) : '');
+const dateOnly = (d) => (d ? String(d).slice(0, 10) : '');
+const spot = (p) => (p.slot_tier == null ? p.element_name : `${p.element_name} · L${p.slot_tier} ${String.fromCharCode(65 + p.slot_col)}.${p.slot_depth}`);
+const WINDOW_BASIS = { manual: 'impostata a mano', disgorged: 'stimata dalla sboccatura', vintage: "stimata dall'annata", added: "stimata dalla data d'inserimento" };
+const hasContent = (n) => n.text || n.flavor_tags?.length || n.food_pairings?.length || TASTE_AXES.some((a) => n[`taste_${a.id}`] != null);
+
+// One row per wine with everything the app shows about it, including the
+// caller's latest tasting note.
+const CSV_COLUMNS = [
+  ['Cantina', (b) => b.cellarName],
+  ['Vino', (b) => b.name],
+  ['Produttore', (b) => b.producer],
+  ['Annata', (b) => b.vintage],
+  ['Tipo', (b) => capitalized(b.type)],
+  ['Paese', (b) => b.country],
+  ['Regione', (b) => b.region],
+  ['Denominazione', (b) => b.denomination],
+  ['Vitigni', (b) => b.grape_variety],
+  ['Gradazione (% vol)', (b) => decimal(b.alcohol)],
+  ['Bottiglie', (b) => b.quantity],
+  ['Prezzo a bottiglia (€)', (b) => decimal(b.price_paid)],
+  ['Valore totale (€)', (b) => (b.price_paid == null ? '' : decimal(b.price_paid * b.quantity))],
+  ['Posizione in cantina', (b) => (b.places ?? []).map(spot).join(', ')],
+  ['Sboccatura', (b) => b.disgorged_at],
+  ['Da bere dal', (b) => b.window.from],
+  ['Da bere fino al', (b) => b.window.until],
+  ['Al meglio dal', (b) => b.window.peakFrom],
+  ['Al meglio fino al', (b) => b.window.peakUntil],
+  ['Stato', (b) => drinkSummary(b.window).title],
+  ['Finestra', (b) => WINDOW_BASIS[b.window.basis]],
+  ['Il mio voto', (b) => decimal(b.my_rating)],
+  ['Voto Vivino', (b) => decimal(b.vivino_rating)],
+  ['Valutazioni Vivino', (b) => b.vivino_ratings_count],
+  ['La mia nota', (b) => b.note?.text],
+  ['Aromi', (b) => (b.note?.flavor_tags ?? []).join(', ')],
+  ['Abbinamenti', (b) => (b.note?.food_pairings ?? []).join(', ')],
+  ...TASTE_AXES.map((axis) => [`${axis.name} (1-10)`, (b) => (b.note?.[`taste_${axis.id}`] == null ? '' : toStep(b.note[`taste_${axis.id}`]))]),
+  ['Aggiunto il', (b) => dateOnly(b.added_at)],
+  ['Sito del produttore', (b) => b.producer_url],
+  ['Foto', (b) => (b.image_url ? new URL(b.image_url, window.location.origin).href : '')],
+];
+
 document.getElementById('export-csv-row')?.addEventListener('click', async () => {
-  const cellars = await api.get('/api/cellars');
-  const header = ['cantina', 'vino', 'produttore', 'annata', 'tipo', 'paese', 'regione', 'quantita', 'prezzo_pagato', 'valutazione'];
-  const lines = [header.join(',')];
+  const [me, cellars] = await Promise.all([api.get('/api/auth/me'), api.get('/api/cellars')]);
+  const rows = [];
   for (const cellar of cellars) {
     const bottles = await api.get(`/api/cellars/${cellar.id}/bottles`);
-    for (const b of bottles) {
-      lines.push([cellar.name, b.name, b.producer, b.vintage ?? '', b.type, b.country, b.region ?? '', b.quantity, b.price_paid ?? '', b.score ?? ''].map(csvField).join(','));
-    }
+    const notes = await Promise.all(bottles.map((b) => api.get(`/api/bottles/${b.id}/notes`).catch(() => [])));
+    bottles.forEach((b, i) => {
+      // Notes come newest first: the caller's latest one with something written.
+      const note = notes[i].find((n) => n.user_id === me.id && hasContent(n));
+      rows.push({ ...b, cellarName: cellar.name, window: drinkWindow(b), note });
+    });
   }
-  const blob = new Blob([lines.join('\n')], { type: 'text/csv' });
-  const url = URL.createObjectURL(blob);
+  const lines = [CSV_COLUMNS.map(([title]) => title), ...rows.map((b) => CSV_COLUMNS.map(([, value]) => value(b)))];
+  const csv = `﻿${lines.map((line) => line.map(csvField).join(';')).join('\r\n')}\r\n`;
+  const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
   const a = document.createElement('a');
   a.href = url;
   a.download = `calice-cantina-${new Date().toISOString().slice(0, 10)}.csv`;

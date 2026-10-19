@@ -1486,6 +1486,16 @@ questo file è il riassunto "dove eravamo rimasti".
     data, il suggerimento di aggiungerla. "Modifica tutti i dati" dal
     pannello porta con sé quantità, prezzo e sboccatura digitati.
     Non fatto: la finestra "Da bere" in aggiunta (resta solo in Modifica).
+67. **Esporta CSV completo** (build 149, `profile.js`). Una riga per vino
+    con tutto ciò che l'app mostra: dati del vino (denominazione, vitigni,
+    gradazione, sito, foto), bottiglie/prezzo/valore, posizioni, sboccatura,
+    finestra "Da bere" (anni, stato, da cosa è stimata — stessa
+    `drinkWindow()` della scheda), voto mio e Vivino, e l'ultima mia nota
+    con contenuto (testo, aromi, abbinamenti, cursori 1-10). Formato per
+    Excel italiano: `;`, virgola decimale, BOM UTF-8. Le note si leggono
+    con una GET per bottiglia (va bene per una cantina domestica). Le
+    colonne sono in `CSV_COLUMNS`: un nuovo dato del vino va aggiunto lì.
+    **Backup**: proposto all'utente, in attesa di scelta (vedi sotto).
 
 ## Cose note, non (ancora) da rifare
 
