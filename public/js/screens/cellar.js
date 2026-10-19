@@ -3,7 +3,7 @@ import { escapeHtml, photoClass, skeletonBar, priceText } from '../util.js';
 import { openDetail } from './detail.js';
 import { openEditWineSheet } from './add.js';
 import { me } from '../auth.js';
-import { confirmModal, promptModal } from '../modal.js';
+import { alertModal, confirmModal, promptModal } from '../modal.js';
 import { showToast } from '../toast.js';
 
 function skeletonRowHtml() {
@@ -101,10 +101,10 @@ function rowHtml(b) {
   const name = escapeHtml(b.vintage && !String(b.name).includes(String(b.vintage)) ? `${b.name} ${b.vintage}` : b.name);
   const sub = `${escapeHtml(b.producer)} · ${escapeHtml(b.region ?? b.country)}`;
   const price = priceText(b.price_paid) ? `${priceText(b.price_paid)} €` : '—';
-  const score = b.score != null ? b.score.toFixed(1) : '—';
-  // The user's own score, or Vivino's when they have not given one.
+  // The user's own score, or Vivino's when they have not given one (also in Confronta).
   const one = (n) => Number(n).toFixed(1).replace('.', ',');
   const rating = b.my_rating != null ? `★ ${one(b.my_rating)}` : b.vivino_rating != null ? `Vivino ★ ${one(b.vivino_rating)}` : '';
+  const score = escapeHtml(rating || '—');
   const quantity = escapeHtml(b.quantity);
   // .cellar-item wraps the sliding row and the actions revealed behind it.
   // The actions come AFTER the row in the DOM so Tab order is: row -> Modifica
@@ -512,38 +512,44 @@ function exitCompareMode() {
 
 // ---- selettore cantina ----
 
-function renderCellarRows() {
-  document.getElementById('cellar-rows').innerHTML = cellars
-    .map(
-      (c, i) => `
-      <div class="list-row ${c.id === currentCellarId ? 'active' : ''}">
-        <div class="radio" data-i="${i}" role="radio" tabindex="0" aria-checked="${c.id === currentCellarId}" aria-label="${escapeHtml(c.name)}"></div>
-        <div class="lbody" data-i="${i}" role="presentation"><div class="lname">${escapeHtml(c.name)}</div></div>
-        <div class="icon-btn rename-cellar-btn" data-i="${i}" title="Rinomina" role="button" tabindex="0" aria-label="Rinomina ${escapeHtml(c.name)}"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></div>
-      </div>`,
-    )
-    .join('');
-  document.querySelectorAll('#cellar-rows .radio, #cellar-rows .lbody').forEach((el) =>
-    el.addEventListener('click', () => selectCellar(cellars[Number(el.dataset.i)].id)),
-  );
-  document.querySelectorAll('.rename-cellar-btn').forEach((btn) =>
-    btn.addEventListener('click', async (e) => {
-      e.stopPropagation();
-      const cellar = cellars[Number(btn.dataset.i)];
-      const name = await promptModal('Nuovo nome:', { title: 'Rinomina cantina', defaultValue: cellar.name, confirmLabel: 'Rinomina' });
-      if (!name?.trim() || name === cellar.name) return;
-      cellars[Number(btn.dataset.i)] = await api.patch(`/api/cellars/${cellar.id}`, { name });
-      renderCellarRows();
-      if (cellar.id === currentCellarId) document.getElementById('active-cellar-name').textContent = name;
-    }),
-  );
+// One cellar per user (worker/src/lib/cellars.ts): the sheet only shows it,
+// renames it or deletes it.
+function renderCellarSheet() {
+  const cellar = cellars.find((c) => c.id === currentCellarId);
+  document.getElementById('cellar-sheet-name').textContent = cellar?.name ?? '';
+  const rows = currentBottles.length;
+  const count = currentBottles.reduce((n, b) => n + (Number(b.quantity) || 0), 0);
+  document.getElementById('cellar-sheet-count').textContent = `${rows} ${rows === 1 ? 'vino' : 'vini'} · ${count} ${count === 1 ? 'bottiglia' : 'bottiglie'}`;
 }
 
-async function selectCellar(id) {
-  currentCellarId = id;
-  document.getElementById('active-cellar-name').textContent = cellars.find((c) => c.id === id).name;
+async function renameCellar() {
+  const cellar = cellars.find((c) => c.id === currentCellarId);
+  const name = await promptModal('Nuovo nome:', { title: 'Rinomina cantina', defaultValue: cellar.name, confirmLabel: 'Rinomina' });
+  if (!name?.trim() || name.trim() === cellar.name) return;
+  const updated = await api.patch(`/api/cellars/${cellar.id}`, { name: name.trim() });
+  cellars = cellars.map((c) => (c.id === updated.id ? updated : c));
+  document.getElementById('active-cellar-name').textContent = updated.name;
+  renderCellarSheet();
+}
+
+async function deleteCellar() {
+  const cellar = cellars.find((c) => c.id === currentCellarId);
+  const ok = await confirmModal(
+    `Vini, bottiglie, posizioni, elementi, note e desideri di «${cellar.name}» vengono cancellati. Resta una cantina vuota. Se vuoi tenerne una copia, prima scarica un backup da Profilo.`,
+    { title: 'Eliminare la cantina?', confirmLabel: 'Elimina cantina', danger: true },
+  );
+  if (!ok) return;
+  try {
+    await api.del(`/api/cellars/${cellar.id}`);
+  } catch (err) {
+    console.error('delete cellar failed', err);
+    await alertModal('Eliminazione non riuscita: non è stato cambiato niente. Riprova.', { title: 'Elimina cantina' });
+    return;
+  }
   closeSheet('cellar-sheet');
-  await loadCellarData();
+  currentCellarId = null;
+  await mountCellar();
+  showToast('Cantina eliminata');
 }
 
 async function loadCellarData() {
@@ -1161,19 +1167,15 @@ function wireStaticControls() {
 
   document.getElementById('cellar-search-input')?.addEventListener('input', applyFilters);
   document.getElementById('cantina-switch')?.addEventListener('click', () => {
-    renderCellarRows();
+    renderCellarSheet();
     openSheet('cellar-sheet');
   });
+  document.getElementById('rename-cellar-btn')?.addEventListener('click', renameCellar);
+  document.getElementById('delete-cellar-btn')?.addEventListener('click', deleteCellar);
   document.getElementById('cellar-sheet-close')?.addEventListener('click', () => closeSheet('cellar-sheet'));
   document.getElementById('cellar-filter-btn')?.addEventListener('click', () => openSheet('filter-sheet'));
   document.getElementById('filter-sheet-close')?.addEventListener('click', () => closeSheet('filter-sheet'));
-  document.getElementById('new-cellar-btn')?.addEventListener('click', async () => {
-    const name = await promptModal('Nome della nuova cantina:', { title: 'Nuova cantina', defaultValue: 'Nuova cantina', confirmLabel: 'Crea' });
-    if (!name?.trim()) return;
-    const cellar = await api.post('/api/cellars', { name });
-    cellars.push(cellar);
-    renderCellarRows();
-  });
+
 
   document.getElementById('elements-link')?.addEventListener('click', () => {
     picker = null;

@@ -275,8 +275,6 @@ async function loadNotes(bottleId) {
   document.getElementById('notes-mine').innerHTML = older.length
     ? `<div class="field-label">Note precedenti</div>${older.map(noteHtml).join('')}`
     : '';
-  document.getElementById('notes-others').innerHTML =
-    notes.filter((n) => n.user_id !== currentMeId).map(noteHtml).join('') || '<p>Nessuna nota ancora da chi condivide o segui.</p>';
   return mine;
 }
 
@@ -357,20 +355,6 @@ function wireStaticControls() {
 
   document.getElementById('detail-close')?.addEventListener('click', () => {
     document.getElementById('detail-overlay').classList.remove('open');
-  });
-
-  document.querySelectorAll('.rev-tab').forEach((tab) => {
-    tab.addEventListener('click', () => {
-      document.querySelectorAll('.rev-tab').forEach((t) => {
-        t.classList.remove('active');
-        t.setAttribute('aria-selected', 'false');
-      });
-      tab.classList.add('active');
-      tab.setAttribute('aria-selected', 'true');
-      document.querySelectorAll('.rev-tabpanel').forEach((panel) => {
-        panel.style.display = panel.dataset.panel === tab.dataset.tab ? 'flex' : 'none';
-      });
-    });
   });
 
   // Scoped per .stars-input group, not globally: the page now has two star

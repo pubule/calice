@@ -8,7 +8,7 @@ function signup(email: string) {
 
 beforeEach(async () => {
   await env.DB.exec(
-    'DELETE FROM cellar_members; DELETE FROM cellars; DELETE FROM users;',
+    'DELETE FROM bottle_places; DELETE FROM bottles; DELETE FROM cellar_elements; DELETE FROM wines; DELETE FROM cellar_members; DELETE FROM cellars; DELETE FROM users;',
   );
 });
 
@@ -21,16 +21,36 @@ describe('cellars', () => {
     expect(body[0].name).toBe('Casa');
   });
 
-  it('a second user creates their own cellar via POST', async () => {
+  it('one cellar per user: there is no way to create a second one', async () => {
     const auth = signup('two@b.com');
     const res = await app.request(
       '/api/cellars',
       { method: 'POST', body: JSON.stringify({ name: 'Cantina in campagna' }), headers: { ...auth, 'content-type': 'application/json' } },
       env,
     );
+    expect(res.status).toBe(404);
+    expect(await (await app.request('/api/cellars', { headers: auth }, env)).json<any[]>()).toHaveLength(1);
+  });
+
+  it('deleting the cellar empties it and leaves a new empty one', async () => {
+    const auth = signup('del@b.com');
+    const [cellar] = await (await app.request('/api/cellars', { headers: auth }, env)).json<any[]>();
+    const user = await env.DB.prepare('select id from users where email = ?').bind('del@b.com').first<{ id: number }>();
+    const wine = await env.DB.prepare(`insert into wines (name, producer, country, type, source) values ('Barolo', 'Altare', 'Italia', 'rosso', 'custom') returning id`).first<{ id: number }>();
+    await env.DB.prepare('insert into bottles (cellar_id, wine_id, quantity, added_by) values (?, ?, 2, ?)').bind(cellar.id, wine!.id, user!.id).run();
+    await env.DB.prepare(`insert into cellar_elements (cellar_id, kind, name) values (?, 'Cella', 'Cucina')`).bind(cellar.id).run();
+
+    const other = signup('other@b.com');
+    expect((await app.request(`/api/cellars/${cellar.id}`, { method: 'DELETE', headers: other }, env)).status).toBe(403);
+
+    const res = await app.request(`/api/cellars/${cellar.id}`, { method: 'DELETE', headers: auth }, env);
     expect(res.status).toBe(200);
-    const list = await (await app.request('/api/cellars', { headers: auth }, env)).json<any[]>();
-    expect(list.map((c: any) => c.name).sort()).toEqual(['Cantina in campagna', 'Casa']);
+    const fresh = await res.json<any>();
+    expect(fresh.id).not.toBe(cellar.id);
+    expect(await (await app.request('/api/cellars', { headers: auth }, env)).json<any[]>()).toEqual([fresh]);
+    expect((await env.DB.prepare('select count(*) as n from bottles where cellar_id = ?').bind(cellar.id).first<any>()).n).toBe(0);
+    expect((await env.DB.prepare('select count(*) as n from cellar_elements where cellar_id = ?').bind(cellar.id).first<any>()).n).toBe(0);
+    expect((await env.PHOTOS.list({ prefix: `restore-safety/${user!.id}/` })).objects).toHaveLength(1);
   });
 
   it('renames a cellar via PATCH', async () => {

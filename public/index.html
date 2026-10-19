@@ -139,11 +139,12 @@
     <!-- SHEET: selettore cantina (rinomina + crea) -->
     <div class="compare-overlay" id="cellar-sheet">
       <div class="compare-sheet">
-        <div class="compare-head"><h3>Le tue cantine</h3><div class="close" id="cellar-sheet-close" role="button" tabindex="0" aria-label="Chiudi"><svg aria-hidden="true" viewBox="0 0 24 24" style="width:14px;height:14px;" fill="none" stroke="#241e1a" stroke-width="1.8" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="6" y1="18" x2="18" y2="6"/></svg></div></div>
-        <div id="cellar-rows"></div>
-        <div class="add-row-btn" id="new-cellar-btn" role="button" tabindex="0">
-          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-          Nuova cantina
+        <div class="compare-head"><h3>La tua cantina</h3><div class="close" id="cellar-sheet-close" role="button" tabindex="0" aria-label="Chiudi"><svg aria-hidden="true" viewBox="0 0 24 24" style="width:14px;height:14px;" fill="none" stroke="#241e1a" stroke-width="1.8" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="6" y1="18" x2="18" y2="6"/></svg></div></div>
+        <div class="cellar-summary"><div class="lname" id="cellar-sheet-name"></div><div class="lsub" id="cellar-sheet-count"></div></div>
+        <p class="cellar-sheet-hint">Una sola cantina: per dividere le bottiglie fra posti diversi usa gli Elementi cantina.</p>
+        <div class="detail-actions">
+          <button type="button" class="detail-action" id="rename-cellar-btn"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>Rinomina</button>
+          <button type="button" class="detail-action danger" id="delete-cellar-btn"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"/><path d="M6 7l1 13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-13"/><path d="M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3"/></svg>Elimina cantina</button>
         </div>
       </div>
     </div>
@@ -205,7 +206,7 @@
     <input type="file" id="restore-file" class="restore-file" accept=".json,application/json" aria-hidden="true" tabindex="-1">
     <div class="logout" role="button" tabindex="0">Esci</div>
     <div class="app-footer">
-      <div class="app-build">build 153</div>
+      <div class="app-build">build 154</div>
       <div class="app-credit"><a href="https://www.flaticon.com/free-icons/wine" target="_blank" rel="noopener">Wine icons created by iconixar - Flaticon</a></div>
       <div class="app-credit">Foto dei paesaggi da <a href="https://commons.wikimedia.org/" target="_blank" rel="noopener">Wikimedia Commons</a>, autori e licenze nella scheda di ogni vino</div>
     </div>
@@ -329,16 +330,8 @@
         </div>
 
 
-        <div class="rev-tabs" role="tablist">
-          <div class="rev-tab active" data-tab="mine" role="tab" tabindex="0" aria-selected="true">Le tue note</div>
-          <div class="rev-tab" data-tab="others" role="tab" tabindex="0" aria-selected="false">Dalla community</div>
-        </div>
-
-        <div class="rev-tabpanel" role="tabpanel" data-panel="others" style="display:none; flex-direction:column; gap:10px;">
-          <div id="notes-others"></div>
-        </div>
-
-        <div class="rev-tabpanel" role="tabpanel" data-panel="mine" style="display:flex; flex-direction:column; gap:10px;">
+        <div class="notes-block" style="display:flex; flex-direction:column; gap:10px;">
+          <div class="section-head"><h3 style="font-size:calc(13rem/17);">Le tue note</h3></div>
           <div class="add-note">
             <textarea id="note-text" aria-label="Nota di degustazione" placeholder="Scrivi una nota di degustazione…"></textarea>
             <div class="row">

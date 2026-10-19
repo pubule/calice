@@ -899,3 +899,13 @@ sola (si copiano le righe intere). D1 rifiuta `select` con troppi `union`
 Un'azione che il browser concede solo dentro un tocco (foglio di
 condivisione) va avviata da `confirmModal(..., { onConfirm })`, non dopo
 l'`await` della conferma.
+
+## Una sola cantina per utente
+
+Scelta dell'utente: niente cantine multiple, i posti diversi sono gli
+Elementi cantina. `ensureCellar()` (`worker/src/lib/cellars.ts`) garantisce
+che ogni utente ne abbia sempre esattamente una, quindi il codice può usare
+`cellars[0]`. Non reintrodurre la creazione di cantine né un selettore. App
+solo personale: niente inviti, persone seguite, notifiche push o note "della
+community" (tolti in build 153-154); l'unica cosa comune fra utenti è il
+catalogo `wines` e la memoria delle ricerche `search_cache`.

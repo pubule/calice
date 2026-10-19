@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { requireAuth } from '../lib/session';
 import { detectImageType } from './photos';
 import { BACKUP_PREFIX } from '../lib/backup';
+import { ensureCellar } from '../lib/cellars';
 import type { Env } from '../index';
 
 // "Scarica backup" / "Ripristina da backup" in Profilo: everything about the
@@ -9,8 +10,8 @@ import type { Env } from '../index';
 // photos) plus their own tastings, as one file the user keeps. The photos'
 // bytes are added by the client (it downloads `files`), so this JSON stays
 // small; on restore the client re-uploads only the photos R2 no longer has.
-// Restore replaces (choice R1): each cellar in the file goes back exactly as
-// it was. It never deletes anything from R2, and it first saves the current
+// Restore replaces (choice R1): the user's one cellar goes back exactly as
+// in the file. It never deletes anything from R2, and it first saves the current
 // state under restore-safety/<userId>/, so a restore can itself be undone.
 
 const FORMAT = 'calice-user-backup';
@@ -90,7 +91,7 @@ function readBackup(body: unknown): UserBackup | null {
 const ids = (rows: Row[], key = 'id') => JSON.stringify(rows.map((r) => r[key]));
 const wineImageKey = (url: unknown) => (typeof url === 'string' && url.startsWith(WINE_IMAGE) ? decodeURIComponent(url.slice(WINE_IMAGE.length)) : null);
 
-async function saveSafetyCopy(env: Env, userId: number) {
+export async function saveSafetyCopy(env: Env, userId: number) {
   const prefix = `${SAFETY_PREFIX}${userId}/`;
   await env.PHOTOS.put(`${prefix}${new Date().toISOString()}.json`, JSON.stringify(await buildUserBackup(env.DB, userId)), {
     httpMetadata: { contentType: 'application/json' },
@@ -102,16 +103,14 @@ async function saveSafetyCopy(env: Env, userId: number) {
 
 export async function restoreUserBackup(env: Env, userId: number, b: UserBackup) {
   const db = env.DB;
-  const [meRes, mineRes, maxRes, winesRes, usersRes] = await db.batch<Row>([
+  const [meRes, maxRes, winesRes, usersRes] = await db.batch<Row>([
     db.prepare('select email from users where id = ?').bind(userId),
-    db.prepare('select cellar_id from cellar_members where user_id = ?').bind(userId),
     db.prepare(`select ${['cellars', 'cellar_elements', 'bottles', 'bottle_places', 'tasting_notes', 'photos', 'wishlist_items', 'wines', 'tastings']
       .map((t) => `(select coalesce(max(id), 0) from ${t}) as ${t}`).join(', ')}`),
     db.prepare('select id, name, producer from wines where id in (select value from json_each(?))').bind(ids(b.wines)),
     db.prepare('select id, email from users where email in (select value from json_each(?))').bind(ids(b.users, 'email')),
   ]);
   const myEmail = String(meRes.results[0].email);
-  const mine = new Set(mineRes.results.map((r) => Number(r.cellar_id)));
   const max = maxRes.results[0] as Record<string, number>;
   const next = (table: string) => ++max[table];
 
@@ -134,21 +133,11 @@ export async function restoreUserBackup(env: Env, userId: number, b: UserBackup)
       .bind(...cols.map((c) => data[c] ?? null)));
   };
 
-  // Cellars: one the caller is still in is emptied and refilled; any other
-  // (deleted since, or another database) comes back as a new one.
-  const cellarMap = new Map<unknown, number>();
-  const replaced: number[] = [];
-  for (const c of b.cellars) {
-    if (mine.has(Number(c.id))) {
-      cellarMap.set(c.id, Number(c.id));
-      replaced.push(Number(c.id));
-    } else {
-      const id = next('cellars');
-      cellarMap.set(c.id, id);
-      insert('cellars', c, { id, owner_id: userId });
-      stmts.push(db.prepare(`insert into cellar_members (cellar_id, user_id, role) values (?, ?, 'owner')`).bind(id, userId));
-    }
-  }
+  // One cellar per user: whatever the file holds goes into the caller's
+  // cellar, emptied first (an old file with several cellars is merged).
+  const target = await ensureCellar(db, userId);
+  const cellarMap = new Map<unknown, number>(b.cellars.map((c) => [c.id, target]));
+  const replaced = [target];
   if (!cellarMap.size) return { error: 'Nel file non c\'è nessuna cantina.' } as const;
 
   // Children first (foreign keys), parents last.
@@ -165,7 +154,7 @@ export async function restoreUserBackup(env: Env, userId: number, b: UserBackup)
     db.prepare(`delete from cellar_elements where cellar_id in (${inR})`).bind(R),
     ...(sameUser ? [db.prepare('delete from tastings where user_id = ?').bind(userId)] : []),
   );
-  for (const c of b.cellars) if (replaced.includes(Number(c.id))) stmts.push(db.prepare('update cellars set name = ? where id = ?').bind(c.name ?? '', c.id));
+  stmts.push(db.prepare('update cellars set name = ? where id = ?').bind(String(b.cellars[0].name ?? '') || 'Casa', target));
 
   // Wines are shared rows: the same id is updated when it is still that wine
   // (or free), otherwise the file's wine comes back under a new id.

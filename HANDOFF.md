@@ -1569,6 +1569,24 @@ questo file è il riassunto "dove eravamo rimasti".
     - **Cancellati gli account di prova** 5 ("") e 7 ("Debug") con le loro
       cantine vuote. Restano Fabio (9) e mikela1982.mb (12, cantina vuota).
 
+72. **Una sola cantina per utente** (build 154, scelta dell'utente: i posti
+    diversi si fanno con gli Elementi cantina). `ensureCellar()`
+    (`lib/cellars.ts`) la crea all'iscrizione e ogni volta che manca; niente
+    più `POST /api/cellars`. Il foglio in Cantina ("La tua cantina") mostra
+    nome e conteggi, **Rinomina** ed **Elimina cantina**:
+    `DELETE /api/cellars/:id` salva prima una copia in `restore-safety/`,
+    cancella tutto il contenuto in una transazione e lascia una cantina
+    vuota "Casa". Il ripristino da backup mette tutto nell'unica cantina
+    (un vecchio file con più cantine viene unito). Inoltre:
+    - tolto il tab "Dalla community" nella scheda vino (solo "Le tue note");
+    - tolto l'avviso "Scorte in esaurimento" in Home (scattava per 35 vini
+      su 45: l'app non sa quante bottiglie c'erano all'inizio);
+    - Confronta mostra lo stesso voto della lista (mio, altrimenti Vivino)
+      invece della media delle note.
+    Non fatto, di proposito: il catalogo `wines` resta comune (una modifica
+    a un vino vale per tutti quelli che lo hanno); le tabelle inutilizzate
+    restano nel database.
+
 ## Cose note, non (ancora) da rifare
 
 - `status-bar-style` è `black-translucent` (non più `default`), `.screen`

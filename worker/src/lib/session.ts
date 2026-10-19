@@ -1,5 +1,6 @@
 import { createMiddleware } from 'hono/factory';
 import { emailFromJwt } from './access';
+import { ensureCellar } from './cellars';
 import type { Env } from '../index';
 
 async function getOrCreateUser(db: D1Database, email: string): Promise<number> {
@@ -9,13 +10,7 @@ async function getOrCreateUser(db: D1Database, email: string): Promise<number> {
   const name = email.split('@')[0];
   const user = await db.prepare('insert into users (email, name) values (?, ?) returning id').bind(email, name).first<{ id: number }>();
   const userId = user!.id;
-
-  const cellar = await db
-    .prepare('insert into cellars (name, owner_id) values (?, ?) returning id')
-    .bind('Casa', userId)
-    .first<{ id: number }>();
-  await db.prepare('insert into cellar_members (cellar_id, user_id, role) values (?, ?, ?)').bind(cellar!.id, userId, 'owner').run();
-
+  await ensureCellar(db, userId);
   return userId;
 }
 

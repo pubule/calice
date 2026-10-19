@@ -91,10 +91,11 @@ describe('user backup', () => {
     await app.request('/api/auth/me', { headers: bob }, env);
 
     await app.request('/api/backup/restore', { method: 'POST', body: JSON.stringify(backup), headers: json(bob) }, env);
-    // Alice's cellar is untouched; Bob got a new cellar with his own copy.
+    // Alice's cellar is untouched; Bob's one cellar got his own copy.
     expect((await env.DB.prepare('select count(*) as n from bottles where cellar_id = ?').bind(alice.cellarId).first<any>()).n).toBe(1);
     const bobCellars = await (await app.request('/api/cellars', { headers: bob }, env)).json<any[]>();
-    expect(bobCellars.length).toBe(2);
+    expect(bobCellars.length).toBe(1);
+    expect((await env.DB.prepare('select count(*) as n from bottles where cellar_id = ?').bind(bobCellars[0].id).first<any>()).n).toBe(1);
 
     const mallory = auth('mallory@b.com');
     await app.request('/api/auth/me', { headers: mallory }, env);

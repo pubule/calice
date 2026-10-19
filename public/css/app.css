@@ -241,6 +241,9 @@
   .settings-row:last-child{border-bottom:none;}
   .settings-row svg{stroke:#8f8474;}
   .settings-row .lbl{flex:1;}
+  .cellar-summary .lname{font-size:calc(16rem/17); font-weight:600;}
+  .cellar-summary .lsub{font-size:calc(12rem/17); color:#736a5d; margin-top:2px;}
+  .cellar-sheet-hint{font-size:calc(12rem/17); color:#736a5d; margin:0; line-height:1.45;}
   .settings-row .sub{display:block; font-size:calc(12rem/17); color:#736a5d;}
   .settings-row .sub.late{color:#8a3244; font-weight:600;}
   .restore-file{display:none;}
@@ -352,9 +355,6 @@
   .loc-row .loc-text{flex:1; font-size:calc(12rem/17);}
   .loc-row .loc-text b{display:block; font-size:calc(12rem/17); color:#736a5d; font-weight:600; margin-bottom:1px;}
   .loc-edit{font-size:calc(11rem/17); color:#5b2333; font-weight:600; border-bottom:1px solid #e0c7cd; cursor:pointer; flex-shrink:0;}
-  .rev-tabs{display:flex; background:#efece3; border-radius:9999px; padding:3px;}
-  .rev-tab{flex:1; text-align:center; padding:8px; border-radius:9999px; font-size:calc(11.5rem/17); font-weight:600; color:#736a5d; cursor:pointer; font-family:'Archivo',sans-serif;}
-  .rev-tab.active{background:#ffffff; color:#241e1a; box-shadow:0 1px 2px rgba(0,0,0,.06);}
   .rev-card{background:#ffffff; border:1px solid #e2e0d8; border-radius:12px; padding:12px;}
   .rev-head{display:flex; align-items:center; gap:8px;}
   .rev-avatar{width:26px; height:26px; border-radius:50%; background:#f0efe9; display:flex; align-items:center; justify-content:center; font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:600; flex-shrink:0;}
@@ -834,7 +834,7 @@
      overflow:hidden/auto: ritagliano le ::after (qui solo .chips, che ha il
      padding verticale apposta). */
   .cantina-switch, .compare-btn, .elements-link, .loc-edit, .search-clear, .home-tab-toggle, #find-friends-btn, .section-head a, .manual-link, .rev-translate, .bottle-popup .bgo, .compare-bar .cb-cancel, .app-credit a,
-  .compare-head .close, .back-btn, .alert-dismiss, .icon-btn, .wish-add, .add-note button, .compare-bar .cb-go, .segmented button, .rev-tab, .list-row .lbody, .chip{position:relative;}
+  .compare-head .close, .back-btn, .alert-dismiss, .icon-btn, .wish-add, .add-note button, .compare-bar .cb-go, .segmented button, .list-row .lbody, .chip{position:relative;}
   .cantina-switch::after, .compare-btn::after, .elements-link::after, .loc-edit::after, .search-clear::after, .home-tab-toggle::after, #find-friends-btn::after, .section-head a::after, .manual-link::after, .rev-translate::after, .bottle-popup .bgo::after, .compare-bar .cb-cancel::after, .app-credit a::after{content:''; position:absolute; inset:-16px -6px;}
   #find-friends-btn::after{inset:-20px -6px -10px;}
   .detail-bar .close::after, .compare-head .close::after, .back-btn::after, .alert-dismiss::after, .icon-btn::after{content:''; position:absolute; inset:-8px;}
@@ -846,7 +846,6 @@
   .slot-circle::after{content:''; position:absolute; inset:-8px;} /* il bordo da 3px sta fuori dal padding box */
   .compare-bar .cb-go{min-height:34px;}
   .segmented button::after{content:''; position:absolute; inset:-8px 0;}
-  .rev-tab::after{content:''; position:absolute; inset:-8px 0;}
   .list-row .lbody::after{content:''; position:absolute; inset:-11px -2px;}
   .chip::after{content:''; position:absolute; inset:-7px -2px;}
   .chip-row, .flavor-chip-panel, .occasion-chips{gap:10px 8px;}
@@ -859,13 +858,13 @@
   .compare-sheet .chips{margin-left:-18px; margin-right:-18px; padding-left:18px; padding-right:18px;}
 
   /* Stato di pressione immediato (buttons.md: sempre uno stato "pressed"). */
-  button:not(:disabled), .navbtn, .chip, .icon-btn, .primary-btn, .alert-dismiss, .slot-circle, .wish-add, .filter-btn, .close, .back-btn, .rev-tab, .add-btn, .shuffle-btn, .add-row-btn, .camera-close, .camera-shutter, .flavor-card, .gallery-add{transition:transform 100ms ease-out, opacity 100ms ease-out;}
-  button:not(:disabled):active, .navbtn:active, .chip:active, .icon-btn:active, .primary-btn:active, .alert-dismiss:active, .slot-circle:active, .wish-add:active, .filter-btn:active, .close:active, .back-btn:active, .rev-tab:active, .add-btn:active, .shuffle-btn:active, .add-row-btn:active, .camera-close:active, .camera-shutter:active, .flavor-card:active, .gallery-add:active{transform:scale(.97);}
+  button:not(:disabled), .navbtn, .chip, .icon-btn, .primary-btn, .alert-dismiss, .slot-circle, .wish-add, .filter-btn, .close, .back-btn, .add-btn, .shuffle-btn, .add-row-btn, .camera-close, .camera-shutter, .flavor-card, .gallery-add{transition:transform 100ms ease-out, opacity 100ms ease-out;}
+  button:not(:disabled):active, .navbtn:active, .chip:active, .icon-btn:active, .primary-btn:active, .alert-dismiss:active, .slot-circle:active, .wish-add:active, .filter-btn:active, .close:active, .back-btn:active, .add-btn:active, .shuffle-btn:active, .add-row-btn:active, .camera-close:active, .camera-shutter:active, .flavor-card:active, .gallery-add:active{transform:scale(.97);}
   .cantina-switch, .compare-btn, .elements-link, .loc-edit, .search-clear, .home-tab-toggle, #find-friends-btn, .section-head a, .manual-link, .rev-translate, .bottle-popup .bgo, .app-credit a{transition:opacity 100ms ease-out;}
   .cantina-switch:active, .compare-btn:active, .elements-link:active, .loc-edit:active, .search-clear:active, .home-tab-toggle:active, #find-friends-btn:active, .section-head a:active, .manual-link:active, .rev-translate:active, .bottle-popup .bgo:active, .app-credit a:active{opacity:.55;}
   .tasting-st[data-step]:active, .list-row:active, .cellar-row:active, .wish-row:active, .elem-row:active, .result-row:active, .diary-row:active, .explore-entry:active, .settings-row:active, .kind-opt:active, .explore-dd-head:active, .explore-dd-list .opt:active, .logout:active{background:rgba(36,30,26,.07); transition:none;}
   @media (prefers-reduced-motion: reduce){
-    button:not(:disabled):active, .navbtn:active, .chip:active, .icon-btn:active, .primary-btn:active, .alert-dismiss:active, .slot-circle:active, .wish-add:active, .filter-btn:active, .close:active, .back-btn:active, .rev-tab:active, .add-btn:active, .shuffle-btn:active, .add-row-btn:active, .camera-close:active, .camera-shutter:active, .flavor-card:active, .gallery-add:active{transform:none; opacity:.55;}
+    button:not(:disabled):active, .navbtn:active, .chip:active, .icon-btn:active, .primary-btn:active, .alert-dismiss:active, .slot-circle:active, .wish-add:active, .filter-btn:active, .close:active, .back-btn:active, .add-btn:active, .shuffle-btn:active, .add-row-btn:active, .camera-close:active, .camera-shutter:active, .flavor-card:active, .gallery-add:active{transform:none; opacity:.55;}
     /* Sheet senza scorrimento: solo dissolvenza. */
     .detail-sheet, .compare-sheet{transform:none; opacity:0; transition:opacity .2s ease;}
     .detail-overlay.open .detail-sheet, .compare-overlay.open .compare-sheet{opacity:1;}

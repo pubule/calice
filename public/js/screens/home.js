@@ -198,10 +198,8 @@ export async function mountHome() {
   renderAll();
 
   document.getElementById('home-alerts').innerHTML = ''; // populated below, one banner per condition
-  const lowStock = bottles.find((b) => b.quantity <= 2);
   const banners = [];
   if (urgent.length) banners.push(`<div class="alert-banner"><div class="txt"><b>Da bere presto</b>${urgent.length === 1 ? `${escapeHtml(urgent[0].name)} è alla fine della sua finestra` : `${urgent.length} vini sono alla fine della loro finestra`}</div><div class="alert-dismiss" role="button" tabindex="0" aria-label="Chiudi avviso">&times;</div></div>`);
-  if (lowStock) banners.push(`<div class="alert-banner"><div class="txt"><b>Scorte in esaurimento</b>${escapeHtml(lowStock.name)}: ${lowStock.quantity === 1 ? 'resta 1 bottiglia' : `restano ${lowStock.quantity} bottiglie`}</div><div class="alert-dismiss" role="button" tabindex="0" aria-label="Chiudi avviso">&times;</div></div>`);
   document.getElementById('home-alerts').innerHTML = banners.join('');
   document.querySelectorAll('#home-alerts .alert-dismiss').forEach((btn) => {
     btn.addEventListener('click', () => btn.closest('.alert-banner').remove());
