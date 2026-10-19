@@ -48,8 +48,7 @@ test.describe('Home', () => {
 test.describe('Home nav', () => {
   test('loads with greeting, stat row, and a working navbar', async ({ page }) => {
     await page.goto('/');
-    // The start-up loader preloads every bottle: slow on a dev database that
-    // keeps the bottles of every earlier run.
+    // Home renders once the start-up loader has preloaded everything.
     await page.waitForSelector('#app-loader', { state: 'detached', timeout: 30000 });
     await expect(page.locator('#view-home')).toHaveClass(/active/);
     await expect(page.locator('#home-greet-name')).not.toHaveText('…');

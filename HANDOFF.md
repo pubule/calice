@@ -1798,9 +1798,10 @@ questo file è il riassunto "dove eravamo rimasti".
   Tavily va revocata anche dal sito di Tavily (lo fa l'utente).
 - **E2E**: dal 19 ottobre tutti verdi (38). Tolti i test di funzioni rimosse
   (seguiti, inviti, notifiche, più cantine), riscritti gli altri sull'interfaccia
-  di oggi. Il database di sviluppo tiene le bottiglie di ogni esecuzione,
-  quindi il caricamento iniziale in locale è lento: un test che apre l'app
-  da zero aspetta `#app-loader` staccato prima di controllare.
+  di oggi. Ogni esecuzione parte da un database vuoto suo
+  (`worker/.wrangler/e2e-state`, ricreato da `e2e/reset-db.mjs`) su un server
+  suo, porta 8788: i dati di `wrangler dev` (8787, `worker/.wrangler/state`)
+  non vengono toccati. Suite completa circa 2 minuti.
 
 - `status-bar-style` è `black-translucent` (non più `default`), `.screen`
   si stira fra `top:0` e `bottom:0` senza **nessuna** unità di altezza
