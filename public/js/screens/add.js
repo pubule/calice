@@ -4,7 +4,7 @@ import { estimatedWindow } from '../drink-window.js';
 import { alertModal, promptModal, pasteModal, quantityModal } from '../modal.js';
 import { MAX_QUANTITY, WHOLE_NUMBER_ATTRS, parseDecimal, parsePrice, PRICE_ERROR, parseVintage, VINTAGE_ERROR, parseQuantity, quantityError, quantityStepperHtml, wireQuantitySteppers, parseDisgorged, DISGORGED_HINT } from '../fields.js';
 import { showToast } from '../toast.js';
-import { tastingProfileHtml, wireTastingProfile, resetTastingProfile, readTastingProfile, isTastingProfileEmpty } from '../tasting-profile.js';
+import { tastingProfileHtml, wireTastingProfile, resetTastingProfile, readTastingProfile, setTastingProfile, isTastingProfileEmpty, TASTE_AXES } from '../tasting-profile.js';
 import { COUNTRIES } from '../data/wine-atlas.js';
 
 // "Aggiungi un vino" is a sheet over whatever screen the "+" was tapped on,
@@ -40,7 +40,9 @@ function mineRowHtml(b) {
     <div class="result-row mine">
       ${photoTag(b.image_url, b.type)}
       <div class="result-body"><div class="name">${name}${vintage}</div><div class="sub">${escapeHtml(b.producer)} · ${count}</div></div>
-      <button type="button" class="plus1-btn" data-plus1="${escapeHtml(b.id)}" aria-label="Aggiungi una bottiglia di ${name}${vintage}">+1</button>
+      ${tasting?.note
+    ? `<button type="button" class="choose-btn" data-choose="${escapeHtml(b.id)}" aria-label="Scegli ${name}${vintage} per il tuo assaggio">Scegli</button>`
+    : `<button type="button" class="plus1-btn" data-plus1="${escapeHtml(b.id)}" aria-label="Aggiungi una bottiglia di ${name}${vintage}">+1</button>`}
     </div>`;
 }
 
@@ -150,9 +152,14 @@ async function postBottle(wineId, quantity, finish, pricePaid, disgorgedAt) {
   if (!currentCellarId) await (cellarLoad ?? loadCellar());
   const bottle = await api.post(`/api/cellars/${currentCellarId}/bottles`, { wineId, quantity, pricePaid: pricePaid ?? undefined, disgorgedAt: disgorgedAt ?? undefined });
   changed = true;
+  // A pending tasting's note goes on the new bottle; the full sheet saves its
+  // own composer instead (prefilled with the tasting, see openRecognizeSheet).
+  if (tasting?.note && !finish) await saveTastingNote(bottle.id);
   await finish?.(bottle);
+  const placed = tasting;
   closeAddSheet();
-  showToast(quantity > 1 ? `Aggiunte ${quantity} bottiglie alla cantina` : 'Aggiunto alla cantina');
+  showToast(placed?.note ? 'Aggiunto alla cantina con la tua nota' : quantity > 1 ? `Aggiunte ${quantity} bottiglie alla cantina` : 'Aggiunto alla cantina');
+  placed?.done?.({ kind: 'cellar', bottle });
   return bottle;
 }
 
@@ -433,7 +440,11 @@ async function confirmWish(w, button) {
     const price = target.value;
     if (!currentCellarId) await (cellarLoad ?? loadCellar());
     const wineId = await ensureWine(w, vintage);
-    await api.post(`/api/cellars/${currentCellarId}/wishlist`, { wineId, targetPrice: price ?? undefined });
+    await api.post(`/api/cellars/${currentCellarId}/wishlist`, { wineId, targetPrice: price ?? undefined, note: tasting?.note ?? undefined });
+    if (tasting) {
+      finishWish();
+      return;
+    }
     wishedKeys.add(w.key);
     wishedWineIds.add(Number(wineId));
     changed = true;
@@ -507,7 +518,90 @@ async function searchWeb(query) {
   renderResults(query);
 }
 
-export function openAddSheet({ focus = true } = {}) {
+// ---- a guided tasting being placed (tasting.js), or a wish being bought ----
+// `tasting.note` (a note body, as POST /api/bottles/:id/notes takes it) goes
+// on the wine the user picks: as the note of the bottle added to the cellar,
+// or kept with the wish. `mode` is where a picked result goes by default;
+// `done` runs once the wine is placed. Forgotten when the sheet closes.
+let tasting = null;
+
+async function saveTastingNote(bottleId) {
+  try {
+    await api.post(`/api/bottles/${bottleId}/notes`, tasting.note);
+  } catch (err) {
+    console.error(err);
+    await alertModal("Vino aggiunto, ma la nota dell'assaggio non è stata salvata.");
+  }
+}
+
+function finishWish() {
+  const placed = tasting;
+  changed = true;
+  closeAddSheet();
+  showToast(placed?.note ? 'Nei desideri con la tua nota' : 'Aggiunto ai desideri');
+  placed?.done?.({ kind: 'wish' });
+}
+
+// "Scegli" on a wine already in the cellar: the note goes on it (no extra
+// bottle), or the wine goes in the wishlist with the note.
+async function chooseMine(bottleId) {
+  const b = cellarBottles.find((x) => String(x.id) === String(bottleId));
+  if (!b || !tasting) return;
+  try {
+    if (tasting.mode === 'wish') {
+      await api.post(`/api/cellars/${currentCellarId}/wishlist`, { wineId: b.wine_id, note: tasting.note });
+      finishWish();
+      return;
+    }
+    await api.post(`/api/bottles/${b.id}/notes`, tasting.note);
+  } catch (err) {
+    console.error(err);
+    await alertModal('Non è stato possibile salvare la nota, riprova.');
+    return;
+  }
+  const placed = tasting;
+  changed = true;
+  closeAddSheet();
+  showToast(`Nota aggiunta a ${b.name}`);
+  placed.done?.({ kind: 'cellar', bottle: b });
+}
+
+async function wishWineId(wineId) {
+  try {
+    if (!currentCellarId) await (cellarLoad ?? loadCellar());
+    await api.post(`/api/cellars/${currentCellarId}/wishlist`, { wineId, note: tasting?.note ?? undefined });
+    finishWish();
+  } catch (err) {
+    console.error(err);
+    await alertModal('Impossibile aggiungere ai desideri, riprova.');
+  }
+}
+
+function showPlacing() {
+  const title = document.getElementById('add-title');
+  const note = document.getElementById('add-tasting-note');
+  if (title) title.textContent = !tasting ? 'Aggiungi un vino' : tasting.title ?? (tasting.mode === 'wish' ? 'Aggiungi ai desideri' : 'Aggiungi alla cantina');
+  if (!note) return;
+  const n = tasting?.note;
+  note.classList.toggle('hidden', !n);
+  if (!n) return;
+  const parts = [n.rating ? `★ ${String(n.rating).replace('.', ',')}` : null, n.flavorTags?.length ? `${n.flavorTags.length} aromi` : null, n.foodPairings?.length ? `${n.foodPairings.length} abbinamenti` : null].filter(Boolean);
+  note.querySelector('span').textContent = `Il tuo assaggio${parts.length ? ` (${parts.join(', ')})` : ''} diventerà la nota del vino che scegli.`;
+}
+
+// "Comprato: sposta in cantina" on a wish (cellar.js): the sheet opens on
+// that wine's panel, ready to add; its note, if any, goes with it.
+export function openAddSheetForWine(wine, { note = null, done } = {}) {
+  openAddSheet({ focus: false, tasting: { note, mode: 'cellar', title: 'Sposta in cantina', done } });
+  const pick = catalogPick(wine);
+  input.value = wine.name;
+  lastCatalog = [wine];
+  lastWeb = [];
+  expanded = { key: pick.key, qty: 1, vintage: pick.vintage ? String(pick.vintage) : '', mode: 'cellar', price: '' };
+  renderResults(currentQuery());
+}
+
+export function openAddSheet({ focus = true, query = '', tasting: placing = null } = {}) {
   if (!overlay) return;
   if (input) input.value = '';
   expanded = null;
@@ -515,6 +609,8 @@ export function openAddSheet({ focus = true } = {}) {
   lastCatalog = null;
   lastWeb = null;
   changed = false;
+  tasting = placing;
+  showPlacing();
   renderIdle();
   overlay.classList.add('open');
   // Synchronously, inside the tap: iOS only raises the keyboard for a focus
@@ -522,6 +618,10 @@ export function openAddSheet({ focus = true } = {}) {
   if (focus) input?.focus({ preventScroll: true });
   loadCellar().then(() => { if (overlay.classList.contains('open') && !currentQuery()) renderIdle(); }, () => {});
   loadWishlist();
+  if (query) {
+    input.value = query;
+    runSearch();
+  }
 }
 
 function closeAddSheet() {
@@ -529,6 +629,8 @@ function closeAddSheet() {
   clearTimeout(webTimer);
   input?.blur();
   overlay.classList.remove('open');
+  tasting = null;
+  showPlacing();
   // The screen underneath (Cantina, Home…) shows counts that just changed:
   // re-run its route so it redraws.
   if (changed) {
@@ -558,6 +660,11 @@ function handleResultsTap(t) {
   }
   if (t.closest('[data-manual]')) {
     openRecognizeSheet({ name: currentQuery() || undefined });
+    return;
+  }
+  const choose = t.closest('[data-choose]');
+  if (choose) {
+    chooseMine(choose.dataset.choose);
     return;
   }
   const plus = t.closest('[data-plus1]');
@@ -597,7 +704,7 @@ function handleResultsTap(t) {
     return;
   }
   if (t.closest('[data-expand]')) {
-    expanded = expanded?.key === pick.key ? null : { key: pick.key, qty: 1, vintage: pick.vintage ? String(pick.vintage) : '', mode: 'cellar', price: '' };
+    expanded = expanded?.key === pick.key ? null : { key: pick.key, qty: 1, vintage: pick.vintage ? String(pick.vintage) : '', mode: tasting?.mode === 'wish' ? 'wish' : 'cellar', price: '' };
     renderResults(currentQuery());
     const opened = expanded && results.querySelector(`.result-item[data-key="${CSS.escape(pick.key)}"]`);
     // Scroll the results list only: scrollIntoView would also move the sheet
@@ -855,13 +962,14 @@ async function onBarcode(code, session) {
       showFound({
         title: `${w.name}${w.vintage ? ' ' + w.vintage : ''}`,
         sub: `${w.producer} · trovato dal codice ${code}`,
-        primary: 'Aggiungi alla cantina',
+        primary: tasting?.mode === 'wish' ? 'Aggiungi ai desideri' : 'Aggiungi alla cantina',
         photo: w.image_url,
         type: w.type,
         action: async () => {
           closeViewfinder();
           if (!currentCellarId) await loadCellar();
-          addWineToCellar(w.id);
+          if (tasting?.mode === 'wish') wishWineId(w.id);
+          else addWineToCellar(w.id);
         },
       });
       return;
@@ -1088,6 +1196,13 @@ function openRecognizeSheet(suggestion, capturedPhotoDataUrl) {
   document.getElementById('rec-grape').value = suggestion.grapeVariety ?? '';
   document.getElementById('rec-denomination').value = suggestion.denomination ?? '';
   resetNoteComposer();
+  // Placing a guided tasting: its note fills the composer (still editable),
+  // and in the wishlist mode the sheet adds a wish instead of bottles.
+  if (tasting?.note) prefillNoteComposer(tasting.note);
+  const toWish = tasting?.mode === 'wish';
+  document.getElementById('recognize-save').textContent = toWish ? 'Aggiungi ai desideri' : 'Salva';
+  document.getElementById('rec-qty-field').classList.toggle('hidden', toWish);
+  document.querySelector('label[for="rec-price"]').textContent = toWish ? 'Prezzo obiettivo' : 'Prezzo a bottiglia';
   pendingImageUrl = suggestion.imageUrl;
   pendingBarcode = suggestion.barcode;
   pendingVivino = { rating: suggestion.rating, vintageRatings: suggestion.vintageRatings };
@@ -1134,6 +1249,8 @@ export function openEditWineSheet(bottle, onSaved) {
   editSavedCallback = onSaved ?? null;
   document.getElementById('recognize-title').textContent = 'Modifica vino';
   document.getElementById('recognize-save').textContent = 'Salva modifiche';
+  document.getElementById('rec-qty-field').classList.remove('hidden');
+  document.querySelector('label[for="rec-price"]').textContent = 'Prezzo a bottiglia';
   // The note belongs to the bottle sheet ("Le tue note"), which already has
   // its own composer: editing the wine's data doesn't repeat it.
   document.getElementById('rec-note-section').classList.add('hidden');
@@ -1172,31 +1289,54 @@ function closeRecognizeSheet() {
   document.getElementById('recognize-overlay').classList.remove('open');
 }
 
+function prefillNoteComposer(note) {
+  document.getElementById('rec-note-text').value = note.text ?? '';
+  document.querySelectorAll('#rec-note-stars span').forEach((s, i) => {
+    const on = i < Math.round(note.rating ?? 0);
+    s.classList.toggle('on', on);
+    s.setAttribute('aria-checked', String(i + 1 === Math.round(note.rating ?? 0)));
+  });
+  if (recognizeTaste) {
+    setTastingProfile(recognizeTaste, {
+      flavor_tags: note.flavorTags, food_pairings: note.foodPairings,
+      ...Object.fromEntries(TASTE_AXES.map((a) => [`taste_${a.id}`, note[a.key]])),
+    });
+  }
+}
+
+// The composer as a note body, or null when nothing was written.
+function composerNote() {
+  const text = document.getElementById('rec-note-text').value.trim();
+  const starsOn = document.querySelectorAll('#rec-note-stars span.on').length;
+  const profile = recognizeTaste ? readTastingProfile(recognizeTaste) : null;
+  const profileEmpty = !profile || isTastingProfileEmpty(profile);
+  if (!text && starsOn === 0 && profileEmpty) return null;
+  // A tasting's half stars (4,5) survive when the stars were not touched.
+  const rating = tasting?.note && starsOn === Math.round(tasting.note.rating ?? 0) ? tasting.note.rating : starsOn || (text ? 3 : 0);
+  return {
+    rating,
+    text,
+    flavorTags: profile?.flavorTags ?? [],
+    foodPairings: profile?.foodPairings ?? [],
+    tasteAcidity: profile?.tasteAcidity,
+    tasteSweetness: profile?.tasteSweetness,
+    tasteTannin: profile?.tasteTannin,
+    tasteBody: profile?.tasteBody,
+    tasteAlcohol: profile?.tasteAlcohol,
+    tasteIntensity: profile?.tasteIntensity,
+    tasteFinish: profile?.tasteFinish,
+  };
+}
+
 // Reads the composer's current state and, if anything was actually filled
 // in, posts one new tasting note for the given bottle — silently does
 // nothing otherwise, since the whole section is optional in every context
 // it appears in.
 async function maybeSaveNote(bottleId) {
-  const text = document.getElementById('rec-note-text').value.trim();
-  const starsOn = document.querySelectorAll('#rec-note-stars span.on').length;
-  const profile = recognizeTaste ? readTastingProfile(recognizeTaste) : null;
-  const profileEmpty = !profile || isTastingProfileEmpty(profile);
-  if (!text && starsOn === 0 && profileEmpty) return;
-  const rating = starsOn || (text ? 3 : 0);
+  const note = composerNote();
+  if (!note) return;
   try {
-    await api.post(`/api/bottles/${bottleId}/notes`, {
-      rating,
-      text,
-      flavorTags: profile?.flavorTags ?? [],
-      foodPairings: profile?.foodPairings ?? [],
-      tasteAcidity: profile?.tasteAcidity,
-      tasteSweetness: profile?.tasteSweetness,
-      tasteTannin: profile?.tasteTannin,
-      tasteBody: profile?.tasteBody,
-      tasteAlcohol: profile?.tasteAlcohol,
-      tasteIntensity: profile?.tasteIntensity,
-      tasteFinish: profile?.tasteFinish,
-    });
+    await api.post(`/api/bottles/${bottleId}/notes`, note);
   } catch (err) {
     console.error(err);
     await alertModal('Vino salvato, ma il salvataggio della nota di degustazione è fallito.');
@@ -1321,6 +1461,13 @@ async function saveRecognizedWine() {
       vivinoRating: extras.vivinoRating ?? undefined, vivinoRatingsCount: extras.vivinoRatingsCount ?? undefined,
     });
     closeRecognizeSheet();
+    if (tasting?.mode === 'wish') {
+      if (!currentCellarId) await (cellarLoad ?? loadCellar());
+      await api.post(`/api/cellars/${currentCellarId}/wishlist`, { wineId: wine.id, targetPrice: pricePaid ?? undefined, note: composerNote() ?? undefined });
+      await savePendingPhoto(wine.id, 'Vino salvato');
+      finishWish();
+      return;
+    }
     await postBottle(wine.id, quantity, async (bottle) => {
       await maybeSaveNote(bottle.id);
       await savePendingPhoto(wine.id, 'Vino salvato');

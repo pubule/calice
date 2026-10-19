@@ -1,7 +1,8 @@
 import { api } from '../api-client.js';
 import { escapeHtml, photoClass, skeletonBar, priceText } from '../util.js';
 import { openDetail } from './detail.js';
-import { openEditWineSheet } from './add.js';
+import { openEditWineSheet, openAddSheetForWine } from './add.js';
+import { TASTE_AXES, tasteSummary } from '../tasting-profile.js';
 import { me } from '../auth.js';
 import { alertModal, confirmModal, promptModal } from '../modal.js';
 import { showToast } from '../toast.js';
@@ -134,7 +135,28 @@ function wishRowHtml(w) {
       <div class="wish-photo photo ${photo}"></div>
       <div class="result-body"><div class="name">${name}</div><div class="sub">${sub}</div></div>
       <div class="wish-add" data-id="${w.id}" role="button" tabindex="0" aria-label="Rimuovi ${name} dai desideri">Rimuovi dai desideri</div>
+      <div class="wish-extra">
+        ${wishNoteHtml(w.note)}
+        <div class="wish-buy" data-buy="${w.id}" role="button" tabindex="0" aria-label="Comprato ${name}: sposta in cantina">Comprato: sposta in cantina</div>
+      </div>
     </div>`;
+}
+
+// The note of a guided tasting kept with the wish (a note body, camelCase):
+// stars, text, a few aromas, then taste and pairings in one line.
+function wishNoteHtml(n) {
+  if (!n) return '';
+  const stars = Math.round(Number(n.rating) || 0);
+  const tags = Array.isArray(n.flavorTags) ? n.flavorTags : [];
+  const pairings = Array.isArray(n.foodPairings) ? n.foodPairings : [];
+  const taste = tasteSummary(Object.fromEntries(TASTE_AXES.map((a) => [`taste_${a.id}`, n[a.key]])));
+  const line = [taste, pairings.length ? `con ${pairings.slice(0, 3).join(', ')}` : ''].filter(Boolean).join(' · ');
+  return `<div class="wish-note">
+    ${stars ? `<span class="wish-stars" role="img" aria-label="${stars} su 5 stelle">${'★'.repeat(stars)}${'☆'.repeat(5 - stars)}</span>` : ''}
+    ${n.text ? `<p>${escapeHtml(n.text)}</p>` : ''}
+    ${tags.length ? `<div class="chip-row">${tags.slice(0, 3).map((t) => `<span class="chip active" style="cursor:default">${escapeHtml(t)}</span>`).join('')}${tags.length > 3 ? `<span class="chip" style="cursor:default">+${tags.length - 3}</span>` : ''}</div>` : ''}
+    ${line ? `<div class="wish-taste">${escapeHtml(line)}</div>` : ''}
+  </div>`;
 }
 
 function capitalize(s) {
@@ -460,6 +482,23 @@ async function renderWishlist() {
   const wishlist = await api.get(`/api/cellars/${currentCellarId}/wishlist`);
   const wishEl = document.getElementById('wishlist-list');
   wishEl.innerHTML = wishlist.length ? wishlist.map(wishRowHtml).join('') : '<div class="empty-note">Nessun vino nei desideri.</div>';
+  wishEl.querySelectorAll('.wish-buy').forEach((btn) =>
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const item = wishlist.find((w) => String(w.id) === btn.dataset.buy);
+      if (!item) return;
+      // The wish's wine opens ready to add; once in the cellar (with the
+      // wish's note on it) the wish goes.
+      openAddSheetForWine({ ...item, id: item.wine_id }, {
+        note: item.note,
+        done: async ({ kind }) => {
+          if (kind !== 'cellar') return;
+          await api.del(`/api/wishlist/${item.id}`).catch((err) => console.error(err));
+          await renderWishlist();
+        },
+      });
+    }),
+  );
   wishEl.querySelectorAll('.wish-add').forEach((btn) =>
     btn.addEventListener('click', async (e) => {
       e.stopPropagation();
@@ -1191,6 +1230,13 @@ function wireStaticControls() {
 
 wireStaticControls();
 
+// Where to land after placing a guided tasting (tasting.js): the wine's
+// sheet or the wishlist. Read once by the next mountCellar().
+let afterMount = null;
+export function showAfterMount(target) {
+  afterMount = target;
+}
+
 export async function mountCellar() {
   // Rows get replaced below, so any stale selection from a previous visit
   // would reference detached nodes — drop it and reset the compare UI.
@@ -1200,4 +1246,9 @@ export async function mountCellar() {
   if (!cellars.some((c) => c.id === currentCellarId)) currentCellarId = cellars[0].id;
   document.getElementById('active-cellar-name').textContent = cellars.find((c) => c.id === currentCellarId).name;
   await loadCellarData();
+  const target = afterMount;
+  afterMount = null;
+  if (target) document.querySelector(`#view-cellar .segmented button[data-wall="${target.wishlist ? 'wish' : 'owned'}"]`)?.click();
+  const bottle = target?.bottleId && currentBottles.find((x) => x.id === Number(target.bottleId));
+  if (bottle) await openDetail(bottle, await me());
 }

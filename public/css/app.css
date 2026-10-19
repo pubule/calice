@@ -423,7 +423,15 @@
   .segmented button.active{background:#ffffff; color:#241e1a; box-shadow:0 1px 2px rgba(0,0,0,.06);}
   .cantina-switch{display:flex; align-items:center; gap:5px; font-size:calc(11rem/17); color:#736a5d; cursor:pointer;}
   .cantina-switch svg{width:13px; height:13px;}
-  .wish-row{display:flex; gap:12px; align-items:center; background:#ffffff; border:1px solid #e2e0d8; border-radius:12px; padding:12px;}
+  .wish-row{display:flex; flex-wrap:wrap; gap:12px; align-items:center; background:#ffffff; border:1px solid #e2e0d8; border-radius:12px; padding:12px;}
+  .wish-row .result-body{flex:1; min-width:0;}
+  .wish-extra{flex-basis:100%; display:flex; flex-direction:column; gap:8px; border-top:1px solid #efece5; padding-top:10px;}
+  .wish-note{display:flex; flex-direction:column; gap:6px;}
+  .wish-note p{margin:0; font-size:calc(12.5rem/17); color:#4a4038; line-height:1.45;}
+  .wish-stars{color:#b8860b; font-size:13px; letter-spacing:1px;}
+  .wish-taste{font-size:calc(12rem/17); color:#736a5d;}
+  .wish-buy{align-self:flex-start; font-size:calc(12rem/17); font-weight:600; color:#5b2333; border:1px solid #e0c7cd; border-radius:9999px; padding:8px 13px; min-height:36px; display:inline-flex; align-items:center; cursor:pointer; background:#fff; position:relative;}
+  .wish-buy::after{content:''; position:absolute; inset:-4px -2px;}
   .wish-photo{width:34px; height:48px; border-radius:4px; flex-shrink:0;}
   .wish-add{flex-shrink:0; font-size:calc(11rem/17); font-weight:600; color:#5b2333; border:1px solid #e0c7cd; border-radius:9999px; padding:7px 12px; cursor:pointer; background:#fff;}
 
@@ -754,6 +762,11 @@
   .tasting-body .chip-row{flex-wrap:wrap;}
   .chip.expected{border-style:dashed; border-color:#b8ab97; color:#241e1a;}
   .chip.expected.active{border-style:solid; border-color:#5b2333; color:#f7f5f0;}
+  .tasting-place{display:flex; flex-direction:column; gap:8px; padding:4px 0 6px;}
+  .tasting-place-title{font-family:'Newsreader',serif; font-weight:500; font-size:calc(17rem/17); margin:4px 0 0;}
+  .tasting-place .aroma-card-desc{margin-bottom:4px;}
+  .secondary-btn{width:100%; background:#ffffff; color:#241e1a; border:1px solid #e2e0d8; border-radius:9999px; padding:11px; min-height:46px; display:flex; align-items:center; justify-content:center; font-size:calc(14rem/17); font-weight:600; cursor:pointer; font-family:'Archivo',sans-serif;}
+  .tasting-discard{align-self:center; background:none; border:0; color:#736a5d; font-family:'Archivo',sans-serif; font-size:calc(13rem/17); font-weight:600; text-decoration:underline; text-underline-offset:3px; min-height:44px; padding:0 12px; cursor:pointer;}
   .tasting-foot{position:sticky; bottom:0; margin:0 -16px; padding:10px 16px 6px; background:linear-gradient(180deg, rgba(247,245,240,0), #f7f5f0 35%);}
   .tasting-delete{background:#f4e3e6; color:#8a2336;}
   .tasting-legend{display:flex; gap:16px; font-size:calc(11.5rem/17); color:#736a5d;}
@@ -859,12 +872,12 @@
 
   /* Stato di pressione immediato (buttons.md: sempre uno stato "pressed"). */
   button:not(:disabled), .navbtn, .chip, .icon-btn, .primary-btn, .alert-dismiss, .slot-circle, .wish-add, .filter-btn, .close, .back-btn, .add-btn, .shuffle-btn, .add-row-btn, .camera-close, .camera-shutter, .flavor-card, .gallery-add{transition:transform 100ms ease-out, opacity 100ms ease-out;}
-  button:not(:disabled):active, .navbtn:active, .chip:active, .icon-btn:active, .primary-btn:active, .alert-dismiss:active, .slot-circle:active, .wish-add:active, .filter-btn:active, .close:active, .back-btn:active, .add-btn:active, .shuffle-btn:active, .add-row-btn:active, .camera-close:active, .camera-shutter:active, .flavor-card:active, .gallery-add:active{transform:scale(.97);}
+  button:not(:disabled):active, .navbtn:active, .chip:active, .icon-btn:active, .primary-btn:active, .alert-dismiss:active, .slot-circle:active, .wish-add:active, .wish-buy:active, .filter-btn:active, .close:active, .back-btn:active, .add-btn:active, .shuffle-btn:active, .add-row-btn:active, .camera-close:active, .camera-shutter:active, .flavor-card:active, .gallery-add:active{transform:scale(.97);}
   .cantina-switch, .compare-btn, .elements-link, .loc-edit, .search-clear, .home-tab-toggle, #find-friends-btn, .section-head a, .manual-link, .rev-translate, .bottle-popup .bgo, .app-credit a{transition:opacity 100ms ease-out;}
   .cantina-switch:active, .compare-btn:active, .elements-link:active, .loc-edit:active, .search-clear:active, .home-tab-toggle:active, #find-friends-btn:active, .section-head a:active, .manual-link:active, .rev-translate:active, .bottle-popup .bgo:active, .app-credit a:active{opacity:.55;}
   .tasting-st[data-step]:active, .list-row:active, .cellar-row:active, .wish-row:active, .elem-row:active, .result-row:active, .diary-row:active, .explore-entry:active, .settings-row:active, .kind-opt:active, .explore-dd-head:active, .explore-dd-list .opt:active, .logout:active{background:rgba(36,30,26,.07); transition:none;}
   @media (prefers-reduced-motion: reduce){
-    button:not(:disabled):active, .navbtn:active, .chip:active, .icon-btn:active, .primary-btn:active, .alert-dismiss:active, .slot-circle:active, .wish-add:active, .filter-btn:active, .close:active, .back-btn:active, .add-btn:active, .shuffle-btn:active, .add-row-btn:active, .camera-close:active, .camera-shutter:active, .flavor-card:active, .gallery-add:active{transform:none; opacity:.55;}
+    button:not(:disabled):active, .navbtn:active, .chip:active, .icon-btn:active, .primary-btn:active, .alert-dismiss:active, .slot-circle:active, .wish-add:active, .wish-buy:active, .filter-btn:active, .close:active, .back-btn:active, .add-btn:active, .shuffle-btn:active, .add-row-btn:active, .camera-close:active, .camera-shutter:active, .flavor-card:active, .gallery-add:active{transform:none; opacity:.55;}
     /* Sheet senza scorrimento: solo dissolvenza. */
     .detail-sheet, .compare-sheet{transform:none; opacity:0; transition:opacity .2s ease;}
     .detail-overlay.open .detail-sheet, .compare-overlay.open .compare-sheet{opacity:1;}
@@ -1010,6 +1023,10 @@ input.search:focus, select.search:focus, .text-input:focus, .num-input:focus, te
 .result-row{animation:add-row-in .22s ease both;}
 @keyframes add-row-in{from{opacity:0; transform:translateY(4px);}}
 .result-row.mine{cursor:default;}
+.add-tasting-note{display:flex; gap:9px; align-items:flex-start; background:#f7e8e9; border-radius:10px; padding:9px 11px; font-size:calc(12.5rem/17); color:#5a2230; line-height:1.4;}
+.add-tasting-note svg{width:16px; height:16px; flex:none; color:#8a3244; margin-top:1px;}
+.add-tasting-note.hidden, #rec-qty-field.hidden{display:none;}
+.choose-btn{min-height:44px; padding:0 14px; margin:-4px -2px -4px 0; border-radius:999px; border:1px solid #5b2333; background:#5b2333; color:#f7f5f0; font-family:'Archivo',sans-serif; font-size:calc(13rem/17); font-weight:600; cursor:pointer; flex-shrink:0;}
 .plus1-btn{min-width:44px; height:44px; margin:-4px -2px -4px 0; border-radius:50%; border:1px solid #e2e0d8; background:#faf9f6; color:#5b2333; font-family:'JetBrains Mono',monospace; font-size:calc(13rem/17); font-weight:600; cursor:pointer; flex-shrink:0;}
 .add-skel{height:70px; border-radius:12px; background:linear-gradient(90deg, #efece5 25%, #f7f5f0 50%, #efece5 75%); background-size:200% 100%; animation:add-skel 1.1s linear infinite;}
 @keyframes add-skel{to{background-position:-200% 0;}}

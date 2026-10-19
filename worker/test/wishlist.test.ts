@@ -61,6 +61,24 @@ describe('wishlist', () => {
     }
   });
 
+  it('keeps the note of a guided tasting with the wish, and counts its aromas in the palate', async () => {
+    const auth = signup('w3@b.com');
+    const cellarId = await myCellarId(auth);
+    const post = (body: object) => app.request(`/api/cellars/${cellarId}/wishlist`, { method: 'POST', body: JSON.stringify(body), headers: { ...auth, 'content-type': 'application/json' } }, env);
+    const note = { rating: 4, text: 'Tannino fine', flavorTags: ['Rosa', 'Liquirizia'], foodPairings: ['Manzo'], tasteTannin: 80 };
+    expect((await post({ wineId, note: { ...note, rating: 9 } })).status).toBe(400);
+    const wish = await (await post({ wineId, note })).json<any>();
+    expect(wish.note).toEqual(note);
+    const list = await (await app.request(`/api/cellars/${cellarId}/wishlist`, { headers: auth }, env)).json<any[]>();
+    expect(list[0].note).toEqual(note);
+    // Adding the same wine again without a note keeps the note.
+    await post({ wineId, targetPrice: 30 });
+    const again = await (await app.request(`/api/cellars/${cellarId}/wishlist`, { headers: auth }, env)).json<any[]>();
+    expect(again[0].note).toEqual(note);
+    const palate = await (await app.request('/api/me/palate', { headers: auth }, env)).json<any>();
+    expect(palate.tags).toEqual({ Rosa: 1, Liquirizia: 1 });
+  });
+
   it('rejects a non-member with 403 on GET, POST, and 404 on DELETE', async () => {
     const authA = await signup('owner10@b.com');
     const cellarId = await myCellarId(authA);

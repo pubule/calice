@@ -40,7 +40,6 @@ export async function warmUp(onProgress = () => {}) {
   const all = (async () => {
     const [cellars] = await Promise.all([
       step(api.get('/api/cellars')),
-      step(api.get('/api/tastings')),
       step(api.get('/api/me/palate')),
     ]);
     const lists = await Promise.all((cellars ?? []).map((c) => Promise.all([

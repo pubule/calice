@@ -1590,6 +1590,25 @@ questo file è il riassunto "dove eravamo rimasti".
     a un vino vale per tutti quelli che lo hanno); le tabelle inutilizzate
     restano nel database.
 
+73. **Assaggio guidato: l'ultimo passo mette il vino in cantina o nei
+    desideri** (build 156, migrazione 0019, scelta dell'utente sul mockup).
+    Un assaggio non si salva più da solo (`/api/tastings` e `tastings.ts`
+    tolti; la tabella resta, vuota: in produzione non ne era mai stato
+    salvato uno). Giudizio ha gli abbinamenti; dopo il riepilogo "Dove lo
+    metto?": *Aggiungi alla cantina* / *Aggiungi ai desideri* aprono il
+    foglio del "+" (`openAddSheet({ query, tasting })` in `add.js`) con lo
+    stile/etichetta già scritti e un promemoria rosa; *Non salvare* chiude
+    senza traccia. La nota (aromi di naso e bocca uniti, gusto, stelle,
+    testo, abbinamenti; nessuna data mostrata) va: sulla bottiglia nuova
+    (`postBottle`), su un vino già in cantina ("Scegli" al posto di "+1",
+    nessuna bottiglia in più), nel foglio completo (composer precompilato),
+    o sul desiderio (`wishlist_items.note`, JSON di una nota). Nei Desideri
+    la nota si vede sotto il vino e ogni desiderio ha **"Comprato: sposta in
+    cantina"** (`openAddSheetForWine`): apre il pannello di quel vino, la
+    nota lo segue e il desiderio sparisce. "Il mio palato" conta anche gli
+    aromi delle note nei desideri. Dopo, si arriva in Cantina sulla scheda
+    del vino o sui Desideri (`showAfterMount` in `cellar.js`).
+
 ## Cose note, non (ancora) da rifare
 
 - `status-bar-style` è `black-translucent` (non più `default`), `.screen`

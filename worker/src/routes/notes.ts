@@ -179,14 +179,15 @@ palateRoutes.use('*', requireAuth);
 
 palateRoutes.get('/palate', async (c) => {
   const rows = await c.env.DB
-    // Notes on bottles and guided tastings (tastings.ts) both feed the palate.
+    // Notes on bottles, and the notes of guided tastings waiting in the
+    // wishlist (wishlist_items.note, a NoteBody) both feed the palate.
     .prepare(
-      `select flavor_tags, null as mouth_tags from tasting_notes where user_id = ? and flavor_tags is not null
+      `select flavor_tags from tasting_notes where user_id = ? and flavor_tags is not null
        union all
-       select flavor_tags, mouth_tags from tastings where user_id = ? and (flavor_tags is not null or mouth_tags is not null)`,
+       select json_extract(note, '$.flavorTags') from wishlist_items where added_by = ? and json_extract(note, '$.flavorTags') is not null`,
     )
     .bind(c.get('userId'), c.get('userId'))
-    .all<{ flavor_tags: string | null; mouth_tags: string | null }>();
+    .all<{ flavor_tags: string | null }>();
   const tags: Record<string, number> = {};
   const parse = (raw: string | null): unknown[] => {
     try {
@@ -197,8 +198,7 @@ palateRoutes.get('/palate', async (c) => {
     }
   };
   for (const row of rows.results) {
-    // An aroma noted both on the nose and in the mouth counts once per tasting.
-    for (const t of new Set([...parse(row.flavor_tags), ...parse(row.mouth_tags)])) {
+    for (const t of new Set(parse(row.flavor_tags))) {
       if (typeof t === 'string') tags[t] = (tags[t] ?? 0) + 1;
     }
   }

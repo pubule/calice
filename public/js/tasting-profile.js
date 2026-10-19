@@ -99,7 +99,7 @@ export const TASTE_AXES = [
   { id: 'finish', key: 'tasteFinish', name: 'Persistenza', left: 'Corto', right: 'Persistente' },
 ];
 
-const FOOD_PAIRINGS = [
+export const FOOD_PAIRINGS = [
   'Aperitivo', 'Antipasti', 'Crudi di mare', 'Frutti di mare', 'Crostacei', 'Sushi', 'Pesce', 'Pollame', 'Maiale',
   'Manzo', 'Agnello', 'Selvaggina', 'Salumi', 'Formaggi freschi', 'Formaggi stagionati', 'Formaggi erborinati',
   'Pasta', 'Risotto', 'Pizza', 'Funghi e tartufo', 'Verdure', 'Legumi e zuppe', 'Piatti speziati', 'Cucina asiatica',

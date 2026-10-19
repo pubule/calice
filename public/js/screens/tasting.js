@@ -1,25 +1,27 @@
-import { api } from '../api-client.js';
 import { escapeHtml } from '../util.js';
-import { confirmModal, alertModal } from '../modal.js';
-import { showToast } from '../toast.js';
-import { FLAVOR_CATEGORIES, TASTE_AXES, TASTE_STEPS, toStep, fromStep } from '../tasting-profile.js';
+import { confirmModal } from '../modal.js';
+import { navigate } from '../router.js';
+import { FLAVOR_CATEGORIES, FOOD_PAIRINGS, TASTE_AXES, TASTE_STEPS, toStep, fromStep } from '../tasting-profile.js';
+import { openAddSheet } from './add.js';
+import { showAfterMount } from './cellar.js';
 import { WINE_STYLES } from '../data/aroma-guide.js';
 import { expectedTags, expectedTaste, typeOptionsHtml, wineOptionsHtml } from '../wine-expectation.js';
 
 // Assaggio guidato (#/assaggio, optional ?vino=<wheel wine>): pick a wine of
 // the aroma wheel — no bottle needed — then three steps, Naso → Bocca →
 // Giudizio, each showing what to expect, and a summary of expected vs felt.
-// Bocca also asks which aromas come back in the mouth (retronasal), stored
-// apart from the nose's so the summary can say where each was found.
-// Saved to /api/tastings (not to a bottle), listed on the start screen, and
-// counted in Il mio palato. Chosen by the user from a mockup: steps as in the
-// wheel's "Assaggia" idea, but as its own Home section with any wine.
+// Bocca also asks which aromas come back in the mouth (retronasal), kept
+// apart from the nose's only so the summary can say where each was found.
+// The last step places it (user's choice, from a mockup): "Aggiungi alla
+// cantina" / "Aggiungi ai desideri" open the "+" search, and the tasting
+// becomes the note of the wine picked there (nose and mouth aromas in one
+// list, pairings from Giudizio); "Non salvare" leaves no trace. A tasting is
+// never stored on its own.
 
 const STEPS = ['nose', 'mouth', 'verdict'];
-const STEP_TITLE = { start: 'Assaggio guidato', nose: 'Naso', mouth: 'Bocca', verdict: 'Giudizio', summary: 'Riepilogo', past: 'Assaggio' };
+const STEP_TITLE = { start: 'Assaggio guidato', nose: 'Naso', mouth: 'Bocca', verdict: 'Giudizio', summary: 'Riepilogo' };
 
 let state = freshState();
-let history = [];
 let wired = false;
 
 function freshState(wine = '') {
@@ -31,7 +33,7 @@ function freshState(wine = '') {
     mouth: new Set(),
     // null = slider not touched: never saved, so the expected value shown as
     // a hint can't silently become the user's answer.
-    taste: TASTE_AXES.map(() => null), stars: 0, text: '', past: null,
+    taste: TASTE_AXES.map(() => null), stars: 0, text: '', pairings: new Set(),
   };
 }
 
@@ -41,10 +43,6 @@ const body = () => document.getElementById('tasting-body');
 // never leaves the track; the expected marker uses the same scale to line up.
 const pos = (v) => `calc(21px + (100% - 42px) * ${(toStep(v) - 1) / (TASTE_STEPS - 1)})`;
 const familyOf = (tag) => FLAVOR_CATEGORIES.find((f) => f.tags.includes(tag));
-function formatDate(iso) {
-  const d = new Date(iso.replace(' ', 'T') + 'Z');
-  return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' });
-}
 function starsText(n) {
   return n ? '★'.repeat(Math.round(n)) + '☆'.repeat(5 - Math.round(n)) : '';
 }
@@ -61,7 +59,7 @@ function headerHtml() {
       ${stepIdx >= 0 ? `<span class="tasting-stepn">${stepIdx + 1} di 3</span>` : ''}
     </div>
     ${stepIdx >= 0 ? stepperHtml(stepIdx) : ''}
-    ${state.step !== 'start' && state.step !== 'past' ? `<span class="aroma-pill tasting-wine">${escapeHtml(state.label ? `${state.wine} · ${state.label}` : state.wine)}</span>` : ''}
+    ${state.step !== 'start' ? `<span class="aroma-pill tasting-wine">${escapeHtml(state.label ? `${state.wine} · ${state.label}` : state.wine)}</span>` : ''}
     ${stepIdx >= 0 ? stepIntroHtml(STEPS[stepIdx]) : ''}`;
 }
 
@@ -110,7 +108,7 @@ function stepIntroHtml(id) {
 function startHtml() {
   const n = state.wine ? expectedTags(state.wine).length : 0;
   return `
-    <p class="tasting-lede">Scegli cosa stai bevendo: l'app ti guida passo passo e alla fine confronta quello che hai sentito con quello che ci si aspetta da quel vino. Non serve averlo in cantina.</p>
+    <p class="tasting-lede">Scegli cosa stai bevendo: l'app ti guida passo passo e alla fine confronta quello che hai sentito con quello che ci si aspetta da quel vino. Poi lo metti in cantina o nei desideri, e l'assaggio diventa la sua nota.</p>
     <div class="aroma-card">
       <div class="field-label">Cosa assaggi</div>
       <select id="tasting-type" class="search" aria-label="Tipo di vino">${typeOptionsHtml('Tutti i tipi')}</select>
@@ -118,22 +116,7 @@ function startHtml() {
       <input id="tasting-label" class="search" type="text" maxlength="200" placeholder="Etichetta (facoltativa), es. Cannubi 2019 Brezza" aria-label="Etichetta" value="${escapeHtml(state.label)}">
       ${state.wine ? `<p class="aroma-card-desc">${n} aromi attesi e il gusto tipico di un ${escapeHtml(state.wine)} ti accompagneranno nei tre passi.</p>` : ''}
       <button type="button" class="primary-btn" id="tasting-start" ${state.wine ? '' : 'disabled'}>Inizia l'assaggio</button>
-    </div>
-    <div class="section-head"><h3>Le tue degustazioni</h3></div>
-    <div id="tasting-history">${historyHtml()}</div>`;
-}
-
-function historyHtml() {
-  if (!history.length) return '<p class="tasting-empty">Qui troverai gli assaggi che salvi.</p>';
-  return `<div class="tasting-list">${history.map((t) => {
-    const exp = expectedTags(t.style);
-    const found = t.flavor_tags.filter((x) => exp.includes(x)).length;
-    return `<div class="list-row tasting-row" data-past="${t.id}" role="button" tabindex="0">
-      <div class="lbody"><div class="lname">${escapeHtml(t.label ? `${t.style} · ${t.label}` : t.style)}</div>
-      <div class="lsub">${escapeHtml(formatDate(t.created_at))}${exp.length ? ` · ${found} di ${exp.length} aromi attesi` : ''}</div></div>
-      <span class="tasting-stars" aria-label="${t.rating} stelle">${starsText(t.rating)}</span>
     </div>`;
-  }).join('')}</div>`;
 }
 
 // ---- 1. nose ----
@@ -243,10 +226,16 @@ function verdictHtml() {
       <div class="field-label">La tua nota</div>
       <textarea id="tasting-text" maxlength="2000" placeholder="Com'era? Con cosa l'hai bevuto?" aria-label="La tua nota">${escapeHtml(state.text)}</textarea>
     </div>
+    <div class="aroma-card">
+      <div class="field-label">Abbinamenti</div>
+      <p class="aroma-card-desc">Facoltativi: con cosa lo berresti.</p>
+      <div class="chip-row">${FOOD_PAIRINGS.map((t) => { const on = state.pairings.has(t);
+        return `<div class="chip${on ? ' active' : ''}" data-pairing="${escapeHtml(t)}" role="button" tabindex="0" aria-pressed="${on}">${escapeHtml(t)}</div>`; }).join('')}</div>
+    </div>
     <div class="tasting-foot"><button type="button" class="primary-btn" data-step="summary">Vedi il riepilogo</button></div>`;
 }
 
-// ---- summary (also used read-only for a past tasting) ----
+// ---- summary, then where the tasting goes ----
 
 function comparison(wine, felt, taste) {
   const exp = expectedTags(wine);
@@ -271,11 +260,10 @@ function whereRows(felt, mouth) {
   });
 }
 
-function summaryHtml({ wine, label, felt, mouth, taste, stars, text }, readOnly) {
+function summaryHtml({ wine, felt, mouth, taste, stars, text, pairings }) {
   const { exp, found, extra, rows } = comparison(wine, felt, taste);
   const where = mouth.length ? whereRows(felt, mouth) : [];
   return `
-    ${readOnly ? `<span class="aroma-pill tasting-wine">${escapeHtml(label ? `${wine} · ${label}` : wine)}</span>` : ''}
     <div class="aroma-card">
       <div class="field-label">Naso</div>
       <div class="tasting-score"><b>${found.length} di ${exp.length}</b><span>aromi attesi ritrovati</span></div>
@@ -291,10 +279,15 @@ function summaryHtml({ wine, label, felt, mouth, taste, stars, text }, readOnly)
       <div class="field-label">Giudizio</div>
       <span class="tasting-stars big" aria-label="${stars} stelle">${stars ? starsText(stars) : 'Senza voto'}</span>
       ${text ? `<p class="aroma-card-desc">${escapeHtml(text)}</p>` : ''}
+      ${pairings.length ? `<div class="chip-row">${pairings.map((t) => `<span class="chip">${escapeHtml(t)}</span>`).join('')}</div>` : ''}
     </div>
-    <div class="tasting-foot">${readOnly
-      ? `<button type="button" class="primary-btn tasting-delete" id="tasting-delete">Elimina questo assaggio</button>`
-      : `<button type="button" class="primary-btn" id="tasting-save">Salva l'assaggio</button>`}</div>`;
+    <div class="tasting-place">
+      <h3 class="tasting-place-title">Dove lo metto?</h3>
+      <p class="aroma-card-desc">L'assaggio diventa la nota del vino che scegli.</p>
+      <button type="button" class="primary-btn" data-place="cellar">Aggiungi alla cantina</button>
+      <button type="button" class="secondary-btn" data-place="wish">Aggiungi ai desideri</button>
+      <button type="button" class="tasting-discard" id="tasting-discard">Non salvare</button>
+    </div>`;
 }
 
 // ---- render & navigation ----
@@ -305,14 +298,7 @@ function render() {
   else if (state.step === 'nose') html += noseHtml();
   else if (state.step === 'mouth') html += mouthHtml();
   else if (state.step === 'verdict') html += verdictHtml();
-  else if (state.step === 'summary') html += summaryHtml({ wine: state.wine, label: state.label, felt: [...state.felt], mouth: [...state.mouth], taste: state.taste, stars: state.stars, text: state.text }, false);
-  else if (state.step === 'past') {
-    const t = state.past;
-    html += summaryHtml({
-      wine: t.style, label: t.label, felt: t.flavor_tags, mouth: t.mouth_tags ?? [],
-      taste: TASTE_AXES.map((a) => t[`taste_${a.id}`] ?? null), stars: t.rating, text: t.text,
-    }, true);
-  }
+  else if (state.step === 'summary') html += summaryHtml({ wine: state.wine, felt: [...state.felt], mouth: [...state.mouth], taste: state.taste, stars: state.stars, text: state.text, pairings: [...state.pairings] });
   body().innerHTML = html;
   if (state.step === 'start') {
     document.getElementById('tasting-type').value = state.type;
@@ -329,43 +315,41 @@ function goStep(step) {
 
 function back() {
   const order = ['start', ...STEPS, 'summary'];
-  if (state.step === 'past') return goStep('start');
   const i = order.indexOf(state.step);
   if (i <= 0) { window.location.hash = '#/home'; return; }
   goStep(order[i - 1]);
 }
 
-async function save() {
-  const btn = document.getElementById('tasting-save');
-  btn.disabled = true;
-  const payload = { style: state.wine, label: state.label || null, rating: state.stars, text: state.text, flavorTags: [...state.felt], mouthTags: [...state.mouth] };
-  TASTE_AXES.forEach((axis, i) => { payload[`taste${axis.id[0].toUpperCase()}${axis.id.slice(1)}`] = state.taste[i]; });
-  try {
-    const saved = await api.post('/api/tastings', payload);
-    history = [saved, ...history];
-    state = freshState();
-    goStep('start');
-    showToast('Assaggio salvato');
-  } catch (err) {
-    console.error(err);
-    btn.disabled = false;
-    await alertModal("Non è stato possibile salvare l'assaggio. Riprova.");
-  }
+// The tasting as a note body (what POST /api/bottles/:id/notes takes): nose
+// and mouth aromas in one list, untouched sliders left out.
+function noteBody() {
+  const note = { rating: state.stars, text: state.text.trim(), flavorTags: [...new Set([...state.felt, ...state.mouth])], foodPairings: [...state.pairings] };
+  TASTE_AXES.forEach((axis, i) => { note[axis.key] = state.taste[i]; });
+  return note;
 }
 
-async function removePast() {
-  const t = state.past;
-  if (!(await confirmModal('Eliminare questo assaggio?', { confirmLabel: 'Elimina', danger: true }))) return;
-  try {
-    await api.del(`/api/tastings/${t.id}`);
-    history = history.filter((x) => x.id !== t.id);
-    state = freshState();
-    goStep('start');
-    showToast('Assaggio eliminato');
-  } catch (err) {
-    console.error(err);
-    await alertModal("Non è stato possibile eliminare l'assaggio. Riprova.");
-  }
+// The "+" search opens with what was tasted already typed; the tasting goes
+// on the wine picked there, and the user lands where it went.
+function place(mode) {
+  openAddSheet({
+    query: state.label || state.wine,
+    tasting: {
+      note: noteBody(),
+      mode,
+      done: ({ kind, bottle }) => {
+        state = freshState();
+        showAfterMount(kind === 'wish' ? { wishlist: true } : { bottleId: bottle?.id });
+        navigate('#/cellar');
+      },
+    },
+  });
+}
+
+async function discard() {
+  const ok = await confirmModal("L'assaggio non verrà salvato da nessuna parte.", { title: 'Chiudere senza salvare?', confirmLabel: 'Non salvare', danger: true });
+  if (!ok) return;
+  state = freshState();
+  goStep('start');
 }
 
 function wire() {
@@ -381,10 +365,16 @@ function wire() {
       if (state.step === 'verdict') state.text = document.getElementById('tasting-text').value;
       return goStep(stepBtn.dataset.step);
     }
-    if (e.target.closest('#tasting-save')) return save();
-    if (e.target.closest('#tasting-delete')) return removePast();
-    const past = e.target.closest('[data-past]');
-    if (past) { state.past = history.find((t) => t.id === Number(past.dataset.past)); return goStep('past'); }
+    const placeBtn = e.target.closest('[data-place]');
+    if (placeBtn) return place(placeBtn.dataset.place);
+    if (e.target.closest('#tasting-discard')) return discard();
+    const pairing = e.target.closest('[data-pairing]');
+    if (pairing) {
+      const tag = pairing.dataset.pairing;
+      if (state.pairings.has(tag)) state.pairings.delete(tag); else state.pairings.add(tag);
+      state.text = document.getElementById('tasting-text').value;
+      return keepScroll(render);
+    }
     const felt = e.target.closest('[data-felt]');
     if (felt) {
       const tag = felt.dataset.felt;
@@ -430,19 +420,11 @@ function keepScroll(fn) {
   view.scrollTop = y;
 }
 
-export async function mountTasting(search) {
+export function mountTasting(search) {
   if (!wired) { wire(); wired = true; }
   const wine = search?.get('vino');
   // Coming from the wheel with a wine starts a fresh tasting of it; a plain
   // visit resumes whatever was in progress (leaving mid-way loses nothing).
   if (wine && WINE_STYLES[wine]) state = freshState(wine);
-  else if (state.step === 'past') state = freshState();
   render();
-  try {
-    history = await api.get('/api/tastings');
-  } catch (err) {
-    console.error(err);
-    history = [];
-  }
-  if (state.step === 'start') document.getElementById('tasting-history').innerHTML = historyHtml();
 }

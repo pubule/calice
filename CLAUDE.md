@@ -909,3 +909,15 @@ che ogni utente ne abbia sempre esattamente una, quindi il codice può usare
 solo personale: niente inviti, persone seguite, notifiche push o note "della
 community" (tolti in build 153-154); l'unica cosa comune fra utenti è il
 catalogo `wines` e la memoria delle ricerche `search_cache`.
+
+## Assaggio guidato: finisce sempre su un vino
+
+Scelta dell'utente: un assaggio non si salva da solo. L'ultimo passo apre il
+foglio del "+" con `openAddSheet({ query, tasting: { note, mode, done } })`
+e la nota va sul vino scelto (bottiglia nuova, vino già in cantina, foglio
+completo o desiderio). Ogni nuovo modo di aggiungere un vino dentro
+`add.js` deve rispettare `tasting` (salvare `tasting.note` e chiamare
+`done`), altrimenti l'assaggio si perde in silenzio. Le note nei desideri
+stanno in `wishlist_items.note` (stessa forma del corpo di
+`POST /api/bottles/:id/notes`) e passano alla bottiglia con "Comprato:
+sposta in cantina".

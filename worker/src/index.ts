@@ -8,7 +8,6 @@ import { cellarElementRoutes, elementRoutes } from './routes/elements';
 import { cellarWishlistRoutes, wishlistItemRoutes } from './routes/wishlist';
 import { noteRoutes, palateRoutes } from './routes/notes';
 import { photoRoutes, photoFileRoutes } from './routes/photos';
-import { tastingRoutes } from './routes/tastings';
 import { landscapeRoutes } from './routes/landscape';
 import { wineImageRoutes, wineImageFileRoutes } from './routes/wine-image';
 import { runWeeklyBackup } from './lib/backup';
@@ -44,7 +43,6 @@ app.route('/api/bottles', noteRoutes);
 app.route('/api/bottles', photoRoutes);
 app.route('/api/photos', photoFileRoutes);
 app.route('/api/me', palateRoutes);
-app.route('/api/tastings', tastingRoutes);
 app.route('/api/backup', backupRoutes);
 
 export default {
