@@ -5,19 +5,22 @@ import { confirmModal, alertModal, promptModal } from '../modal.js';
 import { showToast } from '../toast.js';
 import { landscapeFor, knownLandscape } from '../landscape.js';
 import { drinkWindow, drinkSummary } from '../drink-window.js';
-import { tastingProfileHtml, wireTastingProfile, resetTastingProfile, readTastingProfile, setTastingProfile, isTastingProfileEmpty, tasteSummary } from '../tasting-profile.js';
+import { tastingProfileHtml, wireTastingProfile, resetTastingProfile, readTastingProfile, setTastingProfile, isTastingProfileEmpty, tasteSummary, FLAVOR_CATEGORIES, TASTE_AXES, toStep } from '../tasting-profile.js';
 
 let currentBottleId = null;
 let currentBottle = null; // same object reference cellar.js's currentBottles holds, mutated in place on save
 let currentMeId = null;
-// The user's own note on this bottle, edited in place: the composer opens
-// filled with it (one note per bottle and person) and saving updates it.
-// Null when there is none yet — the first save creates it.
+// The user's own note on this bottle (one per bottle and person): shown
+// read-only in the "Sentori e note" tab, edited on #note-overlay, and saving
+// updates it. Null when there is none yet — the first save creates it.
+let ownNote = null;
 let savedNoteId = null;
-let myRatingValue = 0; // the composer's score, 0 = none (1-5, tenths allowed)
+let myRatingValue = 0; // the note sheet's score, 0 = none (1-5, tenths allowed)
+let noteSnapshot = ''; // the sheet's state when opened, to ask before discarding changes
 
 const ratingText = (r) => String(Math.round(r * 10) / 10).replace('.', ',');
-const myStars = Array.from(document.querySelectorAll('#detail-overlay .add-note .stars-input span'));
+const myStars = Array.from(document.querySelectorAll('#note-overlay .stars-input span'));
+const detailTaste = document.getElementById('detail-taste');
 
 // Stars filled in proportion to the score (4,5 = four and a half) and the
 // number shown next to them.
@@ -298,8 +301,8 @@ async function uncorkOne() {
   }
 }
 
-// Own notes are not listed under the composer: the latest one IS the
-// composer. Any older own notes (from before notes were edited in place) are
+// Own notes are not listed under the card: the latest one IS the card
+// (renderNoteCard). Any older own notes (from before notes were edited in place) are
 // still shown, as "Note precedenti", so nothing written is hidden.
 async function loadNotes(bottleId) {
   const notes = await api.get(`/api/bottles/${bottleId}/notes`);
@@ -311,7 +314,96 @@ async function loadNotes(bottleId) {
   return mine;
 }
 
-let fillNoteComposerFn = () => {};
+// The "Sentori e note" card: the user's note to read, each part only when it
+// has a value (voto, testo, aromi per famiglia, gusto segnato, abbinamenti).
+// Every value comes from the API, so text goes in through textContent.
+function renderNoteCard(note) {
+  const card = document.getElementById('note-card');
+  const el = (tag, className, text) => Object.assign(document.createElement(tag), { className, textContent: text ?? '' });
+  const action = (label) => Object.assign(el('button', 'note-card-btn', label), { type: 'button' });
+  if (!note) {
+    card.classList.add('empty');
+    card.replaceChildren(action('Scrivi una nota'));
+    return;
+  }
+  card.classList.remove('empty');
+  const parts = [];
+  const created = note.created_at ? new Date(`${String(note.created_at).replace(' ', 'T')}Z`) : null;
+  const head = el('div', 'nc-head');
+  head.append(el('h4', '', 'La tua nota'));
+  if (created && !Number.isNaN(created.getTime())) head.append(el('span', 'nc-date', created.toLocaleDateString('it-IT', { day: 'numeric', month: 'long' })));
+  parts.push(head);
+
+  const rating = Number(note.rating) || 0;
+  if (rating > 0) {
+    const row = el('div', 'nc-stars');
+    row.setAttribute('role', 'img');
+    row.setAttribute('aria-label', `Il tuo voto: ${ratingText(rating)} su 5`);
+    for (let i = 0; i < 5; i++) {
+      const star = el('span', '', '★');
+      star.style.setProperty('--fill', `${Math.max(0, Math.min(1, rating - i)) * 100}%`);
+      row.append(star);
+    }
+    row.append(el('b', '', ratingText(rating)));
+    parts.push(row);
+  }
+  if (note.text) parts.push(el('p', 'nc-text', note.text));
+
+  const tags = Array.isArray(note.flavor_tags) ? note.flavor_tags : [];
+  const families = FLAVOR_CATEGORIES.map((c) => [c, tags.filter((t) => c.tags.includes(t))]).filter(([, ts]) => ts.length);
+  if (families.length) {
+    const box = el('div', 'nc-aromas');
+    box.append(el('div', 'nc-label', 'Aromi'));
+    for (const [cat, ts] of families) {
+      const row = el('div', 'nc-aroma-row');
+      const icon = el('span', 'nc-icon');
+      icon.innerHTML = cat.icon; // our own constant SVG
+      Object.assign(icon.style, { background: cat.bg, color: cat.fg });
+      icon.setAttribute('aria-hidden', 'true');
+      row.append(icon, el('span', 'nc-fam', cat.label), el('span', 'nc-list', ts.join(', ')));
+      box.append(row);
+    }
+    parts.push(box);
+  }
+
+  const axes = TASTE_AXES.filter((a) => note[`taste_${a.id}`] != null);
+  if (axes.length) {
+    const box = el('div', 'nc-taste');
+    box.append(el('div', 'nc-label', 'Gusto'));
+    for (const axis of axes) {
+      const v = Number(note[`taste_${axis.id}`]);
+      const bar = el('span', 'nc-bar');
+      bar.setAttribute('aria-hidden', 'true');
+      bar.append(Object.assign(el('i', ''), { style: `width:${toStep(v) * 10}%` }));
+      box.append(el('span', 'nc-axis', axis.name), bar, el('span', 'nc-side', v < 40 ? axis.left : v > 60 ? axis.right : 'equilibrato'));
+    }
+    parts.push(box);
+  }
+
+  const pairings = Array.isArray(note.food_pairings) ? note.food_pairings : [];
+  if (pairings.length) {
+    const box = el('div', 'nc-pairings');
+    box.append(el('div', 'nc-label', 'Abbinamenti'), el('div', 'nc-list', pairings.join(', ')));
+    parts.push(box);
+  }
+  parts.push(action('Modifica la nota'));
+  card.replaceChildren(...parts);
+}
+
+const noteSheetState = () => JSON.stringify([readTastingProfile(detailTaste), myRatingValue]);
+
+function openNoteSheet() {
+  if (ownNote) setTastingProfile(detailTaste, ownNote);
+  else resetTastingProfile(detailTaste);
+  setMyStars(Number(ownNote?.rating) || 0);
+  noteSnapshot = noteSheetState();
+  document.querySelector('#note-overlay .detail-sheet').scrollTop = 0;
+  document.getElementById('note-overlay').classList.add('open');
+}
+
+function closeNoteSheet() {
+  document.getElementById('note-overlay').classList.remove('open');
+}
 
 async function loadPhotos(bottleId) {
   const photos = await api.get(`/api/bottles/${bottleId}/photos`);
@@ -332,11 +424,6 @@ async function loadPhotos(bottleId) {
   });
 }
 
-let resetNoteComposerFn = () => {};
-function resetNoteComposer() {
-  resetNoteComposerFn();
-}
-
 export async function openDetail(bottle, me) {
   currentBottleId = bottle.id;
   currentBottle = bottle;
@@ -347,14 +434,19 @@ export async function openDetail(bottle, me) {
   document.getElementById('detail-overlay').classList.add('open');
   hideUndo();
   selectDetailTab('wine');
-  resetNoteComposer();
+  closeNoteSheet();
+  ownNote = null;
+  savedNoteId = null;
+  renderNoteCard(null);
   renderQuantity();
   renderHero(bottle);
   // Notes are fetched once to find the user's own (newest first from the
-  // API), fill the composer with it, then listed without it.
+  // API), shown on the card, then the older ones listed under it.
   const [mine] = await Promise.all([api.get(`/api/bottles/${currentBottleId}/notes`), loadPhotos(currentBottleId)]);
-  const own = mine.filter((n) => n.user_id === currentMeId)[0];
-  if (own) fillNoteComposerFn(own);
+  if (currentBottle !== bottle) return; // another bottle was opened meanwhile
+  ownNote = mine.filter((n) => n.user_id === currentMeId)[0] ?? null;
+  savedNoteId = ownNote?.id ?? null;
+  renderNoteCard(ownNote);
   await loadNotes(currentBottleId);
 }
 
@@ -409,30 +501,9 @@ function wireStaticControls() {
     });
   });
 
-  // The stars of this sheet's composer are the user's own score: a tap saves
-  // it at once (it is the rating of their latest note, created empty if
-  // there is none), and Cantina's list and the numbers above follow.
-  // "Salva nota" then updates that same note.
-  async function saveMyRating(value) {
-    const bottle = currentBottle;
-    if (!bottle) return;
-    setMyStars(value);
-    try {
-      const res = await api.put(`/api/bottles/${bottle.id}/my-rating`, { rating: value });
-      if (res.note_id && currentBottle === bottle && savedNoteId == null) {
-        savedNoteId = res.note_id;
-        document.getElementById('note-submit').textContent = 'Aggiorna nota';
-      }
-      bottle.my_rating = res.my_rating;
-      if (currentBottle === bottle) renderStats(bottle);
-      refreshCellarList();
-      showToast(`Voto salvato · ★ ${ratingText(res.my_rating)}`);
-    } catch (err) {
-      console.error(err);
-      await alertModal('Non è stato possibile salvare il voto. Riprova.', { title: 'Voto non salvato' });
-    }
-  }
-  myStars.forEach((star, i) => star.addEventListener('click', () => saveMyRating(i + 1)));
+  // The note sheet's stars: the score is saved with the rest of the note by
+  // "Salva" (no instant save any more: one way to save, per the spec).
+  myStars.forEach((star, i) => star.addEventListener('click', () => setMyStars(i + 1)));
   // The number next to the stars: tapped, it asks for the score with a
   // comma (4,5), for what whole stars cannot say.
   document.getElementById('note-rating-value')?.addEventListener('click', async () => {
@@ -445,44 +516,41 @@ function wireStaticControls() {
       await alertModal('Il voto va da 1 a 5, per esempio 4 o 4,5.');
       return;
     }
-    await saveMyRating(Math.round(v * 10) / 10);
+    setMyStars(Math.round(v * 10) / 10);
   });
 
-  const detailTaste = document.getElementById('detail-taste');
   detailTaste.innerHTML = tastingProfileHtml();
   wireTastingProfile(detailTaste);
 
-  const noteSubmit = document.getElementById('note-submit');
-  resetNoteComposerFn = () => {
-    savedNoteId = null;
-    noteSubmit.textContent = 'Salva nota';
-    document.getElementById('note-text').value = '';
-    setMyStars(0);
-    resetTastingProfile(detailTaste);
-  };
-  fillNoteComposerFn = (note) => {
-    savedNoteId = note.id;
-    noteSubmit.textContent = 'Aggiorna nota';
-    document.getElementById('note-text').value = note.text ?? '';
-    setMyStars(Number(note.rating) || 0);
-    setTastingProfile(detailTaste, note);
-  };
-  noteSubmit?.addEventListener('click', async () => {
-    if (currentBottleId == null || noteSubmit.disabled) return;
-    const textEl = document.getElementById('note-text');
-    const text = textEl.value.trim();
-    const starsOn = myRatingValue;
+  document.getElementById('note-card')?.addEventListener('click', (e) => {
+    if (e.target.closest('.note-card-btn')) openNoteSheet();
+  });
+  // Also what the sheet gestures (backdrop tap, drag down) call.
+  document.getElementById('note-cancel')?.addEventListener('click', async () => {
+    if (noteSheetState() !== noteSnapshot
+      && !(await confirmModal('Le modifiche alla nota andranno perse.', { title: 'Scartare le modifiche?', confirmLabel: 'Scarta', cancelLabel: 'Continua', danger: true }))) return;
+    closeNoteSheet();
+  });
+
+  const noteSave = document.getElementById('note-save');
+  noteSave?.addEventListener('click', async () => {
+    const bottle = currentBottle;
+    if (!bottle || noteSave.disabled) return;
     const profile = readTastingProfile(detailTaste);
-    if (!text && starsOn === 0 && isTastingProfileEmpty(profile)) return;
+    const { text } = profile;
+    // Nothing written and no note yet: nothing to save.
+    if (myRatingValue === 0 && isTastingProfileEmpty(profile) && savedNoteId == null) {
+      closeNoteSheet();
+      return;
+    }
     // 0 stars defaults to 3 only when there's free text to go with it (the
     // original behaviour: writing something implies a decent rating even if
     // no star was tapped) — a profile-only save with no stars stays 0
     // (genuinely unrated) instead of inventing a rating nobody gave.
-    const rating = starsOn || (text ? 3 : 0);
-    // Disabled while in flight and confirmed on success: with no feedback a
-    // tap looked like it did nothing, and repeated taps saved the same note
-    // five times in production. A failure used to be silent too.
-    noteSubmit.disabled = true;
+    const rating = myRatingValue || (text ? 3 : 0);
+    // Disabled while in flight: repeated taps once saved the same note five
+    // times in production.
+    noteSave.disabled = true;
     const payload = {
       rating,
       text,
@@ -499,21 +567,27 @@ function wireStaticControls() {
     const updating = savedNoteId != null;
     try {
       const note = updating
-        ? await api.patch(`/api/bottles/${currentBottleId}/notes/${savedNoteId}`, payload)
-        : await api.post(`/api/bottles/${currentBottleId}/notes`, payload);
+        ? await api.patch(`/api/bottles/${bottle.id}/notes/${savedNoteId}`, payload)
+        : await api.post(`/api/bottles/${bottle.id}/notes`, payload);
       savedNoteId = note?.id ?? savedNoteId;
     } catch (err) {
       console.error(err);
       await alertModal('Non è stato possibile salvare la nota. Riprova.', { title: 'Nota non salvata' });
       return;
     } finally {
-      noteSubmit.disabled = false;
+      noteSave.disabled = false;
     }
-    // The composer keeps what was saved: tapping again (after a change or
-    // not) updates this same note rather than creating another.
     showToast(updating ? 'Nota aggiornata' : 'Nota salvata');
-    noteSubmit.textContent = 'Aggiorna nota';
-    await loadNotes(currentBottleId);
+    closeNoteSheet();
+    // The score is the note's: the numbers above and Cantina's list follow.
+    bottle.my_rating = rating || null;
+    refreshCellarList();
+    if (currentBottle !== bottle) return;
+    renderStats(bottle);
+    const mine = await loadNotes(bottle.id);
+    if (currentBottle !== bottle) return;
+    ownNote = mine.find((n) => n.id === savedNoteId) ?? null;
+    renderNoteCard(ownNote);
   });
 
   document.getElementById('loc-edit-btn')?.addEventListener('click', () => {

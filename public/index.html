@@ -317,18 +317,7 @@
         </div>
         <div class="detail-tab-panel hidden" data-tab-panel="notes">
           <div class="notes-block" style="display:flex; flex-direction:column; gap:10px;">
-            <div class="section-head"><h3 style="font-size:calc(13rem/17);">Le tue note</h3></div>
-            <div class="add-note">
-              <textarea id="note-text" aria-label="Nota di degustazione" placeholder="Scrivi una nota di degustazione…"></textarea>
-              <div class="row">
-                <div class="my-stars">
-                  <div class="stars-input" role="radiogroup" aria-label="Il tuo voto"><span role="radio" tabindex="0" aria-checked="false" aria-label="1 stella">★</span><span role="radio" tabindex="0" aria-checked="false" aria-label="2 stelle">★</span><span role="radio" tabindex="0" aria-checked="false" aria-label="3 stelle">★</span><span role="radio" tabindex="0" aria-checked="false" aria-label="4 stelle">★</span><span role="radio" tabindex="0" aria-checked="false" aria-label="5 stelle">★</span></div>
-                  <div class="rating-value" id="note-rating-value" role="button" tabindex="0" aria-label="Scrivi il voto, anche con la virgola">–</div>
-                </div>
-                <button id="note-submit">Salva nota</button>
-              </div>
-              <div class="taste-profile" id="detail-taste"></div>
-            </div>
+            <div class="note-card" id="note-card"></div>
             <div id="notes-mine" style="display:flex; flex-direction:column; gap:10px;"></div>
           </div>
         </div>
@@ -358,6 +347,25 @@
         </div>
         <div class="land-credit hidden" id="land-credit"></div>
       </div>
+    </div>
+  </div>
+
+  <!-- The user's note on the open bottle, edited on its own sheet above the
+       bottle sheet; the tab shows it read-only (detail.js renderNoteCard). -->
+  <div class="detail-overlay note-overlay" id="note-overlay">
+    <div class="detail-sheet note-sheet" role="dialog" aria-label="La tua nota">
+      <div class="note-sheet-head">
+        <button type="button" class="note-cancel" id="note-cancel">Annulla</button>
+        <h3>La tua nota</h3>
+        <button type="button" class="note-save" id="note-save">Salva</button>
+      </div>
+      <div class="add-note note-stars">
+        <div class="my-stars">
+          <div class="stars-input" role="radiogroup" aria-label="Il tuo voto"><span role="radio" tabindex="0" aria-checked="false" aria-label="1 stella">★</span><span role="radio" tabindex="0" aria-checked="false" aria-label="2 stelle">★</span><span role="radio" tabindex="0" aria-checked="false" aria-label="3 stelle">★</span><span role="radio" tabindex="0" aria-checked="false" aria-label="4 stelle">★</span><span role="radio" tabindex="0" aria-checked="false" aria-label="5 stelle">★</span></div>
+          <div class="rating-value" id="note-rating-value" role="button" tabindex="0" aria-label="Scrivi il voto, anche con la virgola">–</div>
+        </div>
+      </div>
+      <div class="taste-profile" id="detail-taste"></div>
     </div>
   </div>
 

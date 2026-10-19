@@ -357,6 +357,39 @@
   .fact-chips{display:flex; flex-wrap:wrap; gap:6px;}
   .fact-chips .grape-chip{font-size:calc(12.5rem/17); color:#241e1a; padding:5px 11px;}
   .fact-empty{margin:0; font-size:calc(13rem/17); color:#736a5d;}
+  /* "Sentori e note": the note to read (detail.js renderNoteCard)... */
+  .note-card{background:#ffffff; border:1px solid #e9e5dc; border-radius:16px; padding:16px; display:flex; flex-direction:column; gap:14px;}
+  .note-card.empty{background:none; border:none; padding:0;}
+  .nc-head{display:flex; align-items:baseline; gap:10px;}
+  .nc-head h4{flex:1; margin:0; font-family:'Newsreader',serif; font-weight:500; font-size:calc(18rem/17); color:#241e1a;}
+  .nc-date{font-size:calc(12rem/17); color:#736a5d;}
+  .nc-stars{display:flex; align-items:center; gap:2px;}
+  .nc-stars span{font-size:22px; line-height:1; color:transparent; -webkit-text-stroke:1.2px #8e8779; background:linear-gradient(90deg, #5b2333 var(--fill, 0%), transparent var(--fill, 0%)); -webkit-background-clip:text; background-clip:text;}
+  .nc-stars b{margin-left:8px; font-family:'JetBrains Mono',monospace; font-size:calc(15rem/17); font-weight:600; color:#241e1a;}
+  .nc-text{margin:0; font-family:'Newsreader',serif; font-size:calc(17rem/17); line-height:1.45; color:#241e1a; white-space:pre-line; overflow-wrap:anywhere;}
+  .nc-label{font-family:'JetBrains Mono',monospace; font-size:calc(11rem/17); font-weight:600; letter-spacing:.12em; text-transform:uppercase; color:#736a5d;}
+  .nc-aromas, .nc-pairings{display:flex; flex-direction:column; gap:8px;}
+  .nc-aroma-row{display:flex; align-items:center; gap:10px;}
+  .nc-icon{flex:0 0 auto; width:30px; height:30px; border-radius:9px; display:flex; align-items:center; justify-content:center;}
+  .nc-icon svg{width:17px; height:17px;}
+  .nc-fam{flex:0 0 72px; font-size:calc(12.5rem/17); color:#736a5d;}
+  .nc-list{font-size:calc(14rem/17); color:#241e1a; overflow-wrap:anywhere;}
+  .nc-taste{display:grid; grid-template-columns:auto minmax(0, 1fr) auto; align-items:center; gap:8px 10px; font-size:calc(12.5rem/17);}
+  .nc-taste .nc-label{grid-column:1 / -1;}
+  .nc-axis{color:#736a5d;}
+  .nc-bar{height:6px; border-radius:3px; background:#efece3; overflow:hidden;}
+  .nc-bar i{display:block; height:100%; border-radius:3px; background:#5b2333;}
+  .nc-side{color:#241e1a;}
+  .note-card-btn{min-height:46px; border:none; border-radius:9999px; background:#5b2333; color:#f7f5f0; font-family:'Archivo',sans-serif; font-size:calc(13rem/17); font-weight:600; cursor:pointer;}
+  /* ...and the sheet that edits it, above the bottle sheet. */
+  .note-overlay{z-index:30;}
+  .note-sheet{padding:0 18px 26px; display:flex; flex-direction:column; gap:12px;}
+  .note-sheet-head{display:flex; align-items:center; gap:10px; padding-top:14px;}
+  .note-sheet-head h3{flex:1; margin:0; text-align:center; font-family:'Newsreader',serif; font-weight:500; font-size:calc(19rem/17);}
+  .note-cancel{min-height:44px; padding:0; border:none; background:none; font-family:'Archivo',sans-serif; font-size:calc(14rem/17); color:#736a5d; cursor:pointer;}
+  .note-save{min-height:40px; padding:0 18px; border:none; border-radius:9999px; background:#5b2333; color:#f7f5f0; font-family:'Archivo',sans-serif; font-size:calc(13rem/17); font-weight:600; cursor:pointer;}
+  .note-stars{background:none; border:none; padding:0; align-items:center;}
+  .note-sheet .taste-profile{margin-top:0; padding-top:0; border-top:none;}
   .loc-row{display:flex; align-items:center; gap:10px; background:#ffffff; border:1px solid #e2e0d8; border-radius:12px; padding:12px 14px;}
   .loc-row svg{stroke:#5b2333; flex-shrink:0;}
   .loc-row .loc-text{flex:1; font-size:calc(12rem/17);}
@@ -380,8 +413,8 @@
   /* Il tuo voto nella scheda: stelle riempite in proporzione (4,5 = mezza
      quinta stella) e accanto il numero, che si tocca per scriverlo con la
      virgola. Stelle un po' più strette per far stare tutto in una riga. */
-  #detail-overlay .my-stars{display:flex; align-items:center; gap:2px; min-width:0;}
-  #detail-overlay .add-note .stars-input span{padding:10px 2px; background:linear-gradient(90deg, #d4a017 var(--fill, 0%), transparent var(--fill, 0%)); background-origin:content-box; -webkit-background-clip:text; background-clip:text;}
+  #detail-overlay .my-stars, #note-overlay .my-stars{display:flex; align-items:center; gap:2px; min-width:0;}
+  #detail-overlay .add-note .stars-input span, #note-overlay .add-note .stars-input span{padding:10px 2px; background:linear-gradient(90deg, #d4a017 var(--fill, 0%), transparent var(--fill, 0%)); background-origin:content-box; -webkit-background-clip:text; background-clip:text;}
   .rating-value{min-width:44px; min-height:44px; padding:0 8px; display:flex; align-items:center; justify-content:center; border-radius:10px; background:#f2f0e9; color:#241e1a; font-size:calc(14rem/17); font-weight:600; font-variant-numeric:tabular-nums; cursor:pointer;}
   .rating-value:active{opacity:.55;}
   .add-note button{background:#5b2333; color:#f7f5f0; border:none; border-radius:9999px; padding:10px 16px; min-height:36px; font-size:calc(11rem/17); font-weight:600; font-family:'Archivo',sans-serif; cursor:pointer;}

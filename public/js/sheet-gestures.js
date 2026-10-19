@@ -13,6 +13,7 @@
 // overlay -> controllo di chiusura esistente
 const SHEETS = [
   ['detail-overlay', 'detail-close'],
+  ['note-overlay', 'note-cancel'],
   ['compare-overlay', 'compare-close'],
   ['add-overlay', 'add-close'],
   ['recognize-overlay', 'recognize-close'],
