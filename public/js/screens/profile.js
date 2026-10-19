@@ -154,12 +154,19 @@ document.getElementById('export-csv-row')?.addEventListener('click', async () =>
 // user's cellars, photos included, kept by the user (Files / iCloud Drive).
 const BACKUP_LATE_DAYS = 30;
 
-function showBackupWhen(at) {
-  const el = document.getElementById('backup-when');
-  if (!el) return;
-  const days = at ? Math.floor((Date.now() - Date.parse(`${String(at).replace(' ', 'T')}Z`)) / 86_400_000) : null;
-  el.textContent = days == null ? 'Mai fatto' : days <= 0 ? 'Ultimo backup oggi' : days === 1 ? 'Ultimo backup ieri' : `Ultimo backup ${days} giorni fa`;
-  el.classList.toggle('late', days == null || days > BACKUP_LATE_DAYS);
+// Two lines under "Scarica backup": the weekly copy the server makes by
+// itself, and the file saved on the phone (bordeaux when too old or never).
+async function showBackupStatus() {
+  const auto = document.getElementById('backup-auto');
+  const when = document.getElementById('backup-when');
+  if (!auto || !when) return;
+  const { automatic, saved } = await api.get('/api/backup/status').catch(() => ({}));
+  auto.textContent = automatic
+    ? `Automatico: ${new Date(`${automatic}T12:00:00Z`).toLocaleDateString('it-IT', { day: 'numeric', month: 'long' })}`
+    : 'Automatico: il primo entro domani';
+  const days = saved ? Math.floor((Date.now() - Date.parse(`${String(saved).replace(' ', 'T')}Z`)) / 86_400_000) : null;
+  when.textContent = `Sul telefono: ${days == null ? 'mai' : days <= 0 ? 'oggi' : days === 1 ? 'ieri' : `${days} giorni fa`}`;
+  when.classList.toggle('late', days == null || days > BACKUP_LATE_DAYS);
 }
 
 function backupCounts(b, photos) {
@@ -202,7 +209,7 @@ document.getElementById('backup-row')?.addEventListener('click', async () => {
   if (backupBusy) return;
   backupBusy = true;
   const when = document.getElementById('backup-when');
-  when.textContent = 'Preparo il backup…';
+  when.textContent = 'Sul telefono: preparo il file…';
   when.classList.remove('late');
   try {
     const backup = await api.get('/api/backup');
@@ -235,7 +242,7 @@ document.getElementById('backup-row')?.addEventListener('click', async () => {
     await alertModal('Backup non riuscito. Controlla la connessione e riprova.', { title: 'Scarica backup' });
   } finally {
     backupBusy = false;
-    showBackupWhen((await api.get('/api/auth/me').catch(() => ({}))).last_backup_at);
+    await showBackupStatus();
   }
 });
 
@@ -321,7 +328,7 @@ export async function mountProfile() {
   document.getElementById('profile-avatar').textContent = String(user.name).slice(0, 2).toUpperCase();
   document.getElementById('profile-name').textContent = user.name;
   document.getElementById('profile-email').textContent = user.email;
-  showBackupWhen(user.last_backup_at);
+  showBackupStatus();
 
   const cellars = await api.get('/api/cellars');
   firstCellarId = cellars[0]?.id ?? null;

@@ -1511,8 +1511,11 @@ questo file è il riassunto "dove eravamo rimasti".
       file in base64, poi il foglio di condivisione ("Salva in File") —
       avviato dentro il tocco tramite `onConfirm` di `confirmModal`, perché
       iOS lo vuole in un gesto. Se salvato, `POST /api/backup/saved`
-      (`users.last_backup_at`); sotto l'etichetta "Ultimo backup N giorni
-      fa", bordeaux oltre 30 giorni o se mai fatto.
+      (`users.last_backup_at`). Sotto l'etichetta due righe (build 152,
+      `GET /api/backup/status`): "Automatico: <data>" (la copia settimanale
+      più recente in R2) e "Sul telefono: N giorni fa", bordeaux oltre 30
+      giorni o se mai fatto — prima c'era solo la seconda e "Mai fatto"
+      faceva credere che non esistesse nessun backup.
     - "Ripristina da backup": file scelto → conferma (pericolosa) →
       `POST /api/backup/restore`. Sostituisce: ogni cantina del file di cui
       l'utente è ancora membro viene svuotata e riempita, le altre tornano

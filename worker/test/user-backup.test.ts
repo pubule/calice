@@ -111,7 +111,10 @@ describe('user backup', () => {
   it('remembers when the backup was saved', async () => {
     const h = auth('b5@b.com');
     await app.request('/api/backup/saved', { method: 'POST', headers: h }, env);
-    const me = await (await app.request('/api/auth/me', { headers: h }, env)).json<any>();
-    expect(me.last_backup_at).toBeTruthy();
+    await env.PHOTOS.put('backups/2026-10-12.json', '{}');
+    await env.PHOTOS.put('backups/2026-10-19.json', '{}');
+    const status = await (await app.request('/api/backup/status', { headers: h }, env)).json<any>();
+    expect(status.automatic).toBe('2026-10-19');
+    expect(status.saved).toBeTruthy();
   });
 });

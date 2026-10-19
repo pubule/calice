@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { requireAuth } from '../lib/session';
 import { detectImageType } from './photos';
+import { BACKUP_PREFIX } from '../lib/backup';
 import type { Env } from '../index';
 
 // "Scarica backup" / "Ripristina da backup" in Profilo: everything about the
@@ -250,6 +251,15 @@ export const backupRoutes = new Hono<{ Bindings: Env; Variables: { userId: numbe
 backupRoutes.use('*', requireAuth);
 
 backupRoutes.get('/', async (c) => c.json(await buildUserBackup(c.env.DB, c.get('userId'))));
+
+// For the row in Profilo: the newest weekly copy (YYYY-MM-DD, whole
+// database) and when this user last saved a file on the phone.
+backupRoutes.get('/status', async (c) => {
+  const keys = (await c.env.PHOTOS.list({ prefix: BACKUP_PREFIX })).objects.map((o) => o.key).sort();
+  const newest = keys.at(-1)?.slice(BACKUP_PREFIX.length, BACKUP_PREFIX.length + 10) ?? null;
+  const me = await c.env.DB.prepare('select last_backup_at from users where id = ?').bind(c.get('userId')).first<{ last_backup_at: string | null }>();
+  return c.json({ automatic: newest, saved: me?.last_backup_at ?? null });
+});
 
 backupRoutes.post('/saved', async (c) => {
   await c.env.DB.prepare(`update users set last_backup_at = datetime('now') where id = ?`).bind(c.get('userId')).run();
