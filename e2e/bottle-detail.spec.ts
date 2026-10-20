@@ -74,13 +74,13 @@ test.describe('Dettaglio bottiglia', () => {
     await expect(page.locator('#note-overlay')).not.toHaveClass(/open/);
     await expect(rows.locator('.nc-row[data-tab="aromi"]')).toContainText('Amarena');
     // The sentence is the app's while the user has not written one.
-    await expect(card.locator('.nc-text')).toHaveText('Sentori di amarena.');
+    await expect(card.locator('.nc-text')).toHaveText('Profuma di amarena.');
     await expect(card.locator('.nc-meta')).toContainText('Scritta dall’app');
     await expect(card.locator('.nc-stars')).toHaveAttribute('aria-label', 'Il tuo voto: nessuno');
 
     // Tapping the sentence edits it in the card, prefilled; saving it unchanged keeps it the app's.
     await card.locator('.nc-sentence').click();
-    await expect(card.locator('.nc-edit')).toHaveValue('Sentori di amarena.');
+    await expect(card.locator('.nc-edit')).toHaveValue('Profuma di amarena.');
     await card.locator('.nc-edit-save').click();
     await expect(card.locator('.nc-meta')).toContainText('Scritta dall’app');
     // Writing makes it the user's.
@@ -113,7 +113,7 @@ test.describe('Dettaglio bottiglia', () => {
     await card.locator('.nc-sentence').click();
     await card.locator('.nc-edit').fill('');
     await card.locator('.nc-edit-save').click();
-    await expect(card.locator('.nc-text')).toHaveText('Sentori di amarena.');
+    await expect(card.locator('.nc-text')).toHaveText('Profuma di amarena.');
 
     // Stars on the card save at once; the same star again clears the score;
     // the number takes a score with a comma.
@@ -125,7 +125,7 @@ test.describe('Dettaglio bottiglia', () => {
     await page.fill('#app-modal input', '4,5');
     await confirmModal(page);
     await expect(card.locator('.nc-stars')).toHaveAttribute('aria-label', 'Il tuo voto: 4,5 su 5');
-    await expect(card.locator('.nc-text')).toHaveText('Sentori di amarena.');
+    await expect(card.locator('.nc-text')).toHaveText('Profuma di amarena.');
 
     // Annulla with changes asks first; cancelling the question keeps the sheet.
     await rows.locator('.nc-row[data-tab="aromi"]').click();

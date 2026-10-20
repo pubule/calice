@@ -413,17 +413,39 @@ export function tasteWord(axis, value) {
 // The note as one sentence, from what was marked (note shape: flavor_tags,
 // taste_<axis>, food_pairings). It stands in for the note's text until the
 // user writes their own, and again if they empty it.
+// How each taste axis reads inside the sentence ("in bocca è …"): low,
+// high, middle. In the order a taster says them.
+const TASTE_PHRASE = {
+  sweetness: ['secco', 'dolce', 'abboccato'],
+  acidity: ['poco acido', 'fresco', 'di acidità media'],
+  tannin: ['morbido', 'tannico', 'di tannino medio'],
+  body: ['di corpo leggero', 'strutturato', 'di corpo medio'],
+  alcohol: ['di poco alcol', 'caldo', 'di gradazione media'],
+  intensity: ['delicato', 'intenso', 'di media intensità'],
+  finish: ['corto', 'persistente', 'di media persistenza'],
+};
+
 export function composeNoteText(note) {
   const list = (xs) => (xs.length > 1 ? `${xs.slice(0, -1).join(', ')} e ${xs[xs.length - 1]}` : xs[0]);
   const lower = (xs) => (Array.isArray(xs) ? xs : []).map((x) => x.toLowerCase());
-  const parts = [];
   const aromas = lower(note.flavor_tags);
-  if (aromas.length) parts.push(`Sentori di ${list(aromas)}.`);
-  const taste = TASTE_AXES.filter((a) => note[`taste_${a.id}`] != null).map((a) => tasteWord(a, Number(note[`taste_${a.id}`])).toLowerCase());
-  if (taste.length) { const t = list(taste); parts.push(`${t[0].toUpperCase()}${t.slice(1)}.`); }
-  const food = lower(note.food_pairings);
-  if (food.length) parts.push(`Con ${list(food)}.`);
-  return parts.join(' ');
+  const taste = Object.entries(TASTE_PHRASE)
+    .filter(([id]) => note[`taste_${id}`] != null)
+    .map(([id, [low, high, mid]]) => { const v = Number(note[`taste_${id}`]); return v < 40 ? low : v > 60 ? high : mid; });
+  const foods = lower(note.food_pairings);
+  const aperitivo = foods.includes('aperitivo');
+  const dishes = foods.filter((f) => f !== 'aperitivo');
+  let food = dishes.length ? `si abbina bene con ${list(dishes)}` : '';
+  if (aperitivo) food = food ? `${food} ed è ottimo come aperitivo` : 'è ottimo come aperitivo';
+
+  // "Profuma di …. In bocca è …, e si abbina bene con …."
+  const and = food.startsWith('è') ? 'ed' : 'e';
+  const sentences = [];
+  if (aromas.length) sentences.push(`profuma di ${list(aromas)}`);
+  if (taste.length) sentences.push(`in bocca è ${list(taste)}${food ? `, ${and} ${food}` : ''}`);
+  else if (food && sentences.length) sentences[0] += ` ${and} ${food}`;
+  else if (food) sentences.push(food);
+  return sentences.map((x) => `${x[0].toUpperCase()}${x.slice(1)}.`).join(' ');
 }
 
 // For rendering a saved note's taste axes back as compact text (only the

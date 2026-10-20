@@ -1892,6 +1892,11 @@ questo file è il riassunto "dove eravamo rimasti".
     stelle salvano subito. `persistNote()` + `noteAsPayload()` rimandano
     sempre tutti i campi (PATCH sovrascrive). "Rivedi e conferma" in add.js
     tiene ancora sotto-tab e Testo.
+    Build 180: frase legata ("Profuma di …. In bocca è …, e si abbina bene
+    con …", aperitivo → "ed è ottimo come aperitivo"; parole del gusto in
+    `TASTE_PHRASE`, test in `tasting-profile-data.spec.ts`). Campo di
+    modifica con lo stesso font/misura della frase (niente salto), sfondo
+    crema e sottolineatura bordeaux in dissolvenza, alto quanto il testo.
 
 - **Ponytail nelle sessioni cloud**: le sue skill sono copiate in
   `.claude/skills/` e sempre attive tramite CLAUDE.md (scelta dell'utente:

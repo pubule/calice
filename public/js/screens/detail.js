@@ -458,6 +458,10 @@ function startTextEdit() {
   editingText = true;
   renderNoteCard(ownNote);
   const field = document.querySelector('#note-card .nc-edit');
+  // As tall as its text, like the sentence it replaces.
+  const fit = () => { field.style.height = 'auto'; field.style.height = `${field.scrollHeight}px`; };
+  field.addEventListener('input', fit);
+  fit();
   field.focus();
   field.setSelectionRange(field.value.length, field.value.length);
 }
