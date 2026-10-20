@@ -1921,6 +1921,14 @@ questo file è il riassunto "dove eravamo rimasti".
     vecchi a 10 passi mostrati sul pallino più vicino e arrotondati al
     salvataggio. L'Assaggio guidato (`tasting.js`) ha ancora la sua barra a
     10 passi.
+    Verifica separazione utenti (20 ottobre): ogni route controlla cantina
+    (`isCellarMember`), bottiglia, elemento, nota (`user_id`) o vino
+    (`ownsWine`/`ownWineId`); in produzione (2 utenti) nessun dato incrociato.
+    `worker/test/isolation.test.ts` prova ogni lettura/scrittura di un
+    secondo utente sui dati del primo: una route nuova va aggiunta lì.
+    Condivisi per scelta: ricerca di "Aggiungi" (vini di tutti, con foto),
+    `search_cache`, tetto giornaliero OCR comune, ricerche recenti in
+    localStorage del dispositivo.
 
 - **Ponytail nelle sessioni cloud**: le sue skill sono copiate in
   `.claude/skills/` e sempre attive tramite CLAUDE.md (scelta dell'utente:
