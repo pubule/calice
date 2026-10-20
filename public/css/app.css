@@ -1223,3 +1223,6 @@ input.search:focus, select.search:focus, .text-input:focus, .num-input:focus, te
 .dims-preview b{font-family:'JetBrains Mono',monospace; font-size:calc(17rem/17); font-weight:600; color:#5b2333;}
 .dims-preview small{font-size:calc(12rem/17); color:#736a5d;}
 #create-element-btn{margin-top:18px;}
+/* "Scegli la bottiglia": ricerca e tipi sopra la lista. */
+#pick-bottle-search{margin:8px 0 10px;}
+#pick-bottle-types{margin-bottom:12px;}

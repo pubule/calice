@@ -1856,6 +1856,10 @@ questo file è il riassunto "dove eravamo rimasti".
     dell'overlay (resta usata solo da "Scegli dove riporla").
     **Statistiche** si apre dalla prima voce di Profilo, con freccia indietro
     (`TAB_FOR_VIEW['view-stats'] = 'view-profile'`).
+    Build 173: "Scegli la bottiglia" (slot vuoto o "Aggiungi bottiglia" di uno
+    scatolone) ha una ricerca (nome, produttore, annata, regione) e i chip per
+    tipo, mostrati solo con più di una scelta / più di un tipo; ogni riga
+    mostra anche produttore e annata.
 
 - **Ponytail nelle sessioni cloud**: le sue skill sono copiate in
   `.claude/skills/` e sempre attive tramite CLAUDE.md (scelta dell'utente:

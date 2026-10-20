@@ -1169,24 +1169,47 @@ function renderBottlePickerForSlot(elId, tier, col, depth) {
   // Only wines with a bottle still without a place: each bottle has one spot.
   const choices = currentBottles.filter((b) => freeCount(b) > 0);
   const slotLabel = tier == null ? 'questo elemento' : `Livello ${tier} · ${colLetter(col)}.${depth}`;
+  // Search and type chips, like the Vini list: a cellar can hold many wines.
+  const types = [...new Set(choices.map((b) => b.type).filter(Boolean))];
   const body = document.getElementById('elements-body');
   body.innerHTML = `
     <p class="page-sub" style="margin:0 0 4px; font-size:calc(11.5rem/17); color:#736a5d;">${slotLabel} — scegli quale bottiglia mettere qui:</p>
+    ${choices.length > 1 ? `<input class="search" id="pick-bottle-search" type="search" aria-label="Cerca la bottiglia" placeholder="Cerca per nome, produttore, annata…">` : ''}
+    ${types.length > 1 ? `<div class="chips" id="pick-bottle-types">${['', ...types].map((t) => `<div class="chip${t ? '' : ' active'}" data-v="${escapeHtml(t)}" role="button" tabindex="0" aria-pressed="${!t}">${t ? escapeHtml(capitalize(t)) : 'Tutti'}</div>`).join('')}</div>` : ''}
     <div id="pick-bottle-list" style="display:flex; flex-direction:column; gap:9px;">${
       choices.length
         ? choices
             .map((b) => {
               const free = freeCount(b);
+              const where = `${escapeHtml(b.producer)}${b.vintage ? ' · ' + escapeHtml(b.vintage) : ''}`;
               const sub = b.places?.length ? `${free} ${free === 1 ? 'bottiglia' : 'bottiglie'} senza posto · ${locationLabel({ ...b, quantity: b.places.length })}` : `${free} ${free === 1 ? 'bottiglia' : 'bottiglie'} senza posto`;
               return `
-        <div class="elem-row" data-id="${b.id}" role="button" tabindex="0">
+        <div class="elem-row" data-id="${b.id}" data-type="${escapeHtml(b.type ?? '')}" data-text="${escapeHtml(`${b.name} ${b.producer} ${b.vintage ?? ''} ${b.region ?? ''}`.toLowerCase())}" role="button" tabindex="0">
           ${photoHtml(b, 'cphoto')}
-          <div class="elem-body"><div class="elem-name">${escapeHtml(b.name)}</div><div class="elem-sub">${escapeHtml(sub)}</div></div>
+          <div class="elem-body"><div class="elem-name">${escapeHtml(b.name)}</div><div class="elem-sub">${where}</div><div class="elem-sub">${escapeHtml(sub)}</div></div>
         </div>`;
             })
-            .join('')
+            .join('') + '<div class="empty-note" id="pick-bottle-none" style="display:none;">Nessuna bottiglia trovata.</div>'
         : `<div class="empty-note">${currentBottles.length ? 'Tutte le bottiglie hanno già un posto.' : 'Nessuna bottiglia in questa cantina.'}</div>`
     }</div>`;
+  let pickType = '';
+  const filterPick = () => {
+    const q = (document.getElementById('pick-bottle-search')?.value ?? '').trim().toLowerCase();
+    let shown = 0;
+    body.querySelectorAll('#pick-bottle-list .elem-row').forEach((row) => {
+      const ok = (!pickType || row.dataset.type === pickType) && (!q || row.dataset.text.includes(q));
+      row.style.display = ok ? '' : 'none';
+      if (ok) shown++;
+    });
+    const none = document.getElementById('pick-bottle-none');
+    if (none) none.style.display = shown ? 'none' : '';
+  };
+  document.getElementById('pick-bottle-search')?.addEventListener('input', filterPick);
+  body.querySelectorAll('#pick-bottle-types .chip').forEach((chip) => chip.addEventListener('click', () => {
+    pickType = chip.dataset.v;
+    body.querySelectorAll('#pick-bottle-types .chip').forEach((c) => { c.classList.toggle('active', c === chip); c.setAttribute('aria-pressed', String(c === chip)); });
+    filterPick();
+  }));
   document.querySelectorAll('#pick-bottle-list .elem-row').forEach((row) =>
     row.addEventListener('click', async () => {
       const bottle = currentBottles.find((b) => b.id === Number(row.dataset.id));

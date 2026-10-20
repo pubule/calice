@@ -86,7 +86,10 @@ test.describe('Cantina — elementi', () => {
     await expect(page.locator('.cellar-row', { hasText: bottleName })).toBeVisible();
   });
 
-  test('Scatolone: no sizes, and "Aggiungi bottiglia" opens the same reverse picker', async ({ page }) => {
+  test('Scatolone: no sizes, and "Aggiungi bottiglia" opens the same reverse picker', async ({ page, request }) => {
+    // A second wine without a place, so the picker offers a search.
+    const other = await seedWine(request, { name: `Altro Vino E2E ${runId}`, producer: 'Cantina Test', type: 'bianco' });
+    await seedBottle(request, await myCellarId(request), other.id, { quantity: 1 });
     await gotoScreen(page, 'places');
     const boxName = `Scatolone Assign E2E ${runId}`;
     await page.click('#places-new-btn');
@@ -98,6 +101,13 @@ test.describe('Cantina — elementi', () => {
     await expect(page.locator('.box-note')).toBeVisible();
     await page.click('#assign-box-btn');
     await expect(page.locator('#elements-title')).toHaveText('Scegli la bottiglia');
+    // The search narrows the list (the dev database keeps wines of earlier runs).
+    const rows = page.locator('#pick-bottle-list .elem-row');
+    await page.fill('#pick-bottle-search', 'nessun vino si chiama così');
+    await expect(rows.filter({ visible: true })).toHaveCount(0);
+    await expect(page.locator('#pick-bottle-none')).toBeVisible();
+    await page.fill('#pick-bottle-search', bottleName.toLowerCase());
+    await expect(rows.filter({ visible: true })).toHaveCount(1);
     await page.click(`#pick-bottle-list .elem-row:has-text("${bottleName}")`);
     await expect(page.locator('.box-item', { hasText: bottleName })).toBeVisible();
   });
