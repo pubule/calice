@@ -1871,6 +1871,9 @@ questo file è il riassunto "dove eravamo rimasti".
     bottiglie senza posto. Scaffale/Rack/Cella restano a posti singoli.
     Build 176: `touch-action:manipulation` su `html` toglie lo zoom col
     doppio tocco in tutta l'app; il pinch resta (accessibilità, HIG).
+    Build 177: le righe dello scatolone si scorrono a sinistra ("Togli": tutte
+    le bottiglie di quel vino escono, toast con Annulla). `wireSwipe(list,
+    { onAction, onRow })` ora è generico: Vini e `#elements-body` lo usano.
 
 - **Ponytail nelle sessioni cloud**: le sue skill sono copiate in
   `.claude/skills/` e sempre attive tramite CLAUDE.md (scelta dell'utente:

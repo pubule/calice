@@ -134,6 +134,17 @@ test.describe('Cantina — elementi', () => {
     await page.click('#app-modal [aria-label="Una bottiglia in meno"]');
     await confirmModal(page);
     await expect(item.locator('.elem-count')).toHaveText('×1');
+    // Swiping the row left reveals "Togli": the wine leaves the box, Annulla puts it back.
+    const box = (await item.boundingBox())!;
+    await page.mouse.move(box.x + box.width - 20, box.y + box.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(box.x + box.width - 120, box.y + box.height / 2, { steps: 8 });
+    await page.mouse.move(box.x + 20, box.y + box.height / 2, { steps: 8 });
+    await page.mouse.up();
+    await page.click(`.swipe-delete[aria-label="Togli ${bottleName} dallo scatolone"]`);
+    await expect(page.locator('.box-item', { hasText: bottleName })).toHaveCount(0);
+    await page.click('.toast-action');
+    await expect(item.locator('.elem-count')).toHaveText('×1');
   });
 
   test('create a Rack with the steppers and fill a slot via the reverse picker', async ({ page }) => {

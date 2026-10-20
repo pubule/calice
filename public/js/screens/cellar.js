@@ -366,7 +366,9 @@ function closeOpenItem(animate = true) {
   if (openItem) settle(openItem, false, animate);
 }
 
-function wireSwipe(list) {
+// Swipe-left actions on the .cellar-item rows of `list`: onAction(action,
+// item) for a tapped .swipe-action, onRow(row) for a plain tap on a row.
+function wireSwipe(list, { onAction, onRow }) {
   list.addEventListener('pointerdown', (e) => {
     tapWasOnOpen = !!openItem;
     swipe = null;
@@ -460,17 +462,7 @@ function wireSwipe(list) {
     if (compareMode) return;
     const action = e.target.closest('.swipe-action');
     if (action) {
-      const item = action.closest('.cellar-item');
-      const bottle = currentBottles.find((x) => x.id === Number(action.dataset.id));
-      if (!bottle) return;
-      if (action.classList.contains('swipe-edit')) {
-        settle(item, false, true);
-        editBottle(bottle);
-      } else {
-        await deleteBottle(bottle);
-        // Cancelled: the row is still there, close it. Deleted: it was re-rendered.
-        if (item.isConnected) settle(item, false, true);
-      }
+      await onAction(action, action.closest('.cellar-item'));
       return;
     }
     const row = e.target.closest('.cellar-row');
@@ -480,8 +472,7 @@ function wireSwipe(list) {
       closeOpenItem();
       return;
     }
-    const bottle = currentBottles.find((x) => x.id === Number(row.dataset.id));
-    if (bottle) await openDetail(bottle, await me());
+    await onRow(row);
   });
 
   // Keyboard / VoiceOver: the actions are real (if hidden) controls in the
@@ -893,17 +884,19 @@ function renderElementDetail(id) {
     const items = [...counts];
     body.innerHTML = `
       ${ELEMENT_TOOLS}
-      <p class="box-note">Gli scatoloni non hanno slot: è solo un elenco di cosa c'è dentro. Tocca un vino per cambiare quante bottiglie ci sono.</p>
+      <p class="box-note">Gli scatoloni non hanno slot: è solo un elenco di cosa c'è dentro. Tocca un vino per cambiare quante bottiglie ci sono, scorrilo a sinistra per toglierlo.</p>
       <div class="box-contents">${
         items.length
-          ? items.map(([b, n]) => `<div class="box-item" data-id="${b.id}" role="button" tabindex="0" aria-label="${escapeHtml(b.name)}, ${n} nello scatolone: cambia quante">${photoHtml(b, 'bphoto')}<div class="bname">${escapeHtml(b.name)}</div><div class="elem-count">×${n}</div><svg class="chev" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></div>`).join('')
+          ? items.map(([b, n]) => `<div class="cellar-item">
+              <div class="cellar-row box-item" data-id="${b.id}" role="button" tabindex="0" aria-label="${escapeHtml(b.name)}, ${n} nello scatolone: cambia quante">${photoHtml(b, 'bphoto')}<div class="bname">${escapeHtml(b.name)}</div><div class="elem-count">×${n}</div><svg class="chev" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></div>
+              <div class="swipe-actions"><div class="swipe-action swipe-delete" data-id="${b.id}" role="button" tabindex="0" aria-label="Togli ${escapeHtml(b.name)} dallo scatolone">${ICON_SWIPE_DELETE}<span>Togli</span></div></div>
+            </div>`).join('')
           : '<div class="empty-note">Scatolone vuoto.</div>'
       }</div>
       <div class="primary-btn" id="assign-box-btn" style="margin-top:14px;" role="button" tabindex="0">${picker ? `Metti "${escapeHtml(picker.bottle.name)}" qui` : 'Aggiungi bottiglia'}</div>`;
     document.getElementById('delete-element-btn').addEventListener('click', () => deleteCurrentElement());
   document.getElementById('rename-element-btn').addEventListener('click', () => renameCurrentElement());
     document.getElementById('assign-box-btn').addEventListener('click', () => placeBottle(id, null, null, null));
-    body.querySelectorAll('.box-item').forEach((row) => row.addEventListener('click', () => changeBoxCount(currentBottles.find((b) => b.id === Number(row.dataset.id)), id)));
     return;
   }
 
@@ -1149,6 +1142,21 @@ async function changeBoxCount(bottle, elId) {
   renderElementDetail(elId);
 }
 
+// Swipe "Togli" on a box row: every bottle of that wine leaves the box.
+async function emptyFromBox(bottle, elId) {
+  const inBox = (bottle?.places ?? []).filter((p) => p.element_id === elId);
+  if (!inBox.length) return;
+  for (const place of inBox) await freePlace({ place, bottle });
+  renderElementDetail(elId);
+  showToast(`${inBox.length === 1 ? 'Tolta 1 bottiglia' : `Tolte ${inBox.length} bottiglie`} dallo scatolone`, {
+    actionLabel: 'Annulla',
+    onAction: async () => {
+      await addPlace(bottle, elId, null, null, null, inBox.length);
+      if (currentElementId === elId && elementsMode === 'detail') renderElementDetail(elId);
+    },
+  });
+}
+
 async function freePlace(o) {
   const res = await api.del(`/api/places/${o.place.id}`);
   o.bottle.places = res.places;
@@ -1297,7 +1305,30 @@ function wireStaticControls() {
     }
   });
 
-  if (cellarList) wireSwipe(cellarList);
+  if (cellarList) wireSwipe(cellarList, {
+    async onAction(action, item) {
+      const bottle = currentBottles.find((x) => x.id === Number(action.dataset.id));
+      if (!bottle) return;
+      if (action.classList.contains('swipe-edit')) {
+        settle(item, false, true);
+        editBottle(bottle);
+      } else {
+        await deleteBottle(bottle);
+        // Cancelled: the row is still there, close it. Deleted: it was re-rendered.
+        if (item.isConnected) settle(item, false, true);
+      }
+    },
+    async onRow(row) {
+      const bottle = currentBottles.find((x) => x.id === Number(row.dataset.id));
+      if (bottle) await openDetail(bottle, await me());
+    },
+  });
+  // A box's rows: tap changes how many, swipe takes the wine out.
+  const elementsBody = document.getElementById('elements-body');
+  wireSwipe(elementsBody, {
+    onAction: (action) => emptyFromBox(currentBottles.find((b) => b.id === Number(action.dataset.id)), currentElementId),
+    onRow: (row) => changeBoxCount(currentBottles.find((b) => b.id === Number(row.dataset.id)), currentElementId),
+  });
 
   cellarList?.addEventListener('click', (e) => {
     if (!compareMode) return;

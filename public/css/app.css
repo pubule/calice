@@ -717,7 +717,7 @@
   /* ---- scatolone: nessuno slot, solo elenco contenuto ---- */
   .box-note{font-size:calc(11.5rem/17); color:#736a5d; line-height:1.5;}
   .box-contents{display:flex; flex-direction:column; gap:8px; margin-top:4px;}
-  .box-item{display:flex; align-items:center; gap:10px; background:#fff; border:1px solid #e2e0d8; border-radius:10px; padding:9px 11px;}
+  .box-item{display:flex; align-items:center; gap:10px; background:#fff; border:1px solid #e2e0d8; border-radius:12px; padding:9px 11px;}
   .box-item .bphoto{width:20px; height:30px; border-radius:3px; flex-shrink:0;}
   .box-item .bname{font-size:calc(12rem/17); font-weight:600; flex:1;}
   .box-item .chev{stroke:#c9bfae; width:15px; height:15px; flex-shrink:0;}
