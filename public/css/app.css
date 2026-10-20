@@ -720,6 +720,7 @@
   .box-item{display:flex; align-items:center; gap:10px; background:#fff; border:1px solid #e2e0d8; border-radius:10px; padding:9px 11px;}
   .box-item .bphoto{width:20px; height:30px; border-radius:3px; flex-shrink:0;}
   .box-item .bname{font-size:calc(12rem/17); font-weight:600; flex:1;}
+  .box-item .chev{stroke:#c9bfae; width:15px; height:15px; flex-shrink:0;}
 
   /* sit above .detail-overlay (20) — a location edit opens this from inside
      the bottle detail sheet and must sit on top of it */
@@ -941,7 +942,7 @@
   button:not(:disabled):active, .navbtn:active, .chip:active, .icon-btn:active, .primary-btn:active, .alert-dismiss:active, .slot-circle:active, .wish-add:active, .wish-buy:active, .filter-btn:active, .close:active, .back-btn:active, .add-btn:active, .shuffle-btn:active, .add-row-btn:active, .camera-close:active, .camera-shutter:active, .flavor-card:active, .gallery-add:active{transform:scale(.97);}
   .compare-btn, .loc-edit, .search-clear, .home-tab-toggle, #find-friends-btn, .section-head a, .manual-link, .rev-translate, .bottle-popup .bgo, .app-credit a{transition:opacity 100ms ease-out;}
   .compare-btn:active, .loc-edit:active, .search-clear:active, .home-tab-toggle:active, #find-friends-btn:active, .section-head a:active, .manual-link:active, .rev-translate:active, .bottle-popup .bgo:active, .app-credit a:active{opacity:.55;}
-  .tasting-st[data-step]:active, .list-row:active, .cellar-row:active, .wish-row:active, .elem-row:active, .result-row:active, .diary-row:active, .explore-entry:active, .settings-row:active, .kind-opt:active, .explore-dd-head:active, .explore-dd-list .opt:active, .logout:active{background:rgba(36,30,26,.07); transition:none;}
+  .tasting-st[data-step]:active, .list-row:active, .cellar-row:active, .wish-row:active, .elem-row:active, .box-item:active, .result-row:active, .diary-row:active, .explore-entry:active, .settings-row:active, .kind-opt:active, .explore-dd-head:active, .explore-dd-list .opt:active, .logout:active{background:rgba(36,30,26,.07); transition:none;}
   @media (prefers-reduced-motion: reduce){
     button:not(:disabled):active, .navbtn:active, .chip:active, .icon-btn:active, .primary-btn:active, .alert-dismiss:active, .slot-circle:active, .wish-add:active, .wish-buy:active, .filter-btn:active, .close:active, .back-btn:active, .add-btn:active, .shuffle-btn:active, .add-row-btn:active, .camera-close:active, .camera-shutter:active, .flavor-card:active, .gallery-add:active{transform:none; opacity:.55;}
     /* Sheet senza scorrimento: solo dissolvenza. */

@@ -108,7 +108,7 @@ export function promptModal(message, { title, defaultValue = '', placeholder = '
 
 // "Quante bottiglie?" with the app's one quantity control (− n +). Resolves
 // the number, or null when cancelled.
-export function quantityModal({ title = 'Quante bottiglie?', message = '', value = 1, min = 1, confirmLabel = 'Aggiungi' } = {}) {
+export function quantityModal({ title = 'Quante bottiglie?', message = '', value = 1, min = 1, max, confirmLabel = 'Aggiungi' } = {}) {
   ensureModal();
   const sheet = document.querySelector('#app-modal .modal-sheet');
   let slot = document.getElementById('app-modal-qty');
@@ -118,14 +118,14 @@ export function quantityModal({ title = 'Quante bottiglie?', message = '', value
     slot.className = 'modal-qty';
     sheet.insertBefore(slot, sheet.querySelector('.modal-actions'));
   }
-  slot.innerHTML = quantityStepperHtml({ id: 'app-modal-qty-input', value, min });
+  slot.innerHTML = quantityStepperHtml({ id: 'app-modal-qty-input', value, min, max });
   wireQuantitySteppers(slot);
   const input = slot.querySelector('input');
   const shown = showModal({ title, message, confirmLabel, cancelLabel: 'Annulla' });
   slot.style.display = '';
   // showModal resolves true/false; the number is read from the field.
   return shown.then((ok) => {
-    const n = parseQuantity(input.value, min).value;
+    const n = Math.min(parseQuantity(input.value, min).value ?? min, max ?? Infinity);
     slot.style.display = 'none';
     return ok ? (n ?? min) : null;
   });

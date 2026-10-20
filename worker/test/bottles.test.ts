@@ -196,6 +196,15 @@ describe('bottles', () => {
     expect(bottles[0].element_id).toBeUndefined();
   });
 
+  it('puts several bottles into a box at once, never more than those without a place', async () => {
+    const { auth, cellarId, bottleId } = await setup('b6@b.com', 3);
+    const box = await (await app.request(`/api/cellars/${cellarId}/elements`, json(auth, 'POST', { kind: 'Scatolone', name: 'Box' }), env)).json<{ id: number }>();
+    const two = await app.request(`/api/bottles/${bottleId}/places`, json(auth, 'POST', { elementId: box.id, count: 2 }), env);
+    expect((await two.json<any>()).places).toHaveLength(2);
+    expect((await app.request(`/api/bottles/${bottleId}/places`, json(auth, 'POST', { elementId: box.id, count: 2 }), env)).status).toBe(409);
+    expect((await app.request(`/api/bottles/${bottleId}/places`, json(auth, 'POST', { elementId: box.id, count: 0 }), env)).status).toBe(400);
+  });
+
   it('refuses a taken slot or one outside the element, moves and frees a place', async () => {
     const { auth, bottleId, elementId } = await setup('b9@b.com', 2);
     const { places } = await (await app.request(`/api/bottles/${bottleId}/places`, json(auth, 'POST', { elementId, tier: 1, col: 0, depth: 1 }), env)).json<any>();

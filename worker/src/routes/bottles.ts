@@ -160,7 +160,7 @@ bottleRoutes.patch('/:id', async (c) => {
   return c.json({ ...withoutLegacyPlace(bottle!), places: await bottlePlaces(c.env.DB, id) });
 });
 
-type Spot = { elementId: number; tier?: number | null; col?: number | null; depth?: number | null };
+type Spot = { elementId: number; tier?: number | null; col?: number | null; depth?: number | null; count?: number };
 
 // Checks a requested spot: the element belongs to the bottle's cellar, a
 // slot is inside the element's grid (a box takes no coordinates), and no
@@ -181,8 +181,8 @@ async function spotError(db: D1Database, cellarId: number, spot: Spot, exceptPla
   return taken ? 'slot taken' : null;
 }
 
-// Puts one more bottle of this wine somewhere. Refused when every bottle
-// already has a place.
+// Puts one more bottle of this wine somewhere (into a box, `count` of them at
+// once). Refused when there are not that many bottles without a place.
 bottleRoutes.post('/:id/places', async (c) => {
   const id = Number(c.req.param('id'));
   if (!(await assertBottleAccess(c.env, id, c.get('userId')))) return c.json({ error: 'not found' }, 404);
@@ -191,12 +191,14 @@ bottleRoutes.post('/:id/places', async (c) => {
     .bind(id).first<{ cellar_id: number; quantity: number; placed: number }>())!;
   const err = await spotError(c.env.DB, b.cellar_id, spot, null);
   if (err) return c.json({ error: err }, err === 'slot taken' ? 409 : 400);
-  if (b.placed >= b.quantity) return c.json({ error: 'every bottle already has a place' }, 409);
   const box = (await c.env.DB.prepare('select kind from cellar_elements where id = ?').bind(spot.elementId).first<{ kind: string }>())!.kind === 'Scatolone';
-  await c.env.DB
+  const count = box ? (spot.count ?? 1) : 1;
+  if (!Number.isInteger(count) || count < 1) return c.json({ error: 'invalid count' }, 400);
+  if (b.placed + count > b.quantity) return c.json({ error: 'every bottle already has a place' }, 409);
+  const insert = c.env.DB
     .prepare('insert into bottle_places (bottle_id, element_id, slot_tier, slot_col, slot_depth) values (?, ?, ?, ?, ?)')
-    .bind(id, spot.elementId, box ? null : spot.tier, box ? null : spot.col, box ? null : spot.depth)
-    .run();
+    .bind(id, spot.elementId, box ? null : spot.tier, box ? null : spot.col, box ? null : spot.depth);
+  await c.env.DB.batch(Array.from({ length: count }, () => insert));
   return c.json({ places: await bottlePlaces(c.env.DB, id) });
 });
 

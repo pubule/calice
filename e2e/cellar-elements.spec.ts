@@ -122,7 +122,18 @@ test.describe('Cantina — elementi', () => {
     await page.click('#filter-sheet-close');
     await page.fill('#pick-bottle-search', bottleName.toLowerCase());
     await page.click(`#pick-bottle-list .elem-row:has-text("${bottleName}")`);
-    await expect(page.locator('.box-item', { hasText: bottleName })).toBeVisible();
+    // Several bottles without a place: how many go into the box.
+    await expect(page.locator('#app-modal-title')).toHaveText('Quante nello scatolone?');
+    await page.fill('#app-modal-qty-input', '2');
+    await confirmModal(page);
+    const item = page.locator('.box-item', { hasText: bottleName });
+    await expect(item.locator('.elem-count')).toHaveText('×2');
+    // Tapping the wine changes how many are in there.
+    await item.click();
+    await expect(page.locator('#app-modal-qty-input')).toHaveValue('2');
+    await page.click('#app-modal [aria-label="Una bottiglia in meno"]');
+    await confirmModal(page);
+    await expect(item.locator('.elem-count')).toHaveText('×1');
   });
 
   test('create a Rack with the steppers and fill a slot via the reverse picker', async ({ page }) => {

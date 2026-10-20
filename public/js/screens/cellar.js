@@ -4,7 +4,7 @@ import { openDetail } from './detail.js';
 import { openEditWineSheet, openAddSheetForWine } from './add.js';
 import { TASTE_AXES, tasteSummary } from '../tasting-profile.js';
 import { me } from '../auth.js';
-import { alertModal, confirmModal, promptModal } from '../modal.js';
+import { alertModal, confirmModal, promptModal, quantityModal } from '../modal.js';
 import { showToast } from '../toast.js';
 import { quantityStepperHtml, wireQuantitySteppers } from '../fields.js';
 
@@ -893,16 +893,17 @@ function renderElementDetail(id) {
     const items = [...counts];
     body.innerHTML = `
       ${ELEMENT_TOOLS}
-      <p class="box-note">Gli scatoloni non hanno slot: è solo un elenco di cosa c'è dentro.</p>
+      <p class="box-note">Gli scatoloni non hanno slot: è solo un elenco di cosa c'è dentro. Tocca un vino per cambiare quante bottiglie ci sono.</p>
       <div class="box-contents">${
         items.length
-          ? items.map(([b, n]) => `<div class="box-item">${photoHtml(b, 'bphoto')}<div class="bname">${escapeHtml(b.name)}</div><div class="elem-count">×${n}</div></div>`).join('')
+          ? items.map(([b, n]) => `<div class="box-item" data-id="${b.id}" role="button" tabindex="0" aria-label="${escapeHtml(b.name)}, ${n} nello scatolone: cambia quante">${photoHtml(b, 'bphoto')}<div class="bname">${escapeHtml(b.name)}</div><div class="elem-count">×${n}</div><svg class="chev" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></div>`).join('')
           : '<div class="empty-note">Scatolone vuoto.</div>'
       }</div>
       <div class="primary-btn" id="assign-box-btn" style="margin-top:14px;" role="button" tabindex="0">${picker ? `Metti "${escapeHtml(picker.bottle.name)}" qui` : 'Aggiungi bottiglia'}</div>`;
     document.getElementById('delete-element-btn').addEventListener('click', () => deleteCurrentElement());
   document.getElementById('rename-element-btn').addEventListener('click', () => renameCurrentElement());
     document.getElementById('assign-box-btn').addEventListener('click', () => placeBottle(id, null, null, null));
+    body.querySelectorAll('.box-item').forEach((row) => row.addEventListener('click', () => changeBoxCount(currentBottles.find((b) => b.id === Number(row.dataset.id)), id)));
     return;
   }
 
@@ -1125,10 +1126,27 @@ async function moveBottleTo(o, elId, t, c, d) {
 
 // One more bottle of this wine goes to this spot (refused by the server
 // when every bottle already has a place).
-async function addPlace(bottle, elId, tier, col, depth) {
-  const res = await api.post(`/api/bottles/${bottle.id}/places`, { elementId: elId, tier, col, depth });
+async function addPlace(bottle, elId, tier, col, depth, count = 1) {
+  const res = await api.post(`/api/bottles/${bottle.id}/places`, { elementId: elId, tier, col, depth, count });
   bottle.places = res.places;
   applyFilters();
+}
+
+// A box takes several bottles of a wine at once: how many (null = cancelled).
+async function boxCount(bottle) {
+  const free = freeCount(bottle);
+  if (free <= 1) return 1;
+  return quantityModal({ title: 'Quante nello scatolone?', message: bottle.name, value: free, max: free, confirmLabel: 'Metti' });
+}
+
+// Tapping a wine in a box: change how many of its bottles are in there.
+async function changeBoxCount(bottle, elId) {
+  const inBox = (bottle.places ?? []).filter((p) => p.element_id === elId);
+  const n = await quantityModal({ title: 'Quante nello scatolone?', message: bottle.name, value: inBox.length, min: 0, max: inBox.length + freeCount(bottle), confirmLabel: 'Salva' });
+  if (n == null || n === inBox.length) return;
+  if (n > inBox.length) await addPlace(bottle, elId, null, null, null, n - inBox.length);
+  else for (const place of inBox.slice(n)) await freePlace({ place, bottle });
+  renderElementDetail(elId);
 }
 
 async function freePlace(o) {
@@ -1142,7 +1160,9 @@ async function freePlace(o) {
 // With several bottles all placed it is ambiguous which one to move.
 async function putPickerBottle(bottle, elId, tier, col, depth) {
   if (freeCount(bottle) > 0) {
-    await addPlace(bottle, elId, tier, col, depth);
+    const count = tier == null ? await boxCount(bottle) : 1;
+    if (count == null) return false;
+    await addPlace(bottle, elId, tier, col, depth, count);
     return true;
   }
   if (bottle.places?.length === 1) {
@@ -1225,7 +1245,9 @@ function renderBottlePickerForSlot(elId, tier, col, depth) {
     row.addEventListener('click', async () => {
       const bottle = currentBottles.find((b) => b.id === Number(row.dataset.id));
       if (!bottle) return;
-      await addPlace(bottle, elId, tier, col, depth);
+      const count = tier == null ? await boxCount(bottle) : 1;
+      if (count == null) return;
+      await addPlace(bottle, elId, tier, col, depth, count);
       renderElementDetail(elId);
     }),
   );

@@ -1863,6 +1863,12 @@ questo file è il riassunto "dove eravamo rimasti".
     filtri condivisi con Vini; `applyFilters()` aggiorna anche questa lista
     (`filterPickList()`). Barra mostrata solo con più di una scelta; ogni riga
     mostra anche produttore e annata.
+    Build 175: scatolone con quantità. Scegliendo un vino con più bottiglie
+    senza posto si chiede quante metterne (`boxCount()`, `quantityModal` con
+    `max`, default tutte); toccando una riga dello scatolone si cambia il
+    numero (0 = toglierlo). Server: `POST /api/bottles/:id/places` accetta
+    `count` solo per gli scatoloni (un batch di insert), 409 se supera le
+    bottiglie senza posto. Scaffale/Rack/Cella restano a posti singoli.
 
 - **Ponytail nelle sessioni cloud**: le sue skill sono copiate in
   `.claude/skills/` e sempre attive tramite CLAUDE.md (scelta dell'utente:
