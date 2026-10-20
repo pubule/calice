@@ -397,7 +397,13 @@
   .nc-row .chev{stroke:#c9bfae; width:16px; height:16px;}
   .nc-add{font-size:calc(13.5rem/17); font-weight:600; color:#5b2333;}
   .nc-chips{display:flex; flex-wrap:wrap; gap:6px;}
-  .nc-chip{border-radius:9999px; padding:4px 10px; background:#efece3; font-size:calc(13rem/17); font-weight:500;}
+  .nc-chip{display:inline-flex; align-items:center; gap:5px; border-radius:9999px; padding:4px 10px; background:#efece3; font-size:calc(13rem/17); font-weight:500;}
+  .nc-chip:has(.chip-ic){padding-left:8px;}
+  /* Small line icon before a chip's name (food and aroma chips). */
+  .chip-ic{display:inline-flex; flex-shrink:0; margin-right:6px; color:var(--ic, currentColor);}
+  .nc-chip .chip-ic{margin-right:0;}
+  .chip-ic svg{width:16px; height:16px;}
+  .chip.active .chip-ic{color:#ffffff;}
   .nc-taste{display:grid; grid-template-columns:minmax(40px, 1fr) auto; gap:10px 10px; align-items:center; font-size:calc(12.5rem/17);}
   .nc-track{position:relative; height:6px; border-radius:3px; background:#efece3;}
   .nc-track i{position:absolute; top:-4px; width:14px; height:14px; margin-left:-7px; border-radius:50%; background:#5b2333;}

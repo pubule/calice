@@ -1906,6 +1906,13 @@ questo file è il riassunto "dove eravamo rimasti".
     Torri) non hanno voti per singolo vino da nessuna parte.
     Backup automatico: è settimanale (`EVERY_DAYS = 7`), l'ultimo è del
     2026-10-19, il prossimo il 26 ottobre.
+    Build 182: icone (proposta A, canvas "Icone per aromi e abbinamenti"):
+    le 9 famiglie di aromi hanno icone a tratto uniformi; ogni abbinamento
+    ha un'icona colorata per gruppo (`FOOD_ICON`/`foodIconHtml()` in
+    `tasting-profile.js`, 18 disegni per 31 voci), nei chip del foglio Cibo
+    (anche in "Rivedi e conferma") e nei chip della scheda; gli aromi in
+    scheda mostrano l'icona della famiglia. Un abbinamento nuovo va aggiunto
+    a `FOOD_ICON` (lo controlla `tasting-profile-data.spec.ts`).
 
 - **Ponytail nelle sessioni cloud**: le sue skill sono copiate in
   `.claude/skills/` e sempre attive tramite CLAUDE.md (scelta dell'utente:

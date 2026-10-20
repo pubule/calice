@@ -13,7 +13,7 @@
 export const FLAVOR_CATEGORIES = [
   {
     id: 'frutta', label: 'Frutta', bg: '#f7e8e9', fg: '#8a3244',
-    icon: '<svg viewBox="0 0 28 28" fill="currentColor"><circle cx="10" cy="16" r="5"/><circle cx="17" cy="12" r="5"/><circle cx="18" cy="20" r="4.5"/></svg>',
+    icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="16" r="3.5"/><circle cx="16" cy="17" r="3.5"/><path d="M8 12.5C9 8 12 5 15 4M16 13.5C15 9 14 6 15 4l4 1"/></svg>',
     tags: [
       'Fragola', 'Lampone', 'Ciliegia', 'Amarena', 'Ribes', 'Frutti di bosco', 'Mora', 'Mirtillo', 'Prugna',
       'Mela verde', 'Mela', 'Pera', 'Pesca', 'Albicocca', 'Agrumi', 'Limone', 'Pompelmo', 'Arancia',
@@ -33,21 +33,12 @@ export const FLAVOR_CATEGORIES = [
   },
   {
     id: 'floreale', label: 'Floreale', bg: '#f5e9ef', fg: '#8a4a6a',
-    icon: `<svg viewBox="0 0 28 28" fill="currentColor">
-      <g transform="translate(14,14)">
-        <ellipse cx="0" cy="-8" rx="3.4" ry="5.5"/>
-        <g transform="rotate(72)"><ellipse cx="0" cy="-8" rx="3.4" ry="5.5"/></g>
-        <g transform="rotate(144)"><ellipse cx="0" cy="-8" rx="3.4" ry="5.5"/></g>
-        <g transform="rotate(216)"><ellipse cx="0" cy="-8" rx="3.4" ry="5.5"/></g>
-        <g transform="rotate(288)"><ellipse cx="0" cy="-8" rx="3.4" ry="5.5"/></g>
-        <circle cx="0" cy="0" r="3" fill="#f5e9ef"/>
-      </g>
-    </svg>`,
+    icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="2.2"/><path d="M12 9.8C10 6 12 3.5 12 3.5s2 2.5 0 6.3M14.2 12c3.8-2 6.3 0 6.3 0s-2.5 2-6.3 0M12 14.2c2 3.8 0 6.3 0 6.3s-2-2.5 0-6.3M9.8 12C6 14 3.5 12 3.5 12S6 10 9.8 12"/></svg>',
     tags: ['Rosa', 'Violetta', 'Fiori bianchi', 'Zagara', 'Acacia', 'Gelsomino', 'Sambuco', 'Camomilla', 'Lavanda', 'Fiori secchi', 'Caprifoglio', 'Geranio'],
   },
   {
     id: 'vegetale', label: 'Vegetale', bg: '#e8efe3', fg: '#3f6a3a',
-    icon: '<svg viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22C6 12 12 6 22 6c0 10-6 16-16 16z"/><path d="M6 22l9-9"/></svg>',
+    icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 19C5 10 10 5 19 5c0 9-5 14-14 14z"/><path d="M5 19l8-8"/></svg>',
     tags: [
       'Erbaceo', 'Erba tagliata', 'Fieno', 'Peperone verde', 'Foglia di pomodoro', 'Bosso', 'Menta', 'Eucalipto',
       'Salvia', 'Timo', 'Rosmarino', 'Finocchio', 'Tè', 'Macchia mediterranea', 'Asparago', 'Foglia di ribes',
@@ -56,28 +47,22 @@ export const FLAVOR_CATEGORIES = [
   },
   {
     id: 'spezie', label: 'Spezie', bg: '#f7f0e2', fg: '#8a6a24',
-    icon: `<svg viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
-      <rect x="9" y="10" width="10" height="13" rx="2.5"/>
-      <rect x="11" y="6" width="6" height="4" rx="1.2"/>
-      <circle cx="12.5" cy="16" r="0.9" fill="currentColor" stroke="none"/>
-      <circle cx="15.5" cy="18.5" r="0.9" fill="currentColor" stroke="none"/>
-      <circle cx="13.5" cy="20" r="0.9" fill="currentColor" stroke="none"/>
-    </svg>`,
+    icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v16M4 12h16M6.3 6.3l11.4 11.4M17.7 6.3L6.3 17.7"/><circle cx="12" cy="12" r="2"/></svg>',
     tags: ['Pepe nero', 'Pepe bianco', 'Vaniglia', 'Liquirizia', 'Chiodi di garofano', 'Cannella', 'Noce moscata', 'Anice', 'Zenzero', 'Zafferano'],
   },
   {
     id: 'legno', label: 'Legno', bg: '#efe6dc', fg: '#6a4a2a',
-    icon: '<svg viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="14" cy="14" r="9"/><circle cx="14" cy="14" r="5.5"/><circle cx="14" cy="14" r="2"/></svg>',
+    icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5.5" rx="6" ry="2"/><path d="M6 5.5c-1 4-1 9 0 13M18 5.5c1 4 1 9 0 13M5.5 12h13"/><ellipse cx="12" cy="18.5" rx="6" ry="2"/></svg>',
     tags: ['Legno', 'Rovere tostato', 'Cedro', 'Cocco', 'Affumicato', 'Tostato', 'Caffè', 'Cacao', 'Cioccolato fondente', 'Resina', 'Caramello mou', 'Legno bruciato'],
   },
   {
     id: 'lieviti', label: 'Lieviti', bg: '#f4ead8', fg: '#7a5a2a',
-    icon: '<svg viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13a5 5 0 0 1 3-6h12a5 5 0 0 1 3 6v9H5z"/><path d="M11 11l-2 3M16 11l-2 3M21 11l-2 3"/></svg>',
+    icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 13c0-4 3.5-6 8-6s8 2 8 6v5H4z"/><path d="M9 9.5l-1 3M13 9l-1 3.5M17 9.5l-1 3"/></svg>',
     tags: ['Crosta di pane', 'Lievito', 'Brioche', 'Biscotto', 'Pasticceria', 'Burro', 'Panna', 'Yogurt', 'Pasta di pane', 'Formaggio'],
   },
   {
     id: 'evoluto', label: 'Evoluto', bg: '#ece6e0', fg: '#5a4636',
-    icon: '<svg viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M4 14a10 8 0 0 1 20 0z"/><path d="M11 14v7a3 3 0 0 0 6 0v-7"/></svg>',
+    icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4h10M7 20h10M8 4c0 4.5 4 6 4 8s-4 3.5-4 8M16 4c0 4.5-4 6-4 8s4 3.5 4 8"/></svg>',
     tags: [
       'Cuoio', 'Tabacco', 'Sottobosco', 'Funghi', 'Tartufo', 'Terra', 'Selvatico', 'Foglie secche', 'Balsamico',
       'Miele', 'Caramello', 'Mandorla', 'Nocciola', 'Noce', 'Marzapane', 'Catrame', "Cera d'api", 'Foglie bagnate',
@@ -86,12 +71,12 @@ export const FLAVOR_CATEGORIES = [
   },
   {
     id: 'minerale', label: 'Minerale', bg: '#e6eaec', fg: '#4a5a66',
-    icon: '<svg viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4l7.5 6.5L14 24l-7.5-13.5z"/><path d="M7.5 10.5h13"/></svg>',
+    icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l6 6-6 12-6-12z"/><path d="M6 9h12"/></svg>',
     tags: ['Minerale', 'Pietra focaia', 'Gesso', 'Grafite', 'Salino', 'Iodato', 'Idrocarburi', 'Ferroso', 'Pietra bagnata', 'Lana bagnata', 'Cherosene'],
   },
   {
     id: 'difetti', label: 'Difetti', bg: '#f3e4e0', fg: '#9a3b2e',
-    icon: '<svg viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14 5l10 17H4z"/><path d="M14 12v4.5"/><circle cx="14" cy="19.3" r=".9" fill="currentColor" stroke="none"/></svg>',
+    icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4l9 16H3z"/><path d="M12 10v4M12 17v.5"/></svg>',
     tags: ['Tappo', 'Ossidato', 'Acetico', 'Ridotto', 'Smalto', 'Muffa'],
   },
 ];
@@ -131,6 +116,46 @@ export const stepLeft = (step, thumbW) => `calc((100% - ${thumbW}px) * ${(step -
 const SUB_TABS = [['aromi', 'Aromi'], ['gusto', 'Gusto'], ['cibo', 'Cibo'], ['testo', 'Testo']];
 const fold = (s) => s.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
 const familyOf = (tag) => FLAVOR_CATEGORIES.find((c) => c.tags.includes(tag));
+// One small line icon per pairing (similar dishes share one), coloured by
+// group: sea blue, meat bordeaux, cheese and first courses ochre, vegetables
+// green, cooking red, sweets pink. Shown in the food chips and on the card.
+const FOOD_GLYPH = {
+  fish: '<path d="M4 12c3-4.5 7-5.5 10-5.5 3 0 5.5 2.5 6.5 5.5-1 3-3.5 5.5-6.5 5.5-3 0-7-1-10-5.5zM4 12L1.5 8.5M4 12l-2.5 3.5"/>',
+  shrimp: '<path d="M18 6c-6 0-11 4-11 9 0 2.5 2 4 4 4h3M7 15l-3 3M18 6l2-2M18 6c1 3 0 6-3 8"/>',
+  sushi: '<rect x="5" y="9" width="14" height="8" rx="3"/><path d="M5 12h14"/>',
+  poultry: '<path d="M14 4c3.5 0 6 2.5 6 6 0 3-2.5 5-5 5l-4 4.5a2 2 0 1 1-3-3L12.5 12C11 8 11 4 14 4z"/>',
+  meat: '<path d="M5 9c2-4 9-5 13-2 3 2 2 7-2 9-4 2-9 2-11-1-1-2-1-4 0-6z"/><circle cx="14" cy="11" r="2"/>',
+  salami: '<circle cx="12" cy="12" r="8"/><circle cx="9" cy="10" r="1"/><circle cx="14" cy="9" r="1"/><circle cx="13" cy="14" r="1"/><circle cx="9.5" cy="15" r="1"/>',
+  cheese: '<path d="M3 16l15-9 3 3v8H3z"/><path d="M3 16h18"/><circle cx="15" cy="13" r="1"/>',
+  pasta: '<path d="M4 11h16a8 8 0 0 1-16 0z"/><path d="M9 11c0-3 1-5 3-6M12 11c0-3 1.5-5 3-6"/>',
+  pizza: '<path d="M12 21L4 6c5-2.5 11-2.5 16 0z"/><path d="M5.5 9c4-1.5 9-1.5 13 0"/><circle cx="12" cy="13" r="1"/>',
+  veg: '<path d="M14 10L6 20c-1 1-2.5-.5-1.5-1.5L14 10zM14 10c1-3 3-5 6-5M14 10c3-1 5-3 5-6"/>',
+  mushroom: '<path d="M4 12a8 7 0 0 1 16 0z"/><path d="M10 12v6a2 2 0 0 0 4 0v-6"/>',
+  soup: '<path d="M4 12h16a8 7 0 0 1-16 0z"/><path d="M9 4c-1 1.5 1 2.5 0 4M13 4c-1 1.5 1 2.5 0 4"/>',
+  flame: '<path d="M12 21c-4 0-6-2.5-6-6 0-4 3-6 4-10 2 2 3 4 3 6 1-1 1.5-2 1.5-3 2 2 3.5 4.5 3.5 7 0 3.5-2 6-6 6z"/>',
+  chili: '<path d="M17 7c0 7-5 13-12 13 3-3 4-5 5-9 1-3 3-4 7-4z"/><path d="M17 7c0-1.5 1-3 3-3.5"/>',
+  cake: '<path d="M4 18V11l14-5v12z"/><path d="M4 14h14"/><path d="M15 6c0-1.5 1-2.5 2-2.5"/>',
+  chocolate: '<rect x="6" y="3" width="12" height="18" rx="1.5"/><path d="M6 9h12M6 15h12M12 3v18"/>',
+  apple: '<path d="M12 7c-3-2-8-1-8 5 0 5 3.5 8 5.5 8 1 0 1.5-.5 2.5-.5s1.5.5 2.5.5c2 0 5.5-3 5.5-8 0-6-5-7-8-5z"/><path d="M12 7c0-2 1-3.5 3-4"/>',
+  glass: '<path d="M5 5h14l-7 8z"/><path d="M12 13v7M8.5 20h7"/>',
+};
+const SEA = '#2f5068', MEAT = '#8a3244', OCHRE = '#8a6a24', GREEN = '#3f6a3a', RED = '#9a3b2e', PINK = '#8a4a6a', WINE = '#5b2333';
+const FOOD_ICON = {
+  Aperitivo: ['glass', WINE], Antipasti: ['salami', MEAT], 'Crudi di mare': ['fish', SEA], 'Frutti di mare': ['shrimp', SEA],
+  Crostacei: ['shrimp', SEA], Sushi: ['sushi', SEA], Pesce: ['fish', SEA], Pollame: ['poultry', MEAT], Maiale: ['meat', MEAT],
+  Manzo: ['meat', MEAT], Bollito: ['meat', MEAT], Agnello: ['meat', MEAT], Selvaggina: ['meat', MEAT], Salumi: ['salami', MEAT],
+  'Formaggi freschi': ['cheese', OCHRE], 'Formaggi stagionati': ['cheese', OCHRE], 'Formaggi erborinati': ['cheese', OCHRE],
+  Pasta: ['pasta', OCHRE], Risotto: ['pasta', OCHRE], Pizza: ['pizza', OCHRE], 'Funghi e tartufo': ['mushroom', GREEN],
+  Verdure: ['veg', GREEN], 'Legumi e zuppe': ['soup', GREEN], 'Piatti speziati': ['chili', RED], 'Cucina asiatica': ['sushi', RED],
+  Grigliate: ['flame', RED], Fritti: ['flame', RED], Dolci: ['cake', PINK], 'Pasticceria secca': ['cake', PINK],
+  Cioccolato: ['chocolate', PINK], Frutta: ['apple', PINK],
+};
+// The icon of a pairing as markup (our own constant SVG), '' if it has none.
+export function foodIconHtml(label) {
+  const [glyph, color] = FOOD_ICON[label] ?? [];
+  return glyph ? `<span class="chip-ic" style="--ic:${color}" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${FOOD_GLYPH[glyph]}</svg></span>` : '';
+}
+
 const toggleChip = (tag) => `<div class="chip" data-toggle role="button" tabindex="0" aria-pressed="false">${tag}</div>`;
 
 // The note module: four sub-tabs (Aromi · Gusto · Cibo · Testo), one panel
@@ -176,7 +201,7 @@ export function tastingProfileHtml() {
       <button type="button" class="tp-reset-taste">Azzera il gusto</button>
     </div>
     <div class="tp-panel hidden" data-tp-panel="cibo" role="tabpanel">
-      <div class="chip-row">${FOOD_PAIRINGS.map(toggleChip).join('')}</div>
+      <div class="chip-row">${FOOD_PAIRINGS.map((f) => `<div class="chip" data-toggle data-tag="${f}" role="button" tabindex="0" aria-pressed="false">${foodIconHtml(f)}${f}</div>`).join('')}</div>
     </div>
     <div class="tp-panel hidden" data-tp-panel="testo" role="tabpanel">
       <textarea class="tp-text" aria-label="Nota di degustazione" placeholder="Scrivi una nota di degustazione…"></textarea>

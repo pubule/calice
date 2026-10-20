@@ -5,7 +5,7 @@ import { confirmModal, alertModal, promptModal } from '../modal.js';
 import { showToast } from '../toast.js';
 import { landscapeFor, knownLandscape } from '../landscape.js';
 import { drinkWindow, drinkSummary } from '../drink-window.js';
-import { tastingProfileHtml, wireTastingProfile, resetTastingProfile, readTastingProfile, setTastingProfile, isTastingProfileEmpty, tasteSummary, composeNoteText, tasteWord, selectSubTab, FLAVOR_CATEGORIES, TASTE_AXES, toStep } from '../tasting-profile.js';
+import { tastingProfileHtml, wireTastingProfile, resetTastingProfile, readTastingProfile, setTastingProfile, isTastingProfileEmpty, tasteSummary, composeNoteText, tasteWord, selectSubTab, foodIconHtml, FLAVOR_CATEGORIES, TASTE_AXES, toStep } from '../tasting-profile.js';
 
 let currentBottleId = null;
 let currentBottle = null; // same object reference cellar.js's currentBottles holds, mutated in place on save
@@ -365,15 +365,16 @@ function renderNoteCard(note) {
   };
   const chips = (items) => {
     const box = el('span', 'nc-chips');
-    for (const [text, cat] of items) {
+    for (const [text, cat, icon] of items) {
       const chip = el('span', 'nc-chip', text);
       if (cat) Object.assign(chip.style, { background: cat.bg, color: cat.fg });
+      chip.insertAdjacentHTML('afterbegin', icon); // our own constant SVG
       box.append(chip);
     }
     return box;
   };
   const tags = Array.isArray(n.flavor_tags) ? n.flavor_tags : [];
-  const aromas = tags.map((t) => [t, FLAVOR_CATEGORIES.find((c) => c.tags.includes(t))]);
+  const aromas = tags.map((t) => { const cat = FLAVOR_CATEGORIES.find((c) => c.tags.includes(t)); return [t, cat, cat ? `<span class="chip-ic" aria-hidden="true">${cat.icon}</span>` : '']; });
   const axes = TASTE_AXES.filter((a) => n[`taste_${a.id}`] != null);
   let taste = null;
   if (axes.length) {
@@ -388,7 +389,7 @@ function renderNoteCard(note) {
       taste.append(track, el('span', 'nc-side', tasteWord(axis, v)));
     }
   }
-  const food = (Array.isArray(n.food_pairings) ? n.food_pairings : []).map((f) => [f, null]);
+  const food = (Array.isArray(n.food_pairings) ? n.food_pairings : []).map((f) => [f, null, foodIconHtml(f)]);
   document.getElementById('note-rows').replaceChildren(
     row('aromi', 'Aromi', aromas.length ? chips(aromas) : null, '+ Aggiungi aromi'),
     row('gusto', 'Gusto', taste, '+ Aggiungi il gusto'),
