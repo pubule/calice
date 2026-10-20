@@ -63,11 +63,18 @@ test.describe('Modulo della nota (foglio Rivedi e conferma)', () => {
     await tp.locator('[data-tp-tab="gusto"]').click();
     const body = tp.locator('.taste-slider[data-axis="body"]');
     await expect(body).toHaveAttribute('data-unset', '');
-    await expect(body).toContainText('non segnato · tocca');
+    await expect(body.locator('.taste-word')).toHaveText('–');
     expect((await readProfile(page)).empty).toBe(true);
-    await body.locator('.taste-track').click({ position: { x: 5, y: 10 } }); // left edge → step 1
+    await body.locator('.taste-dot').first().click(); // first dot → 10
     await expect(body).not.toHaveAttribute('data-unset', '');
+    await expect(body.locator('.taste-word')).toHaveText('Leggero');
     expect((await readProfile(page)).tasteBody).toBe(10);
+    // The chosen dot again leaves the axis unmarked; the fourth is the right side.
+    await body.locator('.taste-dot').first().click();
+    await expect(body).toHaveAttribute('data-unset', '');
+    await body.locator('.taste-dot').nth(3).click();
+    await expect(body.locator('.taste-word')).toHaveText('Strutturato');
+    expect((await readProfile(page)).tasteBody).toBe(70);
     await expect(tp.locator('[data-tp-tab="gusto"] .tp-count')).toHaveText('1');
     await tp.locator('.tp-reset-taste').click();
     const p = await readProfile(page);

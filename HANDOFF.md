@@ -1914,6 +1914,13 @@ questo file è il riassunto "dove eravamo rimasti".
     scheda mostrano l'icona della famiglia. Un abbinamento nuovo va aggiunto
     a `FOOD_ICON` (lo controlla `tasting-profile-data.spec.ts`).
     Build 183: icona Floreale = margherita a cinque petali (scelta utente).
+    Build 184: foglio Gusto rifatto (mockup "Gusto · B con i pallini"): una
+    scheda per voce con icona colorata, domanda semplice (`AXIS_LOOK` in
+    `tasting-profile.js`), parola scelta a destra e 5 pallini (valori
+    10·30·50·70·90, `DOT_VALUES`); stesso pallino = non segnato. Valori
+    vecchi a 10 passi mostrati sul pallino più vicino e arrotondati al
+    salvataggio. L'Assaggio guidato (`tasting.js`) ha ancora la sua barra a
+    10 passi.
 
 - **Ponytail nelle sessioni cloud**: le sue skill sono copiate in
   `.claude/skills/` e sempre attive tramite CLAUDE.md (scelta dell'utente:

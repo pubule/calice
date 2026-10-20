@@ -470,19 +470,26 @@
   .tp-family-panels .flavor-chip-panel{flex-direction:column; flex-wrap:nowrap; gap:8px;}
   .tp-group{display:flex; flex-wrap:wrap; gap:10px 8px;}
   .tp-group-label{margin-top:4px; font-family:'JetBrains Mono',monospace; font-size:calc(11rem/17); font-weight:600; letter-spacing:.12em; text-transform:uppercase; color:#736a5d;}
-  .taste-name{font-size:calc(13rem/17); font-weight:600; color:#241e1a;}
-  .taste-unset{position:absolute; inset:0; display:none; align-items:center; justify-content:center; font-size:calc(12rem/17); color:#736a5d; pointer-events:none;}
-  .taste-slider[data-unset] .taste-track{background:transparent; box-shadow:inset 0 0 0 1.5px #d8d2c6; background-image:none;}
-  .taste-slider[data-unset] .taste-thumb{display:none;}
-  .taste-slider[data-unset] .taste-unset{display:flex;}
-  .taste-slider[data-unset] .taste-name{color:#736a5d; font-weight:500;}
   .tp-reset-taste{align-self:flex-start; min-height:44px; padding:0; border:none; background:none; font-family:'Archivo',sans-serif; font-size:calc(12.5rem/17); font-weight:600; color:#5b2333; cursor:pointer;}
   .tp-text{width:100%; box-sizing:border-box; min-height:120px; padding:11px 14px; border:1px solid #e2e0d8; border-radius:12px; background:#ffffff; resize:vertical; font-family:'Archivo',sans-serif; font-size:max(16px, calc(16rem/17)); color:#241e1a;}
-  .taste-slider{display:flex; flex-direction:column; gap:7px;}
-  .taste-labels{display:flex; justify-content:space-between; font-size:calc(11.5rem/17); color:#736a5d;}
-  .taste-labels span.dominant{color:#241e1a; font-weight:600;}
-  .taste-track{position:relative; height:34px; border-radius:9999px; background:#efece3; touch-action:none; cursor:pointer;}
-  .taste-thumb{position:absolute; top:3px; width:46px; height:28px; border-radius:9999px; background:#5b2333; color:#f7f5f0; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700; font-variant-numeric:tabular-nums; transition:left .12s ease-out;}
+  /* Gusto: one card per axis, icon + question, five dots (build 184). */
+  .taste-slider{display:flex; flex-direction:column; gap:12px; padding:14px 16px; background:#ffffff; border:1px solid #e9e5dc; border-radius:16px;}
+  .taste-head{display:flex; align-items:center; gap:12px;}
+  .taste-ic{width:38px; height:38px; flex-shrink:0; border-radius:11px; display:flex; align-items:center; justify-content:center;}
+  .taste-ic svg{width:21px; height:21px;}
+  .taste-title{flex:1; min-width:0; display:flex; flex-direction:column;}
+  .taste-name{font-size:calc(15rem/17); font-weight:600; color:#241e1a;}
+  .taste-q{font-size:calc(12rem/17); color:#736a5d;}
+  .taste-word{font-size:calc(14rem/17); font-weight:600; color:#5b2333;}
+  .taste-slider[data-unset] .taste-word{font-weight:400; color:#736a5d;}
+  .taste-scale{display:flex; align-items:center; gap:8px; font-size:calc(12rem/17); color:#736a5d;}
+  .taste-scale .tl-left, .taste-scale .tl-right{flex:0 0 64px; overflow-wrap:anywhere;}
+  .taste-scale .tl-right{text-align:right;}
+  .taste-dots{flex:1; display:flex; justify-content:space-between; align-items:center;}
+  .taste-dot{position:relative; width:30px; height:44px; padding:0; border:none; background:none; cursor:pointer; display:flex; align-items:center; justify-content:center;}
+  .taste-dot::before{content:''; width:18px; height:18px; border-radius:50%; box-sizing:border-box; border:1.5px solid #d9d2c4; transition:all .12s ease-out;}
+  .taste-dot.on::before{border:none; background:var(--tint);}
+  .taste-dot.sel::before{width:26px; height:26px; border:none; background:#5b2333; box-shadow:0 0 0 4px var(--tbg);}
   .note-taste-summary{font-size:calc(12rem/17); color:#736a5d; margin-top:4px;}
 
   /* ---- notifica finestra di consumo ---- */
@@ -950,7 +957,6 @@
   .list-row .lbody::after{content:''; position:absolute; inset:-11px -2px;}
   .chip::after{content:''; position:absolute; inset:-7px -2px;}
   .chip-row, .flavor-chip-panel, .occasion-chips{gap:10px 8px;}
-  .taste-track::after{content:''; position:absolute; inset:-5px 0;}
   /* .chips scorre in orizzontale, quindi ritaglia anche in verticale: il padding
      extra contiene l'estensione della ::after dei chip (con margini negativi
      il layout non si sposta). */

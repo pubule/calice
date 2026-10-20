@@ -100,7 +100,7 @@ test.describe('Dettaglio bottiglia', () => {
     await expect(page.locator('#note-sheet-title')).toHaveText('Gusto');
     await expect(page.locator('#detail-taste [data-tp-panel="gusto"]')).toBeVisible();
     await expect(page.locator('#detail-taste [data-tp-panel="aromi"]')).toBeHidden();
-    await page.locator('#detail-taste .taste-slider[data-axis="body"] .taste-track').click({ position: { x: 5, y: 10 } });
+    await page.locator('#detail-taste .taste-slider[data-axis="body"] .taste-dot').first().click();
     await page.click('#note-save');
     await expect(rows.locator('.nc-row[data-tab="gusto"]')).toContainText('Leggero');
     await expect(card.locator('.nc-text')).toHaveText('Lungo sul finale'); // the user's text is never rewritten

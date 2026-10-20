@@ -100,9 +100,6 @@ export const FOOD_PAIRINGS = [
   'Grigliate', 'Fritti', 'Dolci', 'Pasticceria secca', 'Cioccolato', 'Frutta',
 ];
 
-// A keyboard press on a never-set axis starts it at the middle.
-const MIDDLE_VALUE = 50;
-
 // The sliders move in ten steps, 1 to 10 — a free 0-100 slider asked for a
 // precision nobody has on the palate. Storage stays 0-100 (step × 10), so
 // notes saved before the change keep their meaning and are shown on the
@@ -110,8 +107,24 @@ const MIDDLE_VALUE = 50;
 export const TASTE_STEPS = 10;
 export const toStep = (value) => Math.min(TASTE_STEPS, Math.max(1, Math.round(Number(value) / 10)));
 export const fromStep = (step) => Math.min(TASTE_STEPS, Math.max(1, Math.round(step))) * 10;
-// Thumb position for a step, inset by the thumb's width so it stays on the track.
-export const stepLeft = (step, thumbW) => `calc((100% - ${thumbW}px) * ${(step - 1) / (TASTE_STEPS - 1)})`;
+
+// How each taste axis looks in the Gusto sheet: an icon on its colour, a
+// plain question for who is not a sommelier, the tint of the filled dots.
+const AXIS_LOOK = {
+  acidity: { q: 'fa salivare? quanto?', bg: '#eef3df', fg: '#5a6a24', tint: '#cfdc8f', icon: '<ellipse cx="12" cy="13" rx="7.5" ry="6"/><path d="M4.5 13h15M12 7v12M7 9l10 8M17 9L7 17"/>' },
+  sweetness: { q: 'quanto zucchero senti?', bg: '#f7f0e2', fg: '#8a6a24', tint: '#e8c9a0', icon: '<rect x="5" y="8" width="11" height="11" rx="1.5"/><path d="M5 8l3-3h11v11l-3 3M16 8l3-3"/>' },
+  tannin: { q: 'asciuga la bocca?', bg: '#efe6dc', fg: '#6a4a2a', tint: '#d4bfa6', icon: '<circle cx="9" cy="10" r="3"/><circle cx="15" cy="10" r="3"/><circle cx="12" cy="15" r="3"/><path d="M12 7c0-2 1-3 3-4"/>' },
+  alcohol: { q: 'scalda in gola?', bg: '#f3e4e0', fg: '#9a3b2e', tint: '#e6b2a6', icon: '<path d="M12 21c-4 0-6-2.5-6-6 0-4 3-6 4-10 2 2 3 4 3 6 1-1 1.5-2 1.5-3 2 2 3.5 4.5 3.5 7 0 3.5-2 6-6 6z"/>' },
+  body: { q: 'leggero come acqua o denso?', bg: '#f3e7ea', fg: '#5b2333', tint: '#d9b3bc', icon: '<path d="M7 3h10l-.5 6a4.5 4.5 0 0 1-9 0z"/><path d="M7.3 7h9.4M12 13.5V20M8.5 20h7"/>' },
+  intensity: { q: 'sapori delicati o decisi?', bg: '#f5e9ef', fg: '#8a4a6a', tint: '#ddb8cb', icon: '<path d="M3 9c3-3 6 3 9 0s6 3 9 0M3 15c3-3 6 3 9 0s6 3 9 0"/>' },
+  finish: { q: 'quanto resta dopo il sorso?', bg: '#e6eaec', fg: '#4a5a66', tint: '#b9c6cf', icon: '<circle cx="12" cy="13" r="8"/><path d="M12 9v4l3 2M9 3h6"/>' },
+};
+
+// Five dots per axis (user's choice, build 184): values 10·30·50·70·90 on the
+// 0-100 scale, so the left/right/middle words keep their thresholds. A value
+// saved with the old ten-step slider shows on the nearest dot.
+const DOT_VALUES = [10, 30, 50, 70, 90];
+const dotOf = (value) => Math.min(4, Math.max(0, Math.round((Number(value) - 10) / 20)));
 
 const SUB_TABS = [['aromi', 'Aromi'], ['gusto', 'Gusto'], ['cibo', 'Cibo'], ['testo', 'Testo']];
 const fold = (s) => s.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
@@ -178,14 +191,19 @@ export function tastingProfileHtml() {
       : `<div class="tp-group">${cat.tags.map(toggleChip).join('')}</div>`;
     return `<div class="flavor-chip-panel${i === 0 ? '' : ' hidden'}" data-cat="${cat.id}">${body}</div>`;
   }).join('');
-  const sliders = TASTE_AXES.map(
-    (axis) => `
-    <div class="taste-slider" data-axis="${axis.id}" data-unset>
-      <div class="taste-name">${axis.name}</div>
-      <div class="taste-track" role="slider" tabindex="0" aria-label="${axis.name}" aria-valuemin="1" aria-valuemax="10"><div class="taste-thumb"></div><span class="taste-unset">non segnato · tocca</span></div>
-      <div class="taste-labels"><span class="tl-left">${axis.left}</span><span class="tl-right">${axis.right}</span></div>
-    </div>`,
-  ).join('');
+  const sliders = TASTE_AXES.map((axis) => {
+    const look = AXIS_LOOK[axis.id];
+    const dots = DOT_VALUES.map((_, i) => `<button type="button" class="taste-dot" data-dot="${i}" role="radio" aria-checked="false" aria-label="${i + 1} su 5"></button>`).join('');
+    return `
+    <div class="taste-slider" data-axis="${axis.id}" data-unset style="--tint:${look.tint}; --tbg:${look.bg}">
+      <div class="taste-head">
+        <span class="taste-ic" style="background:${look.bg}; color:${look.fg}" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${look.icon}</svg></span>
+        <span class="taste-title"><span class="taste-name">${axis.name}</span><span class="taste-q">${look.q}</span></span>
+        <span class="taste-word">–</span>
+      </div>
+      <div class="taste-scale"><span class="tl-left">${axis.left}</span><span class="taste-dots" role="radiogroup" aria-label="${axis.name}">${dots}</span><span class="tl-right">${axis.right}</span></div>
+    </div>`;
+  }).join('');
 
   return `
     <div class="segmented tp-tabs" role="tablist" aria-label="Parti della nota">${tabs}</div>
@@ -226,26 +244,17 @@ function setSlider(slider, value) {
   positionThumb(slider);
 }
 
+// Draws the dots of an axis: the chosen one full, those before it tinted.
 function positionThumb(slider) {
-  const track = slider.querySelector('.taste-track');
-  const thumb = slider.querySelector('.taste-thumb');
-  const leftLabel = slider.querySelector('.tl-left');
-  const rightLabel = slider.querySelector('.tl-right');
   const value = sliderValue(slider);
-  if (value == null) {
-    track.removeAttribute('aria-valuenow');
-    track.setAttribute('aria-valuetext', 'non segnato');
-    leftLabel.classList.remove('dominant');
-    rightLabel.classList.remove('dominant');
-    return;
-  }
-  const step = toStep(value);
-  track.setAttribute('aria-valuenow', String(step));
-  track.setAttribute('aria-valuetext', `${step} su 10, ${value < 40 ? leftLabel.textContent : value > 60 ? rightLabel.textContent : 'equilibrato'}`);
-  thumb.style.left = stepLeft(step, 46);
-  thumb.textContent = String(step);
-  leftLabel.classList.toggle('dominant', value < 40);
-  rightLabel.classList.toggle('dominant', value > 60);
+  const axis = TASTE_AXES.find((a) => a.id === slider.dataset.axis);
+  const chosen = value == null ? -1 : dotOf(value);
+  slider.querySelectorAll('.taste-dot').forEach((dot, i) => {
+    dot.classList.toggle('on', i < chosen);
+    dot.classList.toggle('sel', i === chosen);
+    dot.setAttribute('aria-checked', String(i === chosen));
+  });
+  slider.querySelector('.taste-word').textContent = value == null ? '–' : tasteWord(axis, value);
 }
 
 const pressed = (el, on) => { el.classList.toggle('active', on); el.setAttribute('aria-pressed', String(on)); };
@@ -341,35 +350,14 @@ export function wireTastingProfile(root) {
   });
   root.querySelector('.tp-search').addEventListener('input', () => runSearch(root));
 
+  // A dot sets the axis; the chosen dot again leaves it "non segnato".
   root.querySelectorAll('.taste-slider').forEach((slider) => {
-    const track = slider.querySelector('.taste-track');
-    const setFromX = (clientX) => {
-      const rect = track.getBoundingClientRect();
-      const ratio = (clientX - rect.left - 23) / (rect.width - 46);
-      setSlider(slider, fromStep(1 + ratio * (TASTE_STEPS - 1)));
-      refresh(root);
-    };
-    track.addEventListener('pointerdown', (e) => {
-      track.setPointerCapture(e.pointerId);
-      setFromX(e.clientX);
-      const onMove = (ev) => setFromX(ev.clientX);
-      const onEnd = () => track.removeEventListener('pointermove', onMove);
-      track.addEventListener('pointermove', onMove);
-      track.addEventListener('pointerup', onEnd, { once: true });
-      track.addEventListener('pointercancel', onEnd, { once: true });
-    });
-    // Keyboard / VoiceOver: arrows nudge the value; the first press on a
-    // never-set axis starts it at the middle.
-    track.addEventListener('keydown', (e) => {
-      const delta = { ArrowRight: 1, ArrowUp: 1, ArrowLeft: -1, ArrowDown: -1, PageUp: 2, PageDown: -2 }[e.key];
-      const current = sliderValue(slider);
-      let next;
-      if (delta != null) next = current == null ? toStep(MIDDLE_VALUE) : toStep(current) + delta;
-      else if (e.key === 'Home') next = 1;
-      else if (e.key === 'End') next = TASTE_STEPS;
-      else return;
-      e.preventDefault();
-      setSlider(slider, fromStep(next));
+    slider.addEventListener('click', (e) => {
+      const dot = e.target.closest('.taste-dot');
+      if (!dot) return;
+      const i = Number(dot.dataset.dot);
+      const value = sliderValue(slider);
+      setSlider(slider, value != null && dotOf(value) === i ? null : DOT_VALUES[i]);
       refresh(root);
     });
     positionThumb(slider);
@@ -402,7 +390,7 @@ export function setTastingProfile(root, note) {
   if (first) selectFamily(root, first.id);
   root.querySelectorAll('.taste-slider').forEach((slider) => {
     const v = note[`taste_${slider.dataset.axis}`];
-    setSlider(slider, v == null ? null : fromStep(toStep(v)));
+    setSlider(slider, v == null ? null : DOT_VALUES[dotOf(v)]);
   });
   root.querySelector('.tp-text').value = note.text ?? '';
   refresh(root);

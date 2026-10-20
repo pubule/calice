@@ -24,7 +24,7 @@ const SHEETS = [
 
 const SHEET_SELECTOR = '.detail-sheet, .compare-sheet';
 const HEADER_SELECTOR = '.sheet-grabber, .compare-head, .topbar, .detail-hero';
-const NO_DRAG_SELECTOR = '.taste-track, input, textarea, select, [contenteditable="true"]';
+const NO_DRAG_SELECTOR = '.taste-dots, input, textarea, select, [contenteditable="true"]';
 
 const HYSTERESIS_CONTENT = 10; // px prima di iniziare dal contenuto
 const HYSTERESIS_HEADER = 6; // px prima di iniziare da maniglia/header
