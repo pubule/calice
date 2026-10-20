@@ -33,7 +33,7 @@ export const FLAVOR_CATEGORIES = [
   },
   {
     id: 'floreale', label: 'Floreale', bg: '#f5e9ef', fg: '#8a4a6a',
-    icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="2.2"/><path d="M12 9.8C10 6 12 3.5 12 3.5s2 2.5 0 6.3M14.2 12c3.8-2 6.3 0 6.3 0s-2.5 2-6.3 0M12 14.2c2 3.8 0 6.3 0 6.3s-2-2.5 0-6.3M9.8 12C6 14 3.5 12 3.5 12S6 10 9.8 12"/></svg>',
+    icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="2.3"/><circle cx="12" cy="6.2" r="3.3"/><circle cx="17.5" cy="10.2" r="3.3"/><circle cx="15.4" cy="16.7" r="3.3"/><circle cx="8.6" cy="16.7" r="3.3"/><circle cx="6.5" cy="10.2" r="3.3"/></svg>',
     tags: ['Rosa', 'Violetta', 'Fiori bianchi', 'Zagara', 'Acacia', 'Gelsomino', 'Sambuco', 'Camomilla', 'Lavanda', 'Fiori secchi', 'Caprifoglio', 'Geranio'],
   },
   {

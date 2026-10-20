@@ -1913,6 +1913,7 @@ questo file è il riassunto "dove eravamo rimasti".
     (anche in "Rivedi e conferma") e nei chip della scheda; gli aromi in
     scheda mostrano l'icona della famiglia. Un abbinamento nuovo va aggiunto
     a `FOOD_ICON` (lo controlla `tasting-profile-data.spec.ts`).
+    Build 183: icona Floreale = margherita a cinque petali (scelta utente).
 
 - **Ponytail nelle sessioni cloud**: le sue skill sono copiate in
   `.claude/skills/` e sempre attive tramite CLAUDE.md (scelta dell'utente:
