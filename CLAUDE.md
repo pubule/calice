@@ -996,4 +996,6 @@ così fino al build 160). I chip dei risultati di ricerca sono copie senza
 dell'utente, build 178): `text` vuoto significa "componi la frase"
 (`composeNoteText()`), mai salvare la frase composta come `text`, altrimenti
 smette di seguire aromi/gusto/cibo. Svuotare il testo la rende di nuovo
-automatica.
+automatica. Nella scheda vino voto e testo si cambiano solo dalla card; il
+foglio nota mostra una sola sezione (Aromi, Gusto o Cibo) e salva gli altri
+campi così come sono.

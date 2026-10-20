@@ -15,26 +15,11 @@ let currentMeId = null;
 // updates it. Null when there is none yet — the first save creates it.
 let ownNote = null;
 let savedNoteId = null;
-let myRatingValue = 0; // the note sheet's score, 0 = none (1-5, tenths allowed)
+let editingText = false; // the card shows the note's text in a field
 let noteSnapshot = ''; // the sheet's state when opened, to ask before discarding changes
 
 const ratingText = (r) => String(Math.round(r * 10) / 10).replace('.', ',');
-const myStars = Array.from(document.querySelectorAll('#note-overlay .stars-input span'));
 const detailTaste = document.getElementById('detail-taste');
-
-// Stars filled in proportion to the score (4,5 = four and a half) and the
-// number shown next to them.
-function setMyStars(r) {
-  myRatingValue = r || 0;
-  myStars.forEach((star, i) => {
-    const fill = Math.max(0, Math.min(1, myRatingValue - i));
-    star.classList.toggle('on', fill >= 1);
-    star.style.setProperty('--fill', `${fill * 100}%`);
-    star.setAttribute('aria-checked', String(i + 1 === Math.round(myRatingValue)));
-  });
-  const value = document.getElementById('note-rating-value');
-  if (value) value.textContent = myRatingValue ? ratingText(myRatingValue) : '–';
-}
 
 function noteHtml(n) {
   // rating/text/author_name all come from the API as unvalidated JSON (no
@@ -341,13 +326,26 @@ function renderNoteCard(note) {
     star.append(glyph);
     stars.append(star);
   }
-  if (rating) stars.append(el('b', '', ratingText(rating)));
+  // The number asks for the score with a comma (4,5), what whole stars cannot say.
+  const num = Object.assign(el('button', 'nc-rate-num', rating ? ratingText(rating) : '–'), { type: 'button' });
+  num.setAttribute('aria-label', 'Scrivi il voto, anche con la virgola');
+  stars.append(num);
   head.append(stars);
   const created = n.created_at ? new Date(`${String(n.created_at).replace(' ', 'T')}Z`) : null;
   if (created && !Number.isNaN(created.getTime())) head.append(el('span', 'nc-date', created.toLocaleDateString('it-IT', { day: 'numeric', month: 'long' })));
 
   const own = n.text?.trim();
   const sentence = own || composeNoteText(n);
+  if (editingText) {
+    const field = el('textarea', 'nc-edit');
+    field.value = sentence;
+    field.setAttribute('aria-label', 'La tua nota');
+    field.placeholder = 'Scrivi la tua nota…';
+    const actions = el('div', 'nc-edit-actions');
+    actions.append(Object.assign(el('button', 'nc-edit-cancel', 'Annulla'), { type: 'button' }), Object.assign(el('button', 'nc-edit-save', 'Salva'), { type: 'button' }));
+    const hint = el('span', 'nc-meta', 'Se la lasci così o la svuoti, la scrive l’app.');
+    document.getElementById('note-card').replaceChildren(head, field, hint, actions);
+  }
   const open = Object.assign(el('button', 'nc-sentence'), { type: 'button' });
   open.append(el('span', sentence ? 'nc-text' : 'nc-text nc-empty', sentence || 'Nessuna nota: tocca qui per scriverla, o segna aromi, gusto e cibo qui sotto.'));
   if (sentence) {
@@ -355,7 +353,7 @@ function renderNoteCard(note) {
     meta.insertAdjacentHTML('afterbegin', ICON_PENCIL); // our own constant SVG
     open.append(meta);
   }
-  document.getElementById('note-card').replaceChildren(head, open);
+  if (!editingText) document.getElementById('note-card').replaceChildren(head, open);
 
   const row = (tab, label, content, add) => {
     const b = Object.assign(el('button', 'nc-row'), { type: 'button' });
@@ -399,10 +397,10 @@ function renderNoteCard(note) {
 
 // Stars tapped on the card: saved at once as the score of the note
 // (PUT my-rating creates an empty note if needed). The same score again clears it.
-async function rateFromCard(value) {
+async function rateFromCard(value, exact = false) {
   const bottle = currentBottle;
   if (!bottle) return;
-  const rating = value === Math.round(Number(ownNote?.rating) || 0) ? null : value;
+  const rating = !exact && value === Math.round(Number(ownNote?.rating) || 0) ? null : value;
   const res = await api.put(`/api/bottles/${bottle.id}/my-rating`, { rating });
   bottle.my_rating = res.my_rating;
   refreshCellarList();
@@ -416,31 +414,75 @@ async function rateFromCard(value) {
   renderNoteCard(ownNote);
 }
 
-// The text field holds the composed sentence until the user types their
-// own (autoText): saved, an untouched sentence stays empty, so it keeps
-// following what is marked. Emptying the field gives it back to the app.
-let autoText = true;
-const noteTextField = () => detailTaste.querySelector('.tp-text');
-const profileAsNote = (p) => ({ flavor_tags: p.flavorTags, food_pairings: p.foodPairings, ...Object.fromEntries(TASTE_AXES.map((a) => [`taste_${a.id}`, p[a.key]])) });
-function fillAutoText() {
-  if (autoText) noteTextField().value = composeNoteText(profileAsNote(readTastingProfile(detailTaste)));
-}
-// The sheet's note as it would be saved: an automatic sentence is no text.
-function sheetProfile() {
-  const p = readTastingProfile(detailTaste);
-  if (autoText) p.text = '';
-  return p;
+// A saved note (API shape) as the body PATCH/POST expect: they overwrite
+// every field, so what is not being changed is sent back as it is.
+const noteAsPayload = (n) => ({
+  rating: Number(n.rating) || 0,
+  text: n.text ?? '',
+  flavorTags: Array.isArray(n.flavor_tags) ? n.flavor_tags : [],
+  foodPairings: Array.isArray(n.food_pairings) ? n.food_pairings : [],
+  ...Object.fromEntries(TASTE_AXES.map((a) => [a.key, n[`taste_${a.id}`] ?? null])),
+});
+
+// Creates or updates the user's note, then redraws the card. False if it failed.
+async function persistNote(payload) {
+  const bottle = currentBottle;
+  if (!bottle) return false;
+  const updating = savedNoteId != null;
+  try {
+    const note = updating
+      ? await api.patch(`/api/bottles/${bottle.id}/notes/${savedNoteId}`, payload)
+      : await api.post(`/api/bottles/${bottle.id}/notes`, payload);
+    savedNoteId = note?.id ?? savedNoteId;
+  } catch (err) {
+    console.error(err);
+    await alertModal('Non è stato possibile salvare la nota. Riprova.', { title: 'Nota non salvata' });
+    return false;
+  }
+  showToast(updating ? 'Nota aggiornata' : 'Nota salvata');
+  // The score is the note's: the numbers above and Cantina's list follow.
+  bottle.my_rating = payload.rating || null;
+  refreshCellarList();
+  if (currentBottle !== bottle) return true;
+  renderStats(bottle);
+  const mine = await loadNotes(bottle.id);
+  if (currentBottle !== bottle) return true;
+  ownNote = mine.find((n) => n.id === savedNoteId) ?? null;
+  renderNoteCard(ownNote);
+  return true;
 }
 
-const noteSheetState = () => JSON.stringify([sheetProfile(), myRatingValue]);
+// The note's text, written in the card. The composed sentence left as it
+// is, or an empty field, saves no text: the app keeps writing it.
+function startTextEdit() {
+  editingText = true;
+  renderNoteCard(ownNote);
+  const field = document.querySelector('#note-card .nc-edit');
+  field.focus();
+  field.setSelectionRange(field.value.length, field.value.length);
+}
+
+async function saveCardText() {
+  const n = ownNote ?? {};
+  let text = document.querySelector('#note-card .nc-edit').value.trim();
+  if (text === composeNoteText(n)) text = '';
+  editingText = false;
+  if (text === (n.text ?? '').trim()) {
+    renderNoteCard(ownNote);
+    return;
+  }
+  await persistNote({ ...noteAsPayload(n), text });
+}
+
+const noteSheetState = () => JSON.stringify(readTastingProfile(detailTaste));
+const SHEET_TITLE = { aromi: 'Aromi', gusto: 'Gusto', cibo: 'Abbinamenti' };
 
 function openNoteSheet(tab = 'aromi') {
   if (ownNote) setTastingProfile(detailTaste, ownNote);
   else resetTastingProfile(detailTaste);
-  autoText = !ownNote?.text?.trim();
-  fillAutoText();
+  // One part at a time: the sheet shows only the section that was tapped.
   selectSubTab(detailTaste, tab);
-  setMyStars(Number(ownNote?.rating) || 0);
+  document.getElementById('note-sheet-title').textContent = SHEET_TITLE[tab];
   noteSnapshot = noteSheetState();
   document.querySelector('#note-overlay .detail-sheet').scrollTop = 0;
   document.getElementById('note-overlay').classList.add('open');
@@ -482,6 +524,7 @@ export async function openDetail(bottle, me) {
   closeNoteSheet();
   ownNote = null;
   savedNoteId = null;
+  editingText = false;
   renderNoteCard(null);
   renderQuantity();
   renderHero(bottle);
@@ -546,14 +589,19 @@ function wireStaticControls() {
     });
   });
 
-  // The note sheet's stars: the score is saved with the rest of the note by
-  // "Salva" (no instant save any more: one way to save, per the spec).
-  myStars.forEach((star, i) => star.addEventListener('click', () => setMyStars(i + 1)));
-  // The number next to the stars: tapped, it asks for the score with a
-  // comma (4,5), for what whole stars cannot say.
-  document.getElementById('note-rating-value')?.addEventListener('click', async () => {
+  detailTaste.innerHTML = tastingProfileHtml();
+  wireTastingProfile(detailTaste);
+
+  document.getElementById('note-card')?.addEventListener('click', async (e) => {
+    const star = e.target.closest('.nc-star');
+    if (star) { rateFromCard(Number(star.dataset.rate)); return; }
+    if (e.target.closest('.nc-sentence')) { startTextEdit(); return; }
+    if (e.target.closest('.nc-edit-save')) { saveCardText(); return; }
+    if (e.target.closest('.nc-edit-cancel')) { editingText = false; renderNoteCard(ownNote); return; }
+    if (!e.target.closest('.nc-rate-num')) return;
+    const current = Number(ownNote?.rating) || 0;
     const typed = await promptModal('Da 1 a 5, anche con la virgola: per esempio 4,5.', {
-      title: 'Il tuo voto', defaultValue: myRatingValue ? ratingText(myRatingValue) : '', placeholder: 'es. 4,5', inputMode: 'decimal',
+      title: 'Il tuo voto', defaultValue: current ? ratingText(current) : '', placeholder: 'es. 4,5', inputMode: 'decimal',
     });
     if (typed == null || !typed.trim()) return;
     const v = Number(typed.trim().replace(',', '.'));
@@ -561,19 +609,7 @@ function wireStaticControls() {
       await alertModal('Il voto va da 1 a 5, per esempio 4 o 4,5.');
       return;
     }
-    setMyStars(Math.round(v * 10) / 10);
-  });
-
-  detailTaste.innerHTML = tastingProfileHtml();
-  wireTastingProfile(detailTaste);
-
-  noteTextField().addEventListener('input', () => { autoText = !noteTextField().value.trim(); });
-  // Opening Testo shows the sentence of what is marked right now.
-  detailTaste.addEventListener('click', (e) => { if (e.target.closest('[data-tp-tab="testo"]')) fillAutoText(); });
-  document.getElementById('note-card')?.addEventListener('click', (e) => {
-    const star = e.target.closest('.nc-star');
-    if (star) rateFromCard(Number(star.dataset.rate));
-    else if (e.target.closest('.nc-sentence')) openNoteSheet('testo');
+    rateFromCard(Math.round(v * 10) / 10, true);
   });
   document.getElementById('note-rows')?.addEventListener('click', (e) => {
     const row = e.target.closest('.nc-row');
@@ -590,58 +626,19 @@ function wireStaticControls() {
   noteSave?.addEventListener('click', async () => {
     const bottle = currentBottle;
     if (!bottle || noteSave.disabled) return;
-    const profile = sheetProfile();
-    const { text } = profile;
-    // Nothing written and no note yet: nothing to save.
-    if (myRatingValue === 0 && isTastingProfileEmpty(profile) && savedNoteId == null) {
+    const profile = readTastingProfile(detailTaste);
+    // Nothing marked and no note yet: nothing to save.
+    if (isTastingProfileEmpty(profile) && savedNoteId == null) {
       closeNoteSheet();
       return;
     }
-    // 0 stars defaults to 3 only when there's free text to go with it (the
-    // original behaviour: writing something implies a decent rating even if
-    // no star was tapped) — a profile-only save with no stars stays 0
-    // (genuinely unrated) instead of inventing a rating nobody gave.
-    const rating = myRatingValue || (text ? 3 : 0);
     // Disabled while in flight: repeated taps once saved the same note five
-    // times in production.
+    // times in production. Score and text are the card's: kept as they are.
     noteSave.disabled = true;
-    const payload = {
-      rating,
-      text,
-      flavorTags: profile.flavorTags,
-      foodPairings: profile.foodPairings,
-      tasteAcidity: profile.tasteAcidity,
-      tasteSweetness: profile.tasteSweetness,
-      tasteTannin: profile.tasteTannin,
-      tasteBody: profile.tasteBody,
-      tasteAlcohol: profile.tasteAlcohol,
-      tasteIntensity: profile.tasteIntensity,
-      tasteFinish: profile.tasteFinish,
-    };
-    const updating = savedNoteId != null;
-    try {
-      const note = updating
-        ? await api.patch(`/api/bottles/${bottle.id}/notes/${savedNoteId}`, payload)
-        : await api.post(`/api/bottles/${bottle.id}/notes`, payload);
-      savedNoteId = note?.id ?? savedNoteId;
-    } catch (err) {
-      console.error(err);
-      await alertModal('Non è stato possibile salvare la nota. Riprova.', { title: 'Nota non salvata' });
-      return;
-    } finally {
-      noteSave.disabled = false;
-    }
-    showToast(updating ? 'Nota aggiornata' : 'Nota salvata');
-    closeNoteSheet();
-    // The score is the note's: the numbers above and Cantina's list follow.
-    bottle.my_rating = rating || null;
-    refreshCellarList();
-    if (currentBottle !== bottle) return;
-    renderStats(bottle);
-    const mine = await loadNotes(bottle.id);
-    if (currentBottle !== bottle) return;
-    ownNote = mine.find((n) => n.id === savedNoteId) ?? null;
-    renderNoteCard(ownNote);
+    const { text, ...marked } = profile;
+    const ok = await persistNote({ ...noteAsPayload(ownNote ?? {}), ...marked });
+    noteSave.disabled = false;
+    if (ok) closeNoteSheet();
   });
 
   document.getElementById('loc-edit-btn')?.addEventListener('click', () => {

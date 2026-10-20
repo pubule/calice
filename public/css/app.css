@@ -369,7 +369,14 @@
   .nc-star{width:40px; height:44px; padding:0; border:none; background:none; cursor:pointer; display:flex; align-items:center; justify-content:center; margin-left:-6px;}
   .nc-star + .nc-star{margin-left:-8px;}
   .nc-star span{font-size:26px; line-height:1; color:transparent; -webkit-text-stroke:1.2px #8e8779; background:linear-gradient(90deg, #5b2333 var(--fill, 0%), transparent var(--fill, 0%)); -webkit-background-clip:text; background-clip:text;}
-  .nc-stars b{margin-left:6px; font-family:'JetBrains Mono',monospace; font-size:calc(15rem/17); font-weight:600; color:#241e1a;}
+  .nc-rate-num{min-width:44px; min-height:44px; margin-left:2px; padding:0 6px; border:none; background:none; font-family:'JetBrains Mono',monospace; font-size:calc(15rem/17); font-weight:600; color:#241e1a; cursor:pointer;}
+  .nc-edit{width:100%; min-height:110px; box-sizing:border-box; font-family:'Newsreader',serif; font-size:max(16px, calc(18rem/17)); line-height:1.4;}
+  .nc-edit-actions{display:flex; justify-content:flex-end; gap:8px;}
+  .nc-edit-cancel, .nc-edit-save{min-height:44px; padding:0 18px; border-radius:9999px; font-family:'Archivo',sans-serif; font-size:calc(14rem/17); font-weight:600; cursor:pointer;}
+  .nc-edit-cancel{border:1px solid #e2e0d8; background:#ffffff; color:#241e1a;}
+  .nc-edit-save{border:none; background:#5b2333; color:#ffffff;}
+  /* In the bottle's note sheet one part at a time (opened from its row): no sub-tabs. */
+  #detail-taste .tp-tabs{display:none;}
   .nc-date{font-size:calc(12rem/17); color:#736a5d;}
   .nc-sentence{display:flex; flex-direction:column; gap:8px; width:100%; padding:0; border:none; background:none; text-align:left; font:inherit; color:inherit; cursor:pointer;}
   .nc-text{font-family:'Newsreader',serif; font-style:italic; font-size:calc(19rem/17); line-height:1.4; color:#241e1a; white-space:pre-line; overflow-wrap:anywhere;}
@@ -395,7 +402,6 @@
   .note-sheet-head h3{flex:1; margin:0; text-align:center; font-family:'Newsreader',serif; font-weight:500; font-size:calc(19rem/17);}
   .note-cancel{min-height:44px; padding:0; border:none; background:none; font-family:'Archivo',sans-serif; font-size:calc(14rem/17); color:#736a5d; cursor:pointer;}
   .note-save{min-height:40px; padding:0 18px; border:none; border-radius:9999px; background:#5b2333; color:#f7f5f0; font-family:'Archivo',sans-serif; font-size:calc(13rem/17); font-weight:600; cursor:pointer;}
-  .note-stars{background:none; border:none; padding:0; align-items:center;}
   .note-sheet .taste-profile{margin-top:0; padding-top:0; border-top:none;}
   .loc-row{display:flex; align-items:center; gap:10px; background:#ffffff; border:1px solid #e2e0d8; border-radius:12px; padding:12px 14px;}
   .loc-row svg{stroke:#5b2333; flex-shrink:0;}

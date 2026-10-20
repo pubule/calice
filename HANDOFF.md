@@ -1884,6 +1884,14 @@ questo file è il riassunto "dove eravamo rimasti".
     `detail.js`), e se non la tocchi si salva `text` vuoto, così continua a
     seguire i dati; scritta a mano diventa dell'utente; svuotata torna
     automatica. Il DB non aveva note con testo da convertire.
+    Build 179 (richiesta utente): il foglio nota della scheda vino mostra solo
+    la sezione toccata (titolo Aromi/Gusto/Abbinamenti, sotto-tab nascosti con
+    `#detail-taste .tp-tabs{display:none}`), niente stelle né Testo. Voto
+    (stelle + numero con la virgola) e testo si cambiano solo dalla card:
+    il testo si scrive lì in un campo (`startTextEdit`/`saveCardText`), le
+    stelle salvano subito. `persistNote()` + `noteAsPayload()` rimandano
+    sempre tutti i campi (PATCH sovrascrive). "Rivedi e conferma" in add.js
+    tiene ancora sotto-tab e Testo.
 
 - **Ponytail nelle sessioni cloud**: le sue skill sono copiate in
   `.claude/skills/` e sempre attive tramite CLAUDE.md (scelta dell'utente:

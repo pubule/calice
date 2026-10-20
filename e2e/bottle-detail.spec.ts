@@ -34,9 +34,8 @@ test.describe('Dettaglio bottiglia', () => {
 
     await page.click('#detail-tabs button:has-text("Sentori e note")');
     await page.click('#note-card .nc-sentence');
-    await page.fill('#detail-taste .tp-text', 'Ottimo vino, note di frutti rossi.');
-    await page.locator('#note-overlay .stars-input span').nth(3).click(); // 4 stars
-    await page.click('#note-save');
+    await page.fill('#note-card .nc-edit', 'Ottimo vino, note di frutti rossi.');
+    await page.click('#note-card .nc-edit-save');
     await expect(page.locator('#note-card .nc-text')).toHaveText('Ottimo vino, note di frutti rossi.');
 
     await page.click('#detail-close');
@@ -63,10 +62,13 @@ test.describe('Dettaglio bottiglia', () => {
     await expect(card.locator('.nc-text')).toContainText('Nessuna nota');
     await expect(rows.locator('.nc-row[data-tab="aromi"]')).toContainText('+ Aggiungi aromi');
 
-    // A row opens the sheet on its own sub-tab.
+    // A row opens the sheet on that part only: no sub-tabs, no stars, no text.
     await rows.locator('.nc-row[data-tab="aromi"]').click();
     await expect(page.locator('#note-overlay')).toHaveClass(/open/);
-    await expect(page.locator('#detail-taste [data-tp-tab="aromi"]')).toHaveClass(/active/);
+    await expect(page.locator('#note-sheet-title')).toHaveText('Aromi');
+    await expect(page.locator('#detail-taste .tp-tabs')).toBeHidden();
+    await expect(page.locator('#note-overlay .stars-input')).toHaveCount(0);
+    await expect(page.locator('#detail-taste .tp-text')).toBeHidden();
     await page.locator('#detail-taste .flavor-chip-panel:not(.hidden) .chip', { hasText: /^Amarena$/ }).click();
     await page.click('#note-save');
     await expect(page.locator('#note-overlay')).not.toHaveClass(/open/);
@@ -76,19 +78,28 @@ test.describe('Dettaglio bottiglia', () => {
     await expect(card.locator('.nc-meta')).toContainText('Scritta dall’app');
     await expect(card.locator('.nc-stars')).toHaveAttribute('aria-label', 'Il tuo voto: nessuno');
 
-    // Tapping the sentence opens Testo, prefilled; writing makes it the user's.
+    // Tapping the sentence edits it in the card, prefilled; saving it unchanged keeps it the app's.
     await card.locator('.nc-sentence').click();
-    await expect(page.locator('#detail-taste .tp-text')).toHaveValue('Sentori di amarena.');
-    await page.locator('#note-overlay .stars-input span').nth(3).click();
-    await page.fill('#detail-taste .tp-text', 'Lungo sul finale');
-    await page.click('#note-save');
-    await expect(card.locator('.nc-stars')).toHaveAttribute('aria-label', 'Il tuo voto: 4 su 5');
+    await expect(card.locator('.nc-edit')).toHaveValue('Sentori di amarena.');
+    await card.locator('.nc-edit-save').click();
+    await expect(card.locator('.nc-meta')).toContainText('Scritta dall’app');
+    // Writing makes it the user's.
+    await card.locator('.nc-sentence').click();
+    await card.locator('.nc-edit').fill('Lungo sul finale');
+    await card.locator('.nc-edit-save').click();
     await expect(card.locator('.nc-text')).toHaveText('Lungo sul finale');
     await expect(card.locator('.nc-meta')).toContainText('Scritta da te');
+    // Annulla leaves it as it was.
+    await card.locator('.nc-sentence').click();
+    await card.locator('.nc-edit').fill('Da buttare');
+    await card.locator('.nc-edit-cancel').click();
+    await expect(card.locator('.nc-text')).toHaveText('Lungo sul finale');
 
     // A changed taste axis shows up in its row; Azzera + save empties it again.
     await rows.locator('.nc-row[data-tab="gusto"]').click();
-    await expect(page.locator('#detail-taste [data-tp-tab="gusto"]')).toHaveClass(/active/);
+    await expect(page.locator('#note-sheet-title')).toHaveText('Gusto');
+    await expect(page.locator('#detail-taste [data-tp-panel="gusto"]')).toBeVisible();
+    await expect(page.locator('#detail-taste [data-tp-panel="aromi"]')).toBeHidden();
     await page.locator('#detail-taste .taste-slider[data-axis="body"] .taste-track').click({ position: { x: 5, y: 10 } });
     await page.click('#note-save');
     await expect(rows.locator('.nc-row[data-tab="gusto"]')).toContainText('Leggero');
@@ -100,15 +111,20 @@ test.describe('Dettaglio bottiglia', () => {
 
     // Emptying the text gives the sentence back to the app.
     await card.locator('.nc-sentence').click();
-    await page.fill('#detail-taste .tp-text', '');
-    await page.click('#note-save');
+    await card.locator('.nc-edit').fill('');
+    await card.locator('.nc-edit-save').click();
     await expect(card.locator('.nc-text')).toHaveText('Sentori di amarena.');
 
-    // Stars on the card save at once; the same star again clears the score.
+    // Stars on the card save at once; the same star again clears the score;
+    // the number takes a score with a comma.
     await card.locator('.nc-star').nth(2).click();
     await expect(card.locator('.nc-stars')).toHaveAttribute('aria-label', 'Il tuo voto: 3 su 5');
     await card.locator('.nc-star').nth(2).click();
     await expect(card.locator('.nc-stars')).toHaveAttribute('aria-label', 'Il tuo voto: nessuno');
+    await card.locator('.nc-rate-num').click();
+    await page.fill('#app-modal input', '4,5');
+    await confirmModal(page);
+    await expect(card.locator('.nc-stars')).toHaveAttribute('aria-label', 'Il tuo voto: 4,5 su 5');
     await expect(card.locator('.nc-text')).toHaveText('Sentori di amarena.');
 
     // Annulla with changes asks first; cancelling the question keeps the sheet.
@@ -123,8 +139,9 @@ test.describe('Dettaglio bottiglia', () => {
     await expect(page.locator('#note-overlay')).not.toHaveClass(/open/);
     await expect(rows.locator('.nc-row[data-tab="aromi"]')).toContainText('Amarena'); // nothing saved
 
-    // Annulla without changes closes at once, even with the composed sentence in Testo.
-    await card.locator('.nc-sentence').click();
+    // Annulla without changes closes at once.
+    await rows.locator('.nc-row[data-tab="cibo"]').click();
+    await expect(page.locator('#note-sheet-title')).toHaveText('Abbinamenti');
     await page.click('#note-cancel');
     await expect(page.locator('#note-overlay')).not.toHaveClass(/open/);
     await expect(page.locator('#app-modal.open')).toHaveCount(0);
