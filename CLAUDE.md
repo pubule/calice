@@ -807,7 +807,10 @@ già corretto:
   `main.js`: una nuova vista senza scheda propria va aggiunta a
   `TAB_FOR_VIEW`; una nuova scheda va aggiunta a `HASH_FOR_VIEW` (le
   rotte non sono tutte `#/<nome-vista>`: Esplora è `#/esplora`). Il menu
-  ha quattro sezioni più, al centro, il "+" in rilievo (scelto
+  (build 172, scelta dell'utente) è Home · Vini (`view-cellar`, `#/cellar`)
+  · + · Cantina (`view-places`, `#/cantina`: gli elementi) · Profilo;
+  Statistiche è una pagina di Profilo (`#/stats`, scheda Profilo accesa,
+  freccia indietro). Quattro sezioni più, al centro, il "+" in rilievo (scelto
   dall'utente su mockup, al posto della scheda Esplora che resta una
   sotto-sezione della Home): nessun'altra azione nel menu. Il "+" **non è
   una scheda**: apre il foglio "Aggiungi un vino" sopra la schermata

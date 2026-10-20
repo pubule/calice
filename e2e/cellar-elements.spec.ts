@@ -3,6 +3,8 @@ import { gotoScreen, myCellarId, seedWine, seedBottle, confirmModal, cancelModal
 
 const DELETE_ELEMENT_TITLE = 'Eliminare questo elemento?';
 
+// Elements live in the "Cantina" tab (view-places): one card per element, and
+// "Nuovo elemento" opens the two-step form (kind, then name and sizes).
 test.describe('Cantina — elementi', () => {
   let bottleName: string;
 
@@ -15,26 +17,21 @@ test.describe('Cantina — elementi', () => {
   });
 
   test('create a Scaffale, fill a slot via the reverse picker, open the bottle popup, cancel then confirm delete', async ({ page }) => {
-    await gotoScreen(page, 'cellar');
-    await page.click('#elements-link');
+    await gotoScreen(page, 'places');
+    await page.click('#places-new-btn');
     await expect(page.locator('#elements-overlay')).toHaveClass(/open/);
+    await expect(page.locator('#elements-title')).toHaveText('Nuovo elemento');
 
     const elName = `Scaffale E2E ${runId}`;
-    await page.click('#new-element-btn');
-    await expect(page.locator('#elements-title')).toHaveText('Nuovo elemento');
     await page.click('.kind-opt[data-kind="Scaffale"]');
+    await expect(page.locator('#elements-title')).toHaveText('Nuovo: Scaffale');
     await page.fill('#new-elem-name', elName);
     await page.fill('#new-elem-tiers', '2');
     await page.fill('#new-elem-cols', '3');
-    await page.fill('#new-elem-depth', '1');
+    await expect(page.locator('#dims-preview')).toContainText('6 posti');
     await page.click('#create-element-btn');
 
-    const row = page.locator('.elem-row', { hasText: elName });
-    await expect(row).toBeVisible();
-    await expect(row.locator('.elem-sub')).toHaveText('Scaffale · 2 livelli × 3 col.');
-    await expect(row.locator('.elem-count')).toHaveText('0 bott.');
-
-    await row.click();
+    // Straight into the new element.
     await expect(page.locator('#elements-title')).toHaveText(elName);
     const stat = page.locator('.elem-stats .stat b');
     await expect(stat.nth(0)).toHaveText('6'); // capacità: 2 × 3 × 1
@@ -58,48 +55,45 @@ test.describe('Cantina — elementi', () => {
     await expect(page.locator('#slot-card')).toBeVisible();
     await expect(page.locator('#slot-card .elem-name')).toHaveText(bottleName);
 
+    // Back closes the overlay: the card in the Cantina tab shows the element.
+    await page.click('#elements-back-btn');
+    await expect(page.locator('#elements-overlay')).not.toHaveClass(/open/);
+    const card = page.locator('.place-card', { hasText: elName });
+    await expect(card.locator('.place-sub')).toHaveText('Scaffale · 2 livelli × 3');
+    await expect(card.locator('.place-count b')).toHaveText('1/6');
+    await card.click();
+    await expect(page.locator('#elements-title')).toHaveText(elName);
+
     // Cancelling the delete confirmation must not delete anything.
     await page.click('#delete-element-btn');
     await expect(page.locator('#app-modal-title')).toHaveText(DELETE_ELEMENT_TITLE);
     await cancelModal(page);
     await expect(page.locator('#elements-title')).toHaveText(elName);
 
-    // Confirming does delete it, and unassigns the bottle inside.
+    // Confirming does delete it, unassigns the bottle inside and closes the overlay.
     await page.click('#delete-element-btn');
     await confirmModal(page);
-    await expect(page.locator('.elem-row', { hasText: elName })).not.toBeVisible();
+    await expect(page.locator('#elements-overlay')).not.toHaveClass(/open/);
+    await expect(page.locator('.place-card', { hasText: elName })).not.toBeVisible();
   });
 
-  test('kind chips filter the elements list', async ({ page }) => {
-    await gotoScreen(page, 'cellar');
-    await page.click('#elements-link');
-
-    const boxName = `Scatolone Filter E2E ${runId}`;
-    await page.click('#new-element-btn');
-    await page.click('.kind-opt[data-kind="Scatolone"]');
-    await expect(page.locator('#new-elem-dims')).toBeHidden();
-    await page.fill('#new-elem-name', boxName);
-    await page.click('#create-element-btn');
-    await expect(page.locator('.elem-row', { hasText: boxName })).toBeVisible();
-
-    await page.click('#elements-kind-chips .chip:has-text("Scaffale")');
-    await expect(page.locator('.elem-row', { hasText: boxName })).not.toBeVisible();
-    // Only shelves left (the dev database keeps elements from earlier runs).
-    for (const sub of await page.locator('#elements-list .elem-sub').allTextContents()) expect(sub).toMatch(/^Scaffale/);
-
-    await page.click('#elements-kind-chips .chip:has-text("Tutti")');
-    await expect(page.locator('.elem-row', { hasText: boxName })).toBeVisible();
+  test('"senza posto: sistemale" opens Vini filtered on bottles without a place', async ({ page }) => {
+    await gotoScreen(page, 'places');
+    await page.click('#places-unplaced');
+    await expect(page.locator('#view-cellar')).toHaveClass(/active/);
+    await expect(page.locator('#cellar-filter-badge')).toHaveText('1');
+    await expect(page.locator('#cellar-sel-place')).toHaveValue('none');
+    await expect(page.locator('.cellar-row', { hasText: bottleName })).toBeVisible();
   });
 
-  test('Scatolone: "Aggiungi bottiglia" opens the same reverse picker', async ({ page }) => {
-    await gotoScreen(page, 'cellar');
-    await page.click('#elements-link');
+  test('Scatolone: no sizes, and "Aggiungi bottiglia" opens the same reverse picker', async ({ page }) => {
+    await gotoScreen(page, 'places');
     const boxName = `Scatolone Assign E2E ${runId}`;
-    await page.click('#new-element-btn');
+    await page.click('#places-new-btn');
     await page.click('.kind-opt[data-kind="Scatolone"]');
+    await expect(page.locator('.dims-card')).toHaveCount(0);
     await page.fill('#new-elem-name', boxName);
     await page.click('#create-element-btn');
-    await page.click(`.elem-row:has-text("${boxName}")`);
 
     await expect(page.locator('.box-note')).toBeVisible();
     await page.click('#assign-box-btn');
@@ -108,24 +102,21 @@ test.describe('Cantina — elementi', () => {
     await expect(page.locator('.box-item', { hasText: bottleName })).toBeVisible();
   });
 
-  test('create a Rack and fill a slot via the reverse picker', async ({ page }) => {
-    await gotoScreen(page, 'cellar');
-    await page.click('#elements-link');
-
+  test('create a Rack with the steppers and fill a slot via the reverse picker', async ({ page }) => {
+    await gotoScreen(page, 'places');
     const elName = `Rack E2E ${runId}`;
-    await page.click('#new-element-btn');
+    await page.click('#places-new-btn');
     await page.click('.kind-opt[data-kind="Rack"]');
     await page.fill('#new-elem-name', elName);
-    await page.fill('#new-elem-tiers', '1');
-    await page.fill('#new-elem-cols', '2');
-    await page.fill('#new-elem-depth', '1');
+    // Defaults 3 × 5: two presses down on levels, three on bottles per level.
+    for (let i = 0; i < 2; i++) await page.click('[aria-label="Un livello in meno"]');
+    for (let i = 0; i < 3; i++) await page.click('[aria-label="Una bottiglia in meno per livello"]');
+    await page.click('.dims-depth button[data-depth="2"]');
+    await expect(page.locator('#dims-preview')).toContainText('4 posti');
     await page.click('#create-element-btn');
 
-    const row = page.locator('.elem-row', { hasText: elName });
-    await expect(row).toBeVisible();
-    await expect(row.locator('.elem-sub')).toHaveText('Rack · 1 livelli × 2 col.');
-    await row.click();
-
+    await expect(page.locator('#elements-title')).toHaveText(elName);
+    await expect(page.locator('.elem-stats .stat b').nth(0)).toHaveText('4'); // 1 × 2 × 2
     await page.click('.slot-circle[data-t="1"][data-c="0"][data-d="1"]');
     await expect(page.locator('#elements-title')).toHaveText('Scegli la bottiglia');
     await page.click(`#pick-bottle-list .elem-row:has-text("${bottleName}")`);
@@ -148,9 +139,7 @@ test.describe('Cantina — elementi', () => {
     await page.fill('#new-elem-name', elName);
     await page.fill('#new-elem-tiers', '1');
     await page.fill('#new-elem-cols', '2');
-    await page.fill('#new-elem-depth', '1');
     await page.click('#create-element-btn');
-    await page.click(`.elem-row:has-text("${elName}")`);
     await expect(page.locator('.elements-view')).toContainText(bottleName);
 
     await page.click('.slot-circle[data-t="1"][data-c="0"][data-d="1"]');

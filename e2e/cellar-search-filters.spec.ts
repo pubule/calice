@@ -56,7 +56,7 @@ test.describe('Cantina — search and filters', () => {
     await page.click('.segmented button:has-text("Desideri")');
     await expect(page.locator('#cellar-list')).not.toBeVisible();
     await expect(page.locator('#wishlist-list')).toBeVisible();
-    await page.click('.segmented button:has-text("La mia cantina")');
+    await page.click('.segmented button:has-text("In cantina")');
     await expect(page.locator('#cellar-list')).toBeVisible();
   });
 });

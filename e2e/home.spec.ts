@@ -67,8 +67,8 @@ test.describe('Home nav', () => {
 
     // Every navbar destination actually mounts its own view.
     for (const [label, view] of [
-      ['Cantina', 'view-cellar'],
-      ['Statistiche', 'view-stats'],
+      ['Vini', 'view-cellar'],
+      ['Cantina', 'view-places'],
       ['Profilo', 'view-profile'],
       ['Home', 'view-home'],
     ] as const) {

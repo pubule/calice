@@ -50,17 +50,18 @@ export function parseQuantity(raw, min = 1) {
   return Number.isInteger(v) && v >= min && v <= MAX_QUANTITY ? { value: v } : { invalid: true };
 }
 
-// "− 3 +": the one control for a number of bottles. The number can also be
-// typed. Wire it with wireQuantitySteppers() (once per render).
-export function quantityStepperHtml({ id, value, min = 1, label = 'Bottiglie' }) {
-  return `<div class="qty-step" role="group" aria-label="${label}" data-min="${min}">
-    <button type="button" data-qty-step="-1" aria-label="Una bottiglia in meno">−</button>
-    <input id="${id}" class="qty-input" ${WHOLE_NUMBER_ATTRS} maxlength="4" value="${value}" aria-label="${label}">
-    <button type="button" data-qty-step="1" aria-label="Una bottiglia in più">+</button>
+// "− 3 +": the one control for a number of bottles (with max and the button
+// labels, also for another small count). The number can also be typed.
+// Wire it with wireQuantitySteppers() (once per render).
+export function quantityStepperHtml({ id, value, min = 1, max = MAX_QUANTITY, label = 'Bottiglie', less = 'Una bottiglia in meno', more = 'Una bottiglia in più' }) {
+  return `<div class="qty-step" role="group" aria-label="${label}" data-min="${min}" data-max="${max}">
+    <button type="button" data-qty-step="-1" aria-label="${less}">−</button>
+    <input id="${id}" class="qty-input" ${WHOLE_NUMBER_ATTRS} maxlength="${String(max).length}" value="${value}" aria-label="${label}">
+    <button type="button" data-qty-step="1" aria-label="${more}">+</button>
   </div>`;
 }
 
-// Buttons change the number inside [min, MAX_QUANTITY]; `onChange(n)` after
+// Buttons change the number inside [min, max]; `onChange(n)` after
 // each press (the typed value is read by the caller when it saves).
 export function wireQuantitySteppers(root, onChange) {
   root.querySelectorAll('.qty-step').forEach((group) => {
@@ -68,11 +69,12 @@ export function wireQuantitySteppers(root, onChange) {
     group.dataset.wired = '1';
     const input = group.querySelector('.qty-input');
     const min = Number(group.dataset.min) || 0;
+    const max = Number(group.dataset.max) || MAX_QUANTITY;
     group.addEventListener('click', (e) => {
       const btn = e.target.closest('[data-qty-step]');
       if (!btn) return;
       const current = parseQuantity(input.value, min).value ?? min;
-      const next = Math.min(MAX_QUANTITY, Math.max(min, current + Number(btn.dataset.qtyStep)));
+      const next = Math.min(max, Math.max(min, current + Number(btn.dataset.qtyStep)));
       input.value = String(next);
       onChange?.(next, input);
     });

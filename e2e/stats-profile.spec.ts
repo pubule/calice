@@ -9,6 +9,10 @@ test.describe('Statistiche', () => {
     await expect(stats.nth(0).locator('.lbl')).toHaveText('bottiglie');
     await expect(stats.nth(1).locator('.lbl')).toHaveText('valore');
     await expect(stats.nth(2).locator('.lbl')).toHaveText('annata media');
+    // A page of Profilo: its tab stays lit, back returns there.
+    await expect(page.locator('.navbtn:has-text("Profilo")')).toHaveClass(/active/);
+    await page.click('#stats-back-btn');
+    await expect(page.locator('#view-profile')).toHaveClass(/active/);
   });
 
   test('summary total and type breakdown reflect seeded bottles', async ({ page, request }) => {

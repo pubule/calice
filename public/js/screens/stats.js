@@ -65,6 +65,9 @@ function skeletonBarRow() {
 // animation frame), so the page reads as one thing becoming ready.
 const REVEAL_IDS = ['stats-summary', 'stats-type', 'stats-country', 'stats-region'];
 
+// Statistiche is a page of Profilo, not a tab: back returns there.
+document.getElementById('stats-back-btn')?.addEventListener('click', () => { window.location.hash = '#/profile'; });
+
 function revealSections() {
   const els = REVEAL_IDS.map((id) => document.getElementById(id)).filter(Boolean);
   els.forEach((el) => el.classList.remove('reveal-target', 'revealed'));

@@ -8,7 +8,7 @@ test.describe('Profilo — impostazioni', () => {
     await gotoScreen(page, 'profile');
     await page.click('#help-row');
     await expect(page.locator(modal.title)).toHaveText('Aiuto');
-    await expect(page.locator(modal.message)).toContainText('Elementi cantina');
+    await expect(page.locator(modal.message)).toContainText('Cantina: crea celle');
     await dismissAlert(page);
   });
 

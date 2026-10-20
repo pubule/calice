@@ -18,7 +18,6 @@ const SHEETS = [
   ['add-overlay', 'add-close'],
   ['recognize-overlay', 'recognize-close'],
   ['filter-sheet', 'filter-sheet-close'],
-  ['cellar-sheet', 'cellar-sheet-close'],
   ['elements-overlay', 'elements-close'],
   ['explore-country-sheet', 'explore-country-sheet-close'],
 ];

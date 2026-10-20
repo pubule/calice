@@ -6,12 +6,18 @@ import type { Page, APIRequestContext } from '@playwright/test';
 // auth in production; the dev-email header/var bypass stands in for it
 // locally, same mechanism the worker's own vitest suite uses).
 
-export async function gotoScreen(page: Page, view: 'home' | 'cellar' | 'stats' | 'profile') {
-  const label = { home: 'Home', cellar: 'Cantina', stats: 'Statistiche', profile: 'Profilo' }[view];
+// 'cellar' is the "Vini" tab, 'places' the "Cantina" tab (its elements);
+// Statistiche is opened from Profilo.
+export async function gotoScreen(page: Page, view: 'home' | 'cellar' | 'places' | 'stats' | 'profile') {
+  const label = { home: 'Home', cellar: 'Vini', places: 'Cantina', stats: 'Profilo', profile: 'Profilo' }[view];
   // First navigation of a test needs a real page load; subsequent screen
   // switches go through the navbar like a real user would.
   if (page.url() === 'about:blank') await page.goto('/');
   await page.click(`.navbtn:has-text("${label}")`);
+  if (view === 'stats') {
+    await page.waitForSelector('#view-profile.active');
+    await page.click('#stats-row');
+  }
   await page.waitForSelector(`#view-${view}.active`);
 }
 

@@ -6,6 +6,7 @@ import { TASTE_AXES, tasteSummary } from '../tasting-profile.js';
 import { me } from '../auth.js';
 import { alertModal, confirmModal, promptModal } from '../modal.js';
 import { showToast } from '../toast.js';
+import { quantityStepperHtml, wireQuantitySteppers } from '../fields.js';
 
 function skeletonRowHtml() {
   return `
@@ -27,6 +28,8 @@ const KIND_ICON = {
   Scatolone: '<svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round"><path d="M3 8l9-5 9 5-9 5-9-5Z"/><path d="M3 8v9l9 5 9-5V8"/><path d="M12 13v9"/></svg>',
 };
 const KINDS = ['Scaffale', 'Rack', 'Cella', 'Scatolone'];
+// Levels and bottles per level of a new element.
+const MAX_DIM = 99;
 
 let cellars = [];
 let currentCellarId = null;
@@ -37,12 +40,18 @@ let compareSelected = [];
 let activeChips = { type: null, country: null, region: null };
 // Food pairings chosen in the filter sheet (several: a wine must suit them all).
 let activeFood = new Set();
+// Filtro "Posto": only wines with bottles that have no place. Set from the
+// Cantina tab's "sistemale" link, applied by the next mountCellar().
+let unplacedOnly = false;
+let pendingUnplaced = false;
 
 // picker state: set while the elements overlay was opened from a bottle's
 // "modifica posizione" link (detail.js), instead of the standalone
 // "Elementi cantina" browse entry point.
 let picker = null; // { bottle, onPicked }
-let elementsMode = 'list'; // 'list' | 'detail' | 'create'
+let elementsMode = 'list'; // 'list' | 'detail' | 'create' | 'create-dims' | 'pick-bottle'
+// Opened from the Cantina tab: back from an element closes the overlay.
+let overlayFromPlaces = false;
 let currentElementId = null;
 // Element grid: the bottle whose slot card is open, the bottle being moved
 // (free slots become targets), and grid vs list view.
@@ -211,7 +220,7 @@ function renderFoodChips() {
 }
 
 function updateFilterBadge() {
-  const count = Object.values(activeChips).filter(Boolean).length + (activeFood.size ? 1 : 0);
+  const count = Object.values(activeChips).filter(Boolean).length + (activeFood.size ? 1 : 0) + (unplacedOnly ? 1 : 0);
   const badge = document.getElementById('cellar-filter-badge');
   badge.textContent = count;
   badge.classList.toggle('show', count > 0);
@@ -225,7 +234,7 @@ function applyFilters() {
     const mCountry = !activeChips.country || b.country === activeChips.country;
     const mRegion = !activeChips.region || b.region === activeChips.region;
     const mFood = [...activeFood].every((f) => (b.my_food_pairings ?? []).includes(f));
-    return mQ && mType && mCountry && mRegion && mFood;
+    return mQ && mType && mCountry && mRegion && mFood && (!unplacedOnly || freeCount(b) > 0);
   });
   const nBottles = filtered.reduce((sum, b) => sum + (Number(b.quantity) || 0), 0);
   document.getElementById('cellar-results-count').textContent =
@@ -256,8 +265,6 @@ async function ensureCellarOf(bottle) {
   if (currentCellarId != null && currentCellarId === (bottle.cellar_id ?? currentCellarId) && currentBottles.some((b) => b.id === bottle.id)) return;
   cellars = await api.get('/api/cellars');
   currentCellarId = bottle.cellar_id ?? currentCellarId ?? cellars[0]?.id;
-  const cellar = cellars.find((c) => c.id === currentCellarId);
-  if (cellar) document.getElementById('active-cellar-name').textContent = cellar.name;
   await loadCellarData();
 }
 
@@ -573,24 +580,15 @@ function exitCompareMode() {
 
 // ---- selettore cantina ----
 
-// One cellar per user (worker/src/lib/cellars.ts): the sheet only shows it,
-// renames it or deletes it.
-function renderCellarSheet() {
-  const cellar = cellars.find((c) => c.id === currentCellarId);
-  document.getElementById('cellar-sheet-name').textContent = cellar?.name ?? '';
-  const rows = currentBottles.length;
-  const count = currentBottles.reduce((n, b) => n + (Number(b.quantity) || 0), 0);
-  document.getElementById('cellar-sheet-count').textContent = `${rows} ${rows === 1 ? 'vino' : 'vini'} · ${count} ${count === 1 ? 'bottiglia' : 'bottiglie'}`;
-}
-
+// One cellar per user (worker/src/lib/cellars.ts): the Cantina tab shows its
+// name with a pencil to rename it.
 async function renameCellar() {
   const cellar = cellars.find((c) => c.id === currentCellarId);
   const name = await promptModal('Nuovo nome:', { title: 'Rinomina cantina', defaultValue: cellar.name, confirmLabel: 'Rinomina' });
   if (!name?.trim() || name.trim() === cellar.name) return;
   const updated = await api.patch(`/api/cellars/${cellar.id}`, { name: name.trim() });
   cellars = cellars.map((c) => (c.id === updated.id ? updated : c));
-  document.getElementById('active-cellar-name').textContent = updated.name;
-  renderCellarSheet();
+  renderPlaces();
 }
 
 async function loadCellarData() {
@@ -599,6 +597,8 @@ async function loadCellarData() {
   currentElements = await api.get(`/api/cellars/${currentCellarId}/elements`);
   activeChips = { type: null, country: null, region: null };
   activeFood = new Set();
+  unplacedOnly = false;
+  document.getElementById('cellar-sel-place').value = '';
   updateFilterBadge();
   document.getElementById('cellar-search-input').value = '';
   renderChips();
@@ -628,9 +628,18 @@ function elemSub(el) {
 }
 
 function openElementsOverlay() {
-  elementsMode = 'list';
-  document.getElementById('elements-back-btn').style.visibility = 'hidden';
+  overlayFromPlaces = false;
   renderElementsList();
+  openSheet('elements-overlay');
+}
+
+// From the Cantina tab the overlay opens straight on one element (or on the
+// new-element form), and its back button closes it again.
+function openElementFromPlaces(id) {
+  picker = null;
+  overlayFromPlaces = true;
+  if (id == null) renderElementCreateForm();
+  else renderElementDetail(id);
   openSheet('elements-overlay');
 }
 
@@ -639,8 +648,12 @@ function closeElementsOverlay() {
   picker = null;
   slotSel = null;
   movingPlace = null;
+  overlayFromPlaces = false;
+  // Elements and places may have changed while it was open.
+  renderPlaces();
 }
 
+// The location picker's list of elements ("Scegli dove riporla").
 function renderElementsList() {
   elementsMode = 'list';
   slotSel = null;
@@ -649,102 +662,180 @@ function renderElementsList() {
   const cellarName = cellars.find((c) => c.id === currentCellarId)?.name ?? '';
   document.getElementById('elements-title').textContent = picker ? 'Scegli dove riporla' : `Elementi — ${cellarName}`;
 
-  const kindChipsHtml =
-    `<div class="chip active" data-v="" role="button" tabindex="0" aria-pressed="true">Tutti</div>` + KINDS.map((k) => `<div class="chip" data-v="${k}" role="button" tabindex="0" aria-pressed="false">${k}</div>`).join('');
-
   const body = document.getElementById('elements-body');
   body.innerHTML = `
-    <div class="chips" id="elements-kind-chips" style="margin-bottom:16px;">${kindChipsHtml}</div>
-    <div id="elements-list" style="display:flex; flex-direction:column; gap:9px;"></div>
-    <div class="add-row-btn" id="new-element-btn" style="margin-top:14px;" role="button" tabindex="0">
-      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-      Nuovo elemento
-    </div>`;
-
-  let activeKind = '';
-  function renderFiltered() {
-    const list = currentElements.filter((el) => !activeKind || el.kind === activeKind);
-    document.getElementById('elements-list').innerHTML = list.length
-      ? list
-          .map(
-            (el) => `
+    <div id="elements-list" style="display:flex; flex-direction:column; gap:9px;">${
+      currentElements.length
+        ? currentElements.map((el) => `
         <div class="elem-row" data-id="${el.id}" role="button" tabindex="0">
           <div class="elem-icon">${KIND_ICON[el.kind]}</div>
           <div class="elem-body"><div class="elem-name">${escapeHtml(el.name)}</div><div class="elem-sub">${escapeHtml(el.kind)} · ${escapeHtml(elemSub(el))}</div></div>
           <div class="elem-count">${elemCount(el)} bott.</div>
-        </div>`,
-          )
-          .join('')
-      : '<div class="empty-note">Nessun elemento di questo tipo. Creane uno con "Nuovo elemento".</div>';
-    document.querySelectorAll('#elements-list .elem-row').forEach((row) =>
-      row.addEventListener('click', () => renderElementDetail(Number(row.dataset.id))),
-    );
-  }
-  renderFiltered();
-
-  document.querySelectorAll('#elements-kind-chips .chip').forEach((chip) =>
-    chip.addEventListener('click', () => {
-      document.querySelectorAll('#elements-kind-chips .chip').forEach((c) => { c.classList.remove('active'); c.setAttribute('aria-pressed', 'false'); });
-      chip.classList.add('active');
-      chip.setAttribute('aria-pressed', 'true');
-      activeKind = chip.dataset.v;
-      renderFiltered();
-    }),
+        </div>`).join('')
+        : '<div class="empty-note">Nessun elemento. Creane uno con "Nuovo elemento".</div>'
+    }</div>
+    <div class="add-row-btn" id="new-element-btn" style="margin-top:14px;" role="button" tabindex="0">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      Nuovo elemento
+    </div>`;
+  body.querySelectorAll('#elements-list .elem-row').forEach((row) =>
+    row.addEventListener('click', () => renderElementDetail(Number(row.dataset.id))),
   );
   document.getElementById('new-element-btn').addEventListener('click', renderElementCreateForm);
 }
+
+// ---- scheda Cantina: i posti ----
+
+// Bottles of the cellar that have no place yet.
+function unplacedCount() {
+  return currentBottles.reduce((n, b) => n + freeCount(b), 0);
+}
+
+// A small map of an element, one dot per slot coloured by the wine in it,
+// only while it stays readable at card size; otherwise the kind's icon.
+function placeMapHtml(tiers, cols, bottleAt) {
+  if (cols > 5 || tiers > 6) return null;
+  let dots = '';
+  for (let t = 1; t <= tiers; t++) for (let c = 0; c < cols; c++) {
+    const b = bottleAt?.(t, c);
+    dots += `<i class="${b ? `filled ${slotTypeClass(b)}` : ''}"></i>`;
+  }
+  return `<span class="place-map" style="grid-template-columns:repeat(${cols}, 1fr);" aria-hidden="true">${dots}</span>`;
+}
+
+function placeCardHtml(el) {
+  const n = elemCount(el);
+  const cap = elemCapacity(el);
+  const here = occupants().filter((o) => o.place.element_id === el.id);
+  // The front row of each level stands for the slot in the map.
+  const bottleAt = (t, c) => (here.find((o) => o.place.slot_tier === t && o.place.slot_col === c && o.place.slot_depth === 1)
+    ?? here.find((o) => o.place.slot_tier === t && o.place.slot_col === c))?.bottle;
+  const visual = (cap != null && placeMapHtml(el.tiers, el.cols, bottleAt)) || `<span class="elem-icon">${KIND_ICON[el.kind]}</span>`;
+  const sub = el.kind === 'Scatolone' ? 'Scatolone · solo elenco' : `${el.kind} · ${el.tiers} livelli × ${el.cols}${el.depth > 1 ? ` × ${el.depth} file` : ''}`;
+  const state = cap == null ? '' : n >= cap ? 'completo' : `${cap - n} liberi`;
+  return `
+    <div class="place-card" data-id="${el.id}" role="button" tabindex="0">
+      ${visual}
+      <span class="place-name">${escapeHtml(el.name)}</span>
+      <span class="place-sub">${escapeHtml(sub)}</span>
+      <span class="place-count${cap != null && n >= cap ? ' full' : ''}"><b>${cap == null ? `${n} bott.` : `${n}/${cap}`}</b><span>${state}</span></span>
+    </div>`;
+}
+
+function renderPlaces() {
+  const body = document.getElementById('places-body');
+  const cellar = cellars.find((c) => c.id === currentCellarId);
+  if (!body || !cellar) return;
+  document.getElementById('places-title').textContent = `Cantina «${cellar.name}»`;
+  const total = currentBottles.reduce((n, b) => n + (Number(b.quantity) || 0), 0);
+  const free = unplacedCount();
+  const placed = total - free;
+  body.innerHTML = `
+    <div class="places-summary">
+      <div class="ps-top"><span class="ps-num">${total}<small>${total === 1 ? 'bottiglia' : 'bottiglie'}</small></span><span class="ps-sub">${placed} ${placed === 1 ? 'ha' : 'hanno'} un posto</span></div>
+      <div class="fill-bar"><span style="width:${total ? Math.round((placed / total) * 100) : 0}%"></span></div>
+      ${free ? `<div class="places-unplaced" id="places-unplaced" role="button" tabindex="0">${free} senza posto: sistemale ›</div>` : ''}
+    </div>
+    <div class="section-head"><h3>Elementi</h3></div>
+    <div class="places-grid">
+      ${currentElements.map(placeCardHtml).join('')}
+      <div class="add-row-btn place-new" id="places-new-btn" role="button" tabindex="0">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Nuovo elemento
+      </div>
+    </div>
+    ${currentElements.length ? '' : '<p class="places-hint">Una cella, uno scaffale, un rack o uno scatolone: poi dai a ogni bottiglia il suo posto.</p>'}`;
+  body.querySelectorAll('.place-card').forEach((card) => card.addEventListener('click', () => openElementFromPlaces(Number(card.dataset.id))));
+  document.getElementById('places-new-btn').addEventListener('click', () => openElementFromPlaces(null));
+  document.getElementById('places-unplaced')?.addEventListener('click', () => {
+    pendingUnplaced = true;
+    window.location.hash = '#/cellar';
+  });
+}
+
+export async function mountPlaces() {
+  cellars = await api.get('/api/cellars');
+  if (!cellars.some((c) => c.id === currentCellarId)) currentCellarId = cellars[0].id;
+  await loadCellarData();
+  renderPlaces();
+}
+
+// ---- nuovo elemento, in due passi: il tipo, poi nome e misure ----
+
+const KIND_DESC = {
+  Scaffale: 'Ripiani, anche con due file in profondità',
+  Rack: 'Griglia di fori, una bottiglia per foro',
+  Cella: 'Frigo per vini, a ripiani',
+  Scatolone: 'Niente posti: solo l’elenco di cosa c’è dentro',
+};
 
 function renderElementCreateForm() {
   elementsMode = 'create';
   document.getElementById('elements-back-btn').style.visibility = 'visible';
   document.getElementById('elements-title').textContent = 'Nuovo elemento';
-
   const body = document.getElementById('elements-body');
   body.innerHTML = `
-    <div class="field-label" style="margin-bottom:9px;">Tipo</div>
+    <p class="create-step">Passo 1 di 2 · che cos’è?</p>
     <div class="kind-grid" id="kind-grid">
-      ${KINDS.map(
-        (k, i) => `
-        <div class="kind-opt${i === 0 ? ' active' : ''}" data-kind="${k}" role="button" tabindex="0" aria-pressed="${i === 0}">
+      ${KINDS.map((k) => `
+        <div class="kind-opt" data-kind="${k}" role="button" tabindex="0">
           <div class="elem-icon">${KIND_ICON[k]}</div>
           <div class="kname">${k}</div>
-          <div class="kdesc">${k === 'Scatolone' ? 'Solo elenco contenuto, niente slot' : 'Griglia a slot, livelli × colonne'}</div>
-        </div>`,
-      ).join('')}
-    </div>
-    <div class="field-label" style="margin:14px 0 9px;">Nome</div>
-    <input class="text-input" id="new-elem-name" aria-label="Nome dell'elemento" placeholder="es. Scaffale cucina, Frigo vini">
-    <div id="new-elem-dims" style="margin-top:14px;">
-      <div class="field-label" style="margin-bottom:9px;">Definisci gli slot</div>
-      <div class="dims-row" style="flex-wrap:wrap; row-gap:8px;">
-        Livelli <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2" autocomplete="off" class="num-input" id="new-elem-tiers" aria-label="Livelli" value="3">
-        × Colonne <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2" autocomplete="off" class="num-input" id="new-elem-cols" aria-label="Colonne" value="5">
-        × Profondità <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="1" autocomplete="off" class="num-input" id="new-elem-depth" aria-label="Profondità" value="1">
-      </div>
-    </div>
-    <div class="primary-btn" id="create-element-btn" style="margin-top:16px;" role="button" tabindex="0">Crea elemento</div>`;
+          <div class="kdesc">${KIND_DESC[k]}</div>
+        </div>`).join('')}
+    </div>`;
+  body.querySelectorAll('#kind-grid .kind-opt').forEach((opt) => opt.addEventListener('click', () => renderElementDims(opt.dataset.kind)));
+}
 
-  document.querySelectorAll('#kind-grid .kind-opt').forEach((opt) =>
-    opt.addEventListener('click', () => {
-      document.querySelectorAll('#kind-grid .kind-opt').forEach((o) => { o.classList.remove('active'); o.setAttribute('aria-pressed', 'false'); });
-      opt.classList.add('active');
-      opt.setAttribute('aria-pressed', 'true');
-      document.getElementById('new-elem-dims').style.display = opt.dataset.kind === 'Scatolone' ? 'none' : 'block';
-    }),
-  );
+function renderElementDims(kind) {
+  elementsMode = 'create-dims';
+  document.getElementById('elements-title').textContent = `Nuovo: ${kind}`;
+  const boxed = kind === 'Scatolone';
+  const body = document.getElementById('elements-body');
+  body.innerHTML = `
+    <p class="create-step">Passo 2 di 2 · ${boxed ? 'come si chiama?' : 'com’è fatto?'}</p>
+    <label class="field-label" for="new-elem-name">Nome</label>
+    <input class="text-input" id="new-elem-name" placeholder="es. ${escapeHtml(kind)} cucina" maxlength="60">
+    ${boxed ? '' : `
+    <div class="dims-card">
+      <div class="dims-line"><span><b>Livelli</b><small>i ripiani, dall’alto in basso</small></span>
+        ${quantityStepperHtml({ id: 'new-elem-tiers', value: 3, min: 1, max: MAX_DIM, label: 'Livelli', less: 'Un livello in meno', more: 'Un livello in più' })}</div>
+      <div class="dims-line"><span><b>Bottiglie per livello</b><small>una accanto all’altra</small></span>
+        ${quantityStepperHtml({ id: 'new-elem-cols', value: 5, min: 1, max: MAX_DIM, label: 'Bottiglie per livello', less: 'Una bottiglia in meno per livello', more: 'Una bottiglia in più per livello' })}</div>
+      <div class="dims-line"><span><b>File in profondità</b></span>
+        <div class="segmented dims-depth" role="group" aria-label="File in profondità">
+          <button type="button" data-depth="1" class="active" aria-pressed="true">1 fila</button>
+          <button type="button" data-depth="2" aria-pressed="false">2 file</button>
+        </div></div>
+    </div>
+    <div class="dims-preview" id="dims-preview" aria-live="polite"></div>`}
+    <div class="primary-btn" id="create-element-btn" role="button" tabindex="0">Crea elemento</div>`;
+
+  let depth = 1;
+  const dim = (id) => Math.min(MAX_DIM, Math.max(1, parseInt(document.getElementById(id).value, 10) || 1));
+  const preview = () => {
+    if (boxed) return;
+    const t = dim('new-elem-tiers'), c = dim('new-elem-cols');
+    document.getElementById('dims-preview').innerHTML = `${placeMapHtml(t, c) ?? ''}<span class="dims-total"><b>${t * c * depth} posti</b><small>${t} livelli × ${c}${depth > 1 ? ' × 2 file' : ''}</small></span>`;
+  };
+  if (!boxed) {
+    wireQuantitySteppers(body, preview);
+    body.querySelectorAll('.dims-depth button').forEach((btn) => btn.addEventListener('click', () => {
+      depth = Number(btn.dataset.depth);
+      body.querySelectorAll('.dims-depth button').forEach((b) => { b.classList.toggle('active', b === btn); b.setAttribute('aria-pressed', String(b === btn)); });
+      preview();
+    }));
+    preview();
+  }
 
   document.getElementById('create-element-btn').addEventListener('click', async () => {
-    const kind = document.querySelector('#kind-grid .kind-opt.active').dataset.kind;
     const name = document.getElementById('new-elem-name').value.trim() || defaultElementName(kind);
-    const body = { kind, name };
-    if (kind !== 'Scatolone') {
-      body.tiers = parseInt(document.getElementById('new-elem-tiers').value) || 3;
-      body.cols = parseInt(document.getElementById('new-elem-cols').value) || 5;
-      body.depth = Math.min(2, parseInt(document.getElementById('new-elem-depth').value) || 1);
-    }
-    const created = await api.post(`/api/cellars/${currentCellarId}/elements`, body);
+    const payload = { kind, name };
+    if (!boxed) Object.assign(payload, { tiers: dim('new-elem-tiers'), cols: dim('new-elem-cols'), depth });
+    const created = await api.post(`/api/cellars/${currentCellarId}/elements`, payload);
     currentElements.push(created);
-    renderElementsList();
+    // Straight into the new element, ready to fill.
+    renderElementDetail(created.id);
   });
 }
 
@@ -1119,7 +1210,8 @@ async function deleteCurrentElement() {
     b.places = (b.places ?? []).filter((p) => p.element_id !== currentElementId);
   });
   applyFilters();
-  renderElementsList();
+  if (overlayFromPlaces) closeElementsOverlay();
+  else renderElementsList();
 }
 
 // Opened from a bottle's "modifica posizione" link, on top of the already-open
@@ -1209,24 +1301,22 @@ function wireStaticControls() {
   });
 
   document.getElementById('cellar-search-input')?.addEventListener('input', applyFilters);
-  document.getElementById('cantina-switch')?.addEventListener('click', () => {
-    renderCellarSheet();
-    openSheet('cellar-sheet');
-  });
   document.getElementById('rename-cellar-btn')?.addEventListener('click', renameCellar);
-  document.getElementById('cellar-sheet-close')?.addEventListener('click', () => closeSheet('cellar-sheet'));
+  document.getElementById('cellar-sel-place')?.addEventListener('change', (e) => {
+    unplacedOnly = e.target.value === 'none';
+    updateFilterBadge();
+    applyFilters();
+  });
   document.getElementById('cellar-filter-btn')?.addEventListener('click', () => openSheet('filter-sheet'));
   document.getElementById('filter-sheet-close')?.addEventListener('click', () => closeSheet('filter-sheet'));
 
 
-  document.getElementById('elements-link')?.addEventListener('click', () => {
-    picker = null;
-    openElementsOverlay();
-  });
   document.getElementById('elements-close')?.addEventListener('click', closeElementsOverlay);
   document.getElementById('elements-back-btn')?.addEventListener('click', () => {
     if (elementsMode === 'list') closeElementsOverlay();
     else if (elementsMode === 'pick-bottle') renderElementDetail(currentElementId);
+    else if (elementsMode === 'create-dims') renderElementCreateForm();
+    else if (overlayFromPlaces) closeElementsOverlay();
     else renderElementsList();
   });
 }
@@ -1247,8 +1337,14 @@ export async function mountCellar() {
 
   cellars = await api.get('/api/cellars');
   if (!cellars.some((c) => c.id === currentCellarId)) currentCellarId = cellars[0].id;
-  document.getElementById('active-cellar-name').textContent = cellars.find((c) => c.id === currentCellarId).name;
   await loadCellarData();
+  if (pendingUnplaced) {
+    pendingUnplaced = false;
+    unplacedOnly = true;
+    document.getElementById('cellar-sel-place').value = 'none';
+    updateFilterBadge();
+    applyFilters();
+  }
   const target = afterMount;
   afterMount = null;
   if (target) document.querySelector(`#view-cellar .segmented button[data-wall="${target.wishlist ? 'wish' : 'owned'}"]`)?.click();

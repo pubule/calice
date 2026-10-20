@@ -6,13 +6,15 @@ import { TASTE_AXES, toStep } from '../tasting-profile.js';
 
 const HELP = [
   'Aggiungere un vino: tocca il + in basso e cercalo per nome, fotografa l\'etichetta o il codice a barre.',
-  'Cantina: tocca un vino per la sua scheda, dove dai il tuo voto, scrivi le note e stappi una bottiglia. Scorrilo verso sinistra per modificarlo o eliminarlo.',
-  'Elementi cantina: crea celle, scaffali e scatoloni e dai a ogni bottiglia il suo posto.',
+  'Vini: tocca un vino per la sua scheda, dove dai il tuo voto, scrivi le note e stappi una bottiglia. Scorrilo verso sinistra per modificarlo o eliminarlo.',
+  'Cantina: crea celle, scaffali, rack e scatoloni e dai a ogni bottiglia il suo posto.',
+  'Statistiche: in Profilo, la prima voce.',
   'Da bere (Home): quando aprire ogni vino, stimato da annata, tipo e sboccatura. Gli anni si possono cambiare in Modifica.',
   'Backup: il server ne fa uno ogni settimana. Ogni tanto salvane uno anche sul telefono con «Scarica backup».',
 ].join('\n\n');
 
 document.getElementById('help-row')?.addEventListener('click', () => alertModal(HELP, { title: 'Aiuto' }));
+document.getElementById('stats-row')?.addEventListener('click', () => { window.location.hash = '#/stats'; });
 
 // Excel in Italian reads ";" as the separator and "," as the decimal mark;
 // the BOM makes it read accents as UTF-8.

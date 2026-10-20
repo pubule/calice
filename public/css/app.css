@@ -489,8 +489,6 @@
   .segmented{display:flex; background:#efece3; border-radius:9999px; padding:3px;}
   .segmented button{flex:1; border:none; background:none; padding:8px; border-radius:9999px; font-size:calc(11.5rem/17); font-weight:600; color:#736a5d; cursor:pointer; font-family:'Archivo',sans-serif;}
   .segmented button.active{background:#ffffff; color:#241e1a; box-shadow:0 1px 2px rgba(0,0,0,.06);}
-  .cantina-switch{display:flex; align-items:center; gap:5px; font-size:calc(11rem/17); color:#736a5d; cursor:pointer;}
-  .cantina-switch svg{width:13px; height:13px;}
   .wish-row{display:flex; flex-wrap:wrap; gap:12px; align-items:center; background:#ffffff; border:1px solid #e2e0d8; border-radius:12px; padding:12px;}
   .wish-row .result-body{flex:1; min-width:0;}
   .wish-extra{flex-basis:100%; display:flex; flex-direction:column; gap:8px; border-top:1px solid #efece5; padding-top:10px;}
@@ -624,8 +622,6 @@
   .empty-note{text-align:center; color:#736a5d; font-size:calc(12.5rem/17); padding:28px 10px;}
 
   /* labeled inline action, mirrors .compare-btn so it's actually discoverable */
-  .elements-link{display:inline-flex; align-items:center; gap:6px; font-size:calc(11.5rem/17); font-weight:600; color:#5b2333; cursor:pointer;}
-  .elements-link svg{width:14px; height:14px; stroke:#5b2333;}
 
   /* ---- selettore cantina + elementi: bottom sheet, mirrors .compare-overlay/-sheet ---- */
   .back-btn{width:28px; height:28px; border-radius:50%; background:#f2f0e9; display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0;}
@@ -755,8 +751,8 @@
   /* Ruota degli aromi (#/aromi) */
   .aroma-pane{display:flex; flex-direction:column; gap:12px;}
   .aroma-pane.hidden{display:none;}
-  #view-aromas .topbar{justify-content:flex-start; gap:12px;}
-  #view-aromas .topbar .screen-title{margin-top:0;}
+  #view-aromas .topbar, #view-stats .topbar{justify-content:flex-start; gap:12px;}
+  #view-aromas .topbar .screen-title, #view-stats .topbar .screen-title{margin-top:0;}
   .aroma-dial-wrap{margin:0 -16px; aspect-ratio:2.4/1; overflow:hidden; flex-shrink:0;}
   #aroma-dial{display:block; width:120%; height:auto; margin-left:-10%; touch-action:pan-y; user-select:none; -webkit-user-select:none; cursor:pointer;}
   #aroma-dial .aroma-spin{transform-origin:150px 150px; transition:transform .45s cubic-bezier(.3,.7,.2,1);}
@@ -914,9 +910,9 @@
      senza ingrandire il controllo visibile. Attenzione agli antenati con
      overflow:hidden/auto: ritagliano le ::after (qui solo .chips, che ha il
      padding verticale apposta). */
-  .cantina-switch, .compare-btn, .elements-link, .loc-edit, .search-clear, .home-tab-toggle, #find-friends-btn, .section-head a, .manual-link, .rev-translate, .bottle-popup .bgo, .compare-bar .cb-cancel, .app-credit a,
+  .compare-btn, .loc-edit, .search-clear, .home-tab-toggle, #find-friends-btn, .section-head a, .manual-link, .rev-translate, .bottle-popup .bgo, .compare-bar .cb-cancel, .app-credit a,
   .compare-head .close, .back-btn, .alert-dismiss, .icon-btn, .wish-add, .add-note button, .compare-bar .cb-go, .segmented button, .list-row .lbody, .chip{position:relative;}
-  .cantina-switch::after, .compare-btn::after, .elements-link::after, .loc-edit::after, .search-clear::after, .home-tab-toggle::after, #find-friends-btn::after, .section-head a::after, .manual-link::after, .rev-translate::after, .bottle-popup .bgo::after, .compare-bar .cb-cancel::after, .app-credit a::after{content:''; position:absolute; inset:-16px -6px;}
+  .compare-btn::after, .loc-edit::after, .search-clear::after, .home-tab-toggle::after, #find-friends-btn::after, .section-head a::after, .manual-link::after, .rev-translate::after, .bottle-popup .bgo::after, .compare-bar .cb-cancel::after, .app-credit a::after{content:''; position:absolute; inset:-16px -6px;}
   #find-friends-btn::after{inset:-20px -6px -10px;}
   .detail-bar .close::after, .compare-head .close::after, .back-btn::after, .alert-dismiss::after, .icon-btn::after{content:''; position:absolute; inset:-8px;}
   .detail-bar .close::after{inset:-7px;}
@@ -941,8 +937,8 @@
   /* Stato di pressione immediato (buttons.md: sempre uno stato "pressed"). */
   button:not(:disabled), .navbtn, .chip, .icon-btn, .primary-btn, .alert-dismiss, .slot-circle, .wish-add, .filter-btn, .close, .back-btn, .add-btn, .shuffle-btn, .add-row-btn, .camera-close, .camera-shutter, .flavor-card, .gallery-add{transition:transform 100ms ease-out, opacity 100ms ease-out;}
   button:not(:disabled):active, .navbtn:active, .chip:active, .icon-btn:active, .primary-btn:active, .alert-dismiss:active, .slot-circle:active, .wish-add:active, .wish-buy:active, .filter-btn:active, .close:active, .back-btn:active, .add-btn:active, .shuffle-btn:active, .add-row-btn:active, .camera-close:active, .camera-shutter:active, .flavor-card:active, .gallery-add:active{transform:scale(.97);}
-  .cantina-switch, .compare-btn, .elements-link, .loc-edit, .search-clear, .home-tab-toggle, #find-friends-btn, .section-head a, .manual-link, .rev-translate, .bottle-popup .bgo, .app-credit a{transition:opacity 100ms ease-out;}
-  .cantina-switch:active, .compare-btn:active, .elements-link:active, .loc-edit:active, .search-clear:active, .home-tab-toggle:active, #find-friends-btn:active, .section-head a:active, .manual-link:active, .rev-translate:active, .bottle-popup .bgo:active, .app-credit a:active{opacity:.55;}
+  .compare-btn, .loc-edit, .search-clear, .home-tab-toggle, #find-friends-btn, .section-head a, .manual-link, .rev-translate, .bottle-popup .bgo, .app-credit a{transition:opacity 100ms ease-out;}
+  .compare-btn:active, .loc-edit:active, .search-clear:active, .home-tab-toggle:active, #find-friends-btn:active, .section-head a:active, .manual-link:active, .rev-translate:active, .bottle-popup .bgo:active, .app-credit a:active{opacity:.55;}
   .tasting-st[data-step]:active, .list-row:active, .cellar-row:active, .wish-row:active, .elem-row:active, .result-row:active, .diary-row:active, .explore-entry:active, .settings-row:active, .kind-opt:active, .explore-dd-head:active, .explore-dd-list .opt:active, .logout:active{background:rgba(36,30,26,.07); transition:none;}
   @media (prefers-reduced-motion: reduce){
     button:not(:disabled):active, .navbtn:active, .chip:active, .icon-btn:active, .primary-btn:active, .alert-dismiss:active, .slot-circle:active, .wish-add:active, .wish-buy:active, .filter-btn:active, .close:active, .back-btn:active, .add-btn:active, .shuffle-btn:active, .add-row-btn:active, .camera-close:active, .camera-shutter:active, .flavor-card:active, .gallery-add:active{transform:none; opacity:.55;}
@@ -995,8 +991,6 @@
   .nav-add-circle svg{width:24px; height:24px; stroke:#fff; stroke-width:2.2; fill:none; stroke-linecap:round;}
   .navbtn.nav-add.active .nav-add-circle{background:#4a1c29;}
   .topbar-actions{display:flex; align-items:center; gap:14px; min-width:0; margin-left:auto;}
-  .topbar-actions .cantina-switch{min-width:0;}
-  .topbar-actions .cantina-switch span{max-width:calc(120rem/17); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
   /* Cinque schede: le etichette non vanno mai a capo. */
   .navbtn{white-space:nowrap; padding-left:2px; padding-right:2px;}
 
@@ -1175,3 +1169,57 @@ input.search:focus, select.search:focus, .text-input:focus, .num-input:focus, te
    scheda. Un nuovo pulsante di conferma usa .primary-btn, mai uno stile suo. */
 #recognize-save{flex-shrink:0;}
 .primary-btn:disabled{opacity:.55; cursor:default;}
+
+/* Scheda Cantina (view-places): quante bottiglie hanno un posto, poi un
+   riquadro per elemento. La mappa mostra il livello frontale di ogni slot. */
+.places-body{display:flex; flex-direction:column; gap:16px;}
+.places-summary{background:#ffffff; border:1px solid #e2e0d8; border-radius:14px; padding:14px 16px; display:flex; flex-direction:column; gap:10px;}
+.places-summary .ps-top{display:flex; justify-content:space-between; align-items:baseline; flex-wrap:wrap; gap:4px 12px;}
+.places-summary .ps-num{font-family:'JetBrains Mono',monospace; font-size:calc(22rem/17); font-weight:600;}
+.places-summary .ps-num small{font-family:'Archivo',sans-serif; font-size:calc(13rem/17); font-weight:400; color:#736a5d; margin-left:6px;}
+.places-summary .ps-sub{font-size:calc(13rem/17); color:#736a5d;}
+.fill-bar{height:6px; border-radius:3px; background:#ece8e0; overflow:hidden;}
+.fill-bar span{display:block; height:100%; border-radius:3px; background:#5b2333;}
+.places-unplaced{align-self:flex-start; min-height:44px; display:flex; align-items:center; font-size:calc(13rem/17); font-weight:600; color:#5b2333; cursor:pointer;}
+.places-grid{display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:12px;}
+.place-card{min-width:0; min-height:calc(170rem/17); background:#ffffff; border:1px solid #e2e0d8; border-radius:16px; padding:14px; display:flex; flex-direction:column; align-items:flex-start; gap:6px; cursor:pointer;}
+.place-card .elem-icon{width:56px; height:56px; border-radius:12px; margin-bottom:4px;}
+.place-card .elem-icon svg{width:26px; height:26px;}
+.place-name{font-size:calc(15rem/17); font-weight:700; overflow-wrap:anywhere;}
+.place-sub{font-size:calc(12rem/17); color:#736a5d;}
+.place-count{margin-top:auto; width:100%; display:flex; justify-content:space-between; align-items:baseline; gap:6px; font-size:calc(12rem/17); color:#736a5d;}
+.place-count b{font-family:'JetBrains Mono',monospace; font-size:calc(13rem/17); font-weight:600;}
+.place-count.full{color:#5b2333;}
+.place-new{grid-column:1 / -1; min-height:64px;}
+.places-hint{margin:0; text-align:center; font-size:calc(12.5rem/17); color:#736a5d;}
+.place-map{width:56px; flex-shrink:0; display:grid; gap:4px; padding:7px; border-radius:10px; background:#f7f5f0; box-sizing:border-box; margin-bottom:4px;}
+.place-map i{aspect-ratio:1; border-radius:50%; border:1.5px dashed #cfc6b6; box-sizing:border-box;}
+.place-map i.filled{border:0; background:#3d1420;}
+.place-map i.filled.type-bianco{background:#d9c98a;}
+.place-map i.filled.type-bollicine{background:#e0d9b8;}
+.place-map i.filled.type-rosato{background:#d9a3b0;}
+.place-card:active{transform:scale(.98);}
+
+/* Nuovo elemento: passo 1 il tipo (riquadri grandi), passo 2 nome e misure. */
+.create-step{margin:0 0 12px; font-family:'JetBrains Mono',monospace; font-size:calc(11rem/17); letter-spacing:.08em; text-transform:uppercase; color:#736a5d;}
+#elements-body .kind-grid{gap:12px;}
+#elements-body .kind-opt{min-height:calc(150rem/17); padding:14px; gap:8px;}
+#elements-body .kind-opt .elem-icon{width:48px; height:48px; border-radius:12px;}
+#elements-body .kind-opt .elem-icon svg{width:24px; height:24px;}
+#elements-body .kind-opt .kname{font-size:calc(15rem/17); font-weight:700;}
+#elements-body .kind-opt .kdesc{font-size:calc(12.5rem/17);}
+#elements-body label.field-label{display:block; margin-bottom:8px;}
+.dims-card{margin-top:16px; background:#ffffff; border:1px solid #e2e0d8; border-radius:14px;}
+.dims-line{display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px 12px; padding:12px 14px; border-bottom:1px solid #eee9df;}
+.dims-line:last-child{border-bottom:none;}
+.dims-line > span{display:flex; flex-direction:column; gap:2px; font-size:calc(14rem/17);}
+.dims-line small{font-size:calc(12rem/17); color:#736a5d;}
+.dims-line .qty-step .qty-input{width:44px;}
+.dims-depth{flex:none;}
+.dims-depth button{white-space:nowrap; padding:8px 14px; min-height:40px;}
+.dims-preview{margin-top:14px; display:flex; align-items:center; gap:14px; background:#ffffff; border:1px solid #e2e0d8; border-radius:14px; padding:12px 14px;}
+.dims-preview .place-map{margin:0;}
+.dims-preview .dims-total{display:flex; flex-direction:column; gap:2px;}
+.dims-preview b{font-family:'JetBrains Mono',monospace; font-size:calc(17rem/17); font-weight:600; color:#5b2333;}
+.dims-preview small{font-size:calc(12rem/17); color:#736a5d;}
+#create-element-btn{margin-top:18px;}

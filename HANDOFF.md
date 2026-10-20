@@ -1835,6 +1835,27 @@ questo file è il riassunto "dove eravamo rimasti".
     `deleteCellar()` in `cellar.js` e relativo listener. La route
     `DELETE /api/cellars/:id` (svuota e ricrea una cantina vuota, con copia di
     sicurezza) resta nel server con i suoi test, ma non ha più chiamanti.
+90. **Menu nuovo: Vini · Cantina, Statistiche in Profilo** (build 172, scelta
+    dell'utente su mockup). La scheda che era "Cantina" si chiama **Vini**
+    (`view-cellar`, titolo "I tuoi vini", schede "In cantina · Desideri"):
+    niente più link "Elementi cantina" né selettore/foglio della cantina.
+    La scheda che era Statistiche è ora **Cantina** (`view-places`,
+    `#/cantina`, `mountPlaces()`/`renderPlaces()` in `cellar.js`): nome con
+    matita per rinominare, riquadro "N bottiglie · M hanno un posto" con
+    barra e link "K senza posto: sistemale" (apre Vini col nuovo filtro
+    "Posto: Senza posto", `unplacedOnly`), poi un riquadro per elemento (mini
+    mappa colorata se ≤5 colonne e ≤6 livelli, altrimenti l'icona) e "Nuovo
+    elemento". Un riquadro apre l'overlay Elementi direttamente sul dettaglio;
+    da lì "indietro" chiude (`overlayFromPlaces`). L'overlay `#elements-overlay`
+    è stato spostato fuori da `#view-cellar` (a livello `.screen`), altrimenti
+    non si vedeva dalla scheda Cantina. **Nuovo elemento** in due passi: tipo
+    (quattro riquadri con descrizione, un tocco va avanti) e poi nome + "Livelli"
+    e "Bottiglie per livello" con lo stepper di `fields.js` (ora accetta `max`
+    ed etichette proprie, max 99) e "1 fila / 2 file"; anteprima con i posti.
+    Dopo "Crea" si entra nell'elemento. Tolti i filtri per tipo nella lista
+    dell'overlay (resta usata solo da "Scegli dove riporla").
+    **Statistiche** si apre dalla prima voce di Profilo, con freccia indietro
+    (`TAB_FOR_VIEW['view-stats'] = 'view-profile'`).
 
 - **Ponytail nelle sessioni cloud**: le sue skill sono copiate in
   `.claude/skills/` e sempre attive tramite CLAUDE.md (scelta dell'utente:

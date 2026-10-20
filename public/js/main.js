@@ -1,7 +1,7 @@
 import { registerRoute, startRouter, navigate } from './router.js';
 import { me } from './auth.js';
 import { mountHome } from './screens/home.js';
-import { mountCellar } from './screens/cellar.js';
+import { mountCellar, mountPlaces } from './screens/cellar.js';
 import { openAddSheet } from './screens/add.js';
 import { mountStats } from './screens/stats.js';
 import { mountProfile } from './screens/profile.js';
@@ -15,15 +15,16 @@ import { startLoaderGlass } from './loader-glass.js';
 // Views without a tab of their own light the tab they are reached from.
 // Esplora is a sub-section opened from Home, so it keeps Home lit. The raised
 // "+" is not a tab: it opens the "Aggiungi un vino" sheet over the current
-// screen (screens/add.js).
-const TAB_FOR_VIEW = { 'view-explore': 'view-home', 'view-aromas': 'view-home', 'view-tasting': 'view-home' };
+// screen (screens/add.js). Statistiche is opened from Profilo.
+const TAB_FOR_VIEW = { 'view-explore': 'view-home', 'view-aromas': 'view-home', 'view-tasting': 'view-home', 'view-stats': 'view-profile' };
 
 // Tab → route, explicit rather than derived from the view id (routes are not
-// all `#/<name>`: Esplora lives at #/esplora).
+// all `#/<name>`: Esplora lives at #/esplora). The "Vini" tab is view-cellar
+// at #/cellar; the "Cantina" tab (its elements) is view-places at #/cantina.
 const HASH_FOR_VIEW = {
   'view-home': '#/home',
   'view-cellar': '#/cellar',
-  'view-stats': '#/stats',
+  'view-places': '#/cantina',
   'view-profile': '#/profile',
 };
 
@@ -190,6 +191,7 @@ registerRoute('#/add', async () => {
   openAddSheet({ focus: false });
   await mountHome();
 });
+registerRoute('#/cantina', async () => { showView('view-places'); await mountPlaces(); });
 registerRoute('#/stats', async () => { showView('view-stats'); await mountStats(); });
 registerRoute('#/profile', async () => { showView('view-profile'); await mountProfile(); });
 registerRoute('#/esplora', async () => { showView('view-explore'); await mountExplore(); });
