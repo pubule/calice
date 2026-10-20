@@ -1874,6 +1874,16 @@ questo file è il riassunto "dove eravamo rimasti".
     Build 177: le righe dello scatolone si scorrono a sinistra ("Togli": tutte
     le bottiglie di quel vino escono, toast con Annulla). `wireSwipe(list,
     { onAction, onRow })` ora è generico: Vini e `#elements-body` lo usano.
+    Build 178: "Sentori e note" rifatto (mockup B scelto dall'utente, canvas
+    https://claude.ai/artifact/MGgCcnGHF2m5bnvvbU5koH): card con stelle
+    toccabili (salvano subito con `PUT my-rating`; stessa stella = togli) e
+    la nota come frase; sotto, righe Aromi · Gusto · Cibo che aprono il foglio
+    sulla loro scheda ("+ Aggiungi…" se vuote). Niente più "Modifica la nota".
+    La frase è `composeNoteText()` (`tasting-profile.js`) finché `text` è
+    vuoto: nel foglio la scheda Testo la mostra precompilata (`autoText` in
+    `detail.js`), e se non la tocchi si salva `text` vuoto, così continua a
+    seguire i dati; scritta a mano diventa dell'utente; svuotata torna
+    automatica. Il DB non aveva note con testo da convertire.
 
 - **Ponytail nelle sessioni cloud**: le sue skill sono copiate in
   `.claude/skills/` e sempre attive tramite CLAUDE.md (scelta dell'utente:

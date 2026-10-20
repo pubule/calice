@@ -991,3 +991,9 @@ lettura, in salvataggio e nella card: non usare 50 come "vuoto", altrimenti
 un 5 scelto davvero e un cursore mai toccato tornano indistinguibili (era
 così fino al build 160). I chip dei risultati di ricerca sono copie senza
 `data-toggle`: `readTastingProfile` conta solo gli originali.
+
+**Testo della nota = frase automatica finché l'utente non la scrive** (scelta
+dell'utente, build 178): `text` vuoto significa "componi la frase"
+(`composeNoteText()`), mai salvare la frase composta come `text`, altrimenti
+smette di seguire aromi/gusto/cibo. Svuotare il testo la rende di nuovo
+automatica.

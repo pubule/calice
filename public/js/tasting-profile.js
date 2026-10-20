@@ -226,7 +226,7 @@ function positionThumb(slider) {
 const pressed = (el, on) => { el.classList.toggle('active', on); el.setAttribute('aria-pressed', String(on)); };
 const flavorChips = (root) => root.querySelectorAll('.tp-family-panels .chip[data-toggle]');
 
-function selectSubTab(root, tab) {
+export function selectSubTab(root, tab) {
   root.querySelectorAll('.tp-tabs [data-tp-tab]').forEach((b) => {
     b.classList.toggle('active', b.dataset.tpTab === tab);
     b.setAttribute('aria-selected', String(b.dataset.tpTab === tab));
@@ -401,6 +401,29 @@ export function isTastingProfileEmpty(profile) {
     !profile.text &&
     TASTE_AXES.every((axis) => profile[axis.key] == null)
   );
+}
+
+// A taste axis in words: its leaning side, or "<axis> medio/media".
+export function tasteWord(axis, value) {
+  if (value < 40) return axis.left;
+  if (value > 60) return axis.right;
+  return `${axis.name} ${axis.id === 'body' || axis.id === 'alcohol' ? 'medio' : 'media'}`;
+}
+
+// The note as one sentence, from what was marked (note shape: flavor_tags,
+// taste_<axis>, food_pairings). It stands in for the note's text until the
+// user writes their own, and again if they empty it.
+export function composeNoteText(note) {
+  const list = (xs) => (xs.length > 1 ? `${xs.slice(0, -1).join(', ')} e ${xs[xs.length - 1]}` : xs[0]);
+  const lower = (xs) => (Array.isArray(xs) ? xs : []).map((x) => x.toLowerCase());
+  const parts = [];
+  const aromas = lower(note.flavor_tags);
+  if (aromas.length) parts.push(`Sentori di ${list(aromas)}.`);
+  const taste = TASTE_AXES.filter((a) => note[`taste_${a.id}`] != null).map((a) => tasteWord(a, Number(note[`taste_${a.id}`])).toLowerCase());
+  if (taste.length) { const t = list(taste); parts.push(`${t[0].toUpperCase()}${t.slice(1)}.`); }
+  const food = lower(note.food_pairings);
+  if (food.length) parts.push(`Con ${list(food)}.`);
+  return parts.join(' ');
 }
 
 // For rendering a saved note's taste axes back as compact text (only the

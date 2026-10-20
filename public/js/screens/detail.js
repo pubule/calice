@@ -5,7 +5,7 @@ import { confirmModal, alertModal, promptModal } from '../modal.js';
 import { showToast } from '../toast.js';
 import { landscapeFor, knownLandscape } from '../landscape.js';
 import { drinkWindow, drinkSummary } from '../drink-window.js';
-import { tastingProfileHtml, wireTastingProfile, resetTastingProfile, readTastingProfile, setTastingProfile, isTastingProfileEmpty, tasteSummary, FLAVOR_CATEGORIES, TASTE_AXES, toStep } from '../tasting-profile.js';
+import { tastingProfileHtml, wireTastingProfile, resetTastingProfile, readTastingProfile, setTastingProfile, isTastingProfileEmpty, tasteSummary, composeNoteText, tasteWord, selectSubTab, FLAVOR_CATEGORIES, TASTE_AXES, toStep } from '../tasting-profile.js';
 
 let currentBottleId = null;
 let currentBottle = null; // same object reference cellar.js's currentBottles holds, mutated in place on save
@@ -314,87 +314,132 @@ async function loadNotes(bottleId) {
   return mine;
 }
 
-// The "Sentori e note" card: the user's note to read, each part only when it
-// has a value (voto, testo, aromi per famiglia, gusto segnato, abbinamenti).
+// The "Sentori e note" tab: a card with the stars (tapped, the score is
+// saved at once) and the note as one sentence (the user's text, or the
+// sentence composed from what was marked), then one row each for aromas,
+// taste and food. Every part opens the note sheet on its own sub-tab; an
+// empty row invites to fill it instead of disappearing.
 // Every value comes from the API, so text goes in through textContent.
+const ICON_PENCIL = '<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>';
+const ICON_CHEV = '<svg class="chev" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg>';
+
 function renderNoteCard(note) {
-  const card = document.getElementById('note-card');
+  const n = note ?? {};
   const el = (tag, className, text) => Object.assign(document.createElement(tag), { className, textContent: text ?? '' });
-  const action = (label) => Object.assign(el('button', 'note-card-btn', label), { type: 'button' });
-  if (!note) {
-    card.classList.add('empty');
-    card.replaceChildren(action('Scrivi una nota'));
-    return;
-  }
-  card.classList.remove('empty');
-  const parts = [];
-  const created = note.created_at ? new Date(`${String(note.created_at).replace(' ', 'T')}Z`) : null;
+
   const head = el('div', 'nc-head');
-  head.append(el('h4', '', 'La tua nota'));
+  const stars = el('div', 'nc-stars');
+  stars.setAttribute('role', 'group');
+  const rating = Number(n.rating) || 0;
+  stars.setAttribute('aria-label', rating ? `Il tuo voto: ${ratingText(rating)} su 5` : 'Il tuo voto: nessuno');
+  for (let i = 0; i < 5; i++) {
+    const star = Object.assign(el('button', 'nc-star'), { type: 'button' });
+    star.dataset.rate = String(i + 1);
+    star.setAttribute('aria-label', `${i + 1} ${i ? 'stelle' : 'stella'}`);
+    const glyph = el('span', '', '★');
+    glyph.style.setProperty('--fill', `${Math.max(0, Math.min(1, rating - i)) * 100}%`);
+    star.append(glyph);
+    stars.append(star);
+  }
+  if (rating) stars.append(el('b', '', ratingText(rating)));
+  head.append(stars);
+  const created = n.created_at ? new Date(`${String(n.created_at).replace(' ', 'T')}Z`) : null;
   if (created && !Number.isNaN(created.getTime())) head.append(el('span', 'nc-date', created.toLocaleDateString('it-IT', { day: 'numeric', month: 'long' })));
-  parts.push(head);
 
-  const rating = Number(note.rating) || 0;
-  if (rating > 0) {
-    const row = el('div', 'nc-stars');
-    row.setAttribute('role', 'img');
-    row.setAttribute('aria-label', `Il tuo voto: ${ratingText(rating)} su 5`);
-    for (let i = 0; i < 5; i++) {
-      const star = el('span', '', '★');
-      star.style.setProperty('--fill', `${Math.max(0, Math.min(1, rating - i)) * 100}%`);
-      row.append(star);
-    }
-    row.append(el('b', '', ratingText(rating)));
-    parts.push(row);
+  const own = n.text?.trim();
+  const sentence = own || composeNoteText(n);
+  const open = Object.assign(el('button', 'nc-sentence'), { type: 'button' });
+  open.append(el('span', sentence ? 'nc-text' : 'nc-text nc-empty', sentence || 'Nessuna nota: tocca qui per scriverla, o segna aromi, gusto e cibo qui sotto.'));
+  if (sentence) {
+    const meta = el('span', 'nc-meta', own ? 'Scritta da te · tocca per modificarla' : 'Scritta dall’app · tocca per riscriverla tu');
+    meta.insertAdjacentHTML('afterbegin', ICON_PENCIL); // our own constant SVG
+    open.append(meta);
   }
-  if (note.text) parts.push(el('p', 'nc-text', note.text));
+  document.getElementById('note-card').replaceChildren(head, open);
 
-  const tags = Array.isArray(note.flavor_tags) ? note.flavor_tags : [];
-  const families = FLAVOR_CATEGORIES.map((c) => [c, tags.filter((t) => c.tags.includes(t))]).filter(([, ts]) => ts.length);
-  if (families.length) {
-    const box = el('div', 'nc-aromas');
-    box.append(el('div', 'nc-label', 'Aromi'));
-    for (const [cat, ts] of families) {
-      const row = el('div', 'nc-aroma-row');
-      const icon = el('span', 'nc-icon');
-      icon.innerHTML = cat.icon; // our own constant SVG
-      Object.assign(icon.style, { background: cat.bg, color: cat.fg });
-      icon.setAttribute('aria-hidden', 'true');
-      row.append(icon, el('span', 'nc-fam', cat.label), el('span', 'nc-list', ts.join(', ')));
-      box.append(row);
+  const row = (tab, label, content, add) => {
+    const b = Object.assign(el('button', 'nc-row'), { type: 'button' });
+    b.dataset.tab = tab;
+    b.append(el('span', 'nc-lab', label), content ?? el('span', 'nc-add', add));
+    b.insertAdjacentHTML('beforeend', ICON_CHEV);
+    return b;
+  };
+  const chips = (items) => {
+    const box = el('span', 'nc-chips');
+    for (const [text, cat] of items) {
+      const chip = el('span', 'nc-chip', text);
+      if (cat) Object.assign(chip.style, { background: cat.bg, color: cat.fg });
+      box.append(chip);
     }
-    parts.push(box);
-  }
-
-  const axes = TASTE_AXES.filter((a) => note[`taste_${a.id}`] != null);
+    return box;
+  };
+  const tags = Array.isArray(n.flavor_tags) ? n.flavor_tags : [];
+  const aromas = tags.map((t) => [t, FLAVOR_CATEGORIES.find((c) => c.tags.includes(t))]);
+  const axes = TASTE_AXES.filter((a) => n[`taste_${a.id}`] != null);
+  let taste = null;
   if (axes.length) {
-    const box = el('div', 'nc-taste');
-    box.append(el('div', 'nc-label', 'Gusto'));
+    taste = el('span', 'nc-taste');
     for (const axis of axes) {
-      const v = Number(note[`taste_${axis.id}`]);
-      const bar = el('span', 'nc-bar');
-      bar.setAttribute('aria-hidden', 'true');
-      bar.append(Object.assign(el('i', ''), { style: `width:${toStep(v) * 10}%` }));
-      box.append(el('span', 'nc-axis', axis.name), bar, el('span', 'nc-side', v < 40 ? axis.left : v > 60 ? axis.right : 'equilibrato'));
+      const v = Number(n[`taste_${axis.id}`]);
+      const track = el('span', 'nc-track');
+      track.setAttribute('aria-hidden', 'true');
+      const dot = el('i', '');
+      dot.style.left = `${toStep(v) * 10}%`;
+      track.append(dot);
+      taste.append(track, el('span', 'nc-side', tasteWord(axis, v)));
     }
-    parts.push(box);
   }
-
-  const pairings = Array.isArray(note.food_pairings) ? note.food_pairings : [];
-  if (pairings.length) {
-    const box = el('div', 'nc-pairings');
-    box.append(el('div', 'nc-label', 'Abbinamenti'), el('div', 'nc-list', pairings.join(', ')));
-    parts.push(box);
-  }
-  parts.push(action('Modifica la nota'));
-  card.replaceChildren(...parts);
+  const food = (Array.isArray(n.food_pairings) ? n.food_pairings : []).map((f) => [f, null]);
+  document.getElementById('note-rows').replaceChildren(
+    row('aromi', 'Aromi', aromas.length ? chips(aromas) : null, '+ Aggiungi aromi'),
+    row('gusto', 'Gusto', taste, '+ Aggiungi il gusto'),
+    row('cibo', 'Cibo', food.length ? chips(food) : null, '+ Aggiungi abbinamenti'),
+  );
 }
 
-const noteSheetState = () => JSON.stringify([readTastingProfile(detailTaste), myRatingValue]);
+// Stars tapped on the card: saved at once as the score of the note
+// (PUT my-rating creates an empty note if needed). The same score again clears it.
+async function rateFromCard(value) {
+  const bottle = currentBottle;
+  if (!bottle) return;
+  const rating = value === Math.round(Number(ownNote?.rating) || 0) ? null : value;
+  const res = await api.put(`/api/bottles/${bottle.id}/my-rating`, { rating });
+  bottle.my_rating = res.my_rating;
+  refreshCellarList();
+  if (currentBottle !== bottle) return;
+  renderStats(bottle);
+  if (res.note_id != null) savedNoteId = res.note_id;
+  const mine = await loadNotes(bottle.id);
+  if (currentBottle !== bottle) return;
+  ownNote = mine.find((m) => m.id === savedNoteId) ?? null;
+  savedNoteId = ownNote?.id ?? null;
+  renderNoteCard(ownNote);
+}
 
-function openNoteSheet() {
+// The text field holds the composed sentence until the user types their
+// own (autoText): saved, an untouched sentence stays empty, so it keeps
+// following what is marked. Emptying the field gives it back to the app.
+let autoText = true;
+const noteTextField = () => detailTaste.querySelector('.tp-text');
+const profileAsNote = (p) => ({ flavor_tags: p.flavorTags, food_pairings: p.foodPairings, ...Object.fromEntries(TASTE_AXES.map((a) => [`taste_${a.id}`, p[a.key]])) });
+function fillAutoText() {
+  if (autoText) noteTextField().value = composeNoteText(profileAsNote(readTastingProfile(detailTaste)));
+}
+// The sheet's note as it would be saved: an automatic sentence is no text.
+function sheetProfile() {
+  const p = readTastingProfile(detailTaste);
+  if (autoText) p.text = '';
+  return p;
+}
+
+const noteSheetState = () => JSON.stringify([sheetProfile(), myRatingValue]);
+
+function openNoteSheet(tab = 'aromi') {
   if (ownNote) setTastingProfile(detailTaste, ownNote);
   else resetTastingProfile(detailTaste);
+  autoText = !ownNote?.text?.trim();
+  fillAutoText();
+  selectSubTab(detailTaste, tab);
   setMyStars(Number(ownNote?.rating) || 0);
   noteSnapshot = noteSheetState();
   document.querySelector('#note-overlay .detail-sheet').scrollTop = 0;
@@ -522,8 +567,17 @@ function wireStaticControls() {
   detailTaste.innerHTML = tastingProfileHtml();
   wireTastingProfile(detailTaste);
 
+  noteTextField().addEventListener('input', () => { autoText = !noteTextField().value.trim(); });
+  // Opening Testo shows the sentence of what is marked right now.
+  detailTaste.addEventListener('click', (e) => { if (e.target.closest('[data-tp-tab="testo"]')) fillAutoText(); });
   document.getElementById('note-card')?.addEventListener('click', (e) => {
-    if (e.target.closest('.note-card-btn')) openNoteSheet();
+    const star = e.target.closest('.nc-star');
+    if (star) rateFromCard(Number(star.dataset.rate));
+    else if (e.target.closest('.nc-sentence')) openNoteSheet('testo');
+  });
+  document.getElementById('note-rows')?.addEventListener('click', (e) => {
+    const row = e.target.closest('.nc-row');
+    if (row) openNoteSheet(row.dataset.tab);
   });
   // Also what the sheet gestures (backdrop tap, drag down) call.
   document.getElementById('note-cancel')?.addEventListener('click', async () => {
@@ -536,7 +590,7 @@ function wireStaticControls() {
   noteSave?.addEventListener('click', async () => {
     const bottle = currentBottle;
     if (!bottle || noteSave.disabled) return;
-    const profile = readTastingProfile(detailTaste);
+    const profile = sheetProfile();
     const { text } = profile;
     // Nothing written and no note yet: nothing to save.
     if (myRatingValue === 0 && isTastingProfileEmpty(profile) && savedNoteId == null) {
