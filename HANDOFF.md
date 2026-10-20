@@ -1869,6 +1869,8 @@ questo file è il riassunto "dove eravamo rimasti".
     numero (0 = toglierlo). Server: `POST /api/bottles/:id/places` accetta
     `count` solo per gli scatoloni (un batch di insert), 409 se supera le
     bottiglie senza posto. Scaffale/Rack/Cella restano a posti singoli.
+    Build 176: `touch-action:manipulation` su `html` toglie lo zoom col
+    doppio tocco in tutta l'app; il pinch resta (accessibilità, HIG).
 
 - **Ponytail nelle sessioni cloud**: le sue skill sono copiate in
   `.claude/skills/` e sempre attive tramite CLAUDE.md (scelta dell'utente:

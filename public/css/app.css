@@ -15,7 +15,7 @@
     html{ font:-apple-system-body; font-family:initial; font-weight:400; line-height:normal; }
   }
   *{box-sizing:border-box;}
-  html{ background:#f7f5f0; color-scheme:light; height:100%; height:-webkit-fill-available; overflow:hidden; overscroll-behavior-y:none; }
+  html{ background:#f7f5f0; color-scheme:light; height:100%; height:-webkit-fill-available; overflow:hidden; overscroll-behavior-y:none; touch-action:manipulation; } /* no double-tap zoom; pinch zoom stays for accessibility */
   /* Same cream as html and .screen, unconditionally: this app has no dark
      theme (.screen hardcodes cream/dark-ink and html is color-scheme:light),
      so body used to be the ONLY element reacting to prefers-color-scheme —
