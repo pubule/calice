@@ -1897,6 +1897,15 @@ questo file è il riassunto "dove eravamo rimasti".
     `TASTE_PHRASE`, test in `tasting-profile-data.spec.ts`). Campo di
     modifica con lo stesso font/misura della frase (niente salto), sfondo
     crema e sottolineatura bordeaux in dissolvenza, alto quanto il testo.
+    Build 181: `wines.rating_source` (migrazione 0022): da dove viene
+    `vivino_rating` quando non è Vivino (null = Vivino); scheda e lista
+    mostrano il nome del sito. Usato una volta a mano (scelta dell'utente:
+    voto web, non "il mio voto"; ricerca una tantum, niente automatico):
+    dei 7 vini senza Vivino solo Le Macine Pas Dosé ha un voto online
+    (vino.com, clienti, 4,2 su 5, 56 voti). Gli altri (Le Lore, Le Due
+    Torri) non hanno voti per singolo vino da nessuna parte.
+    Backup automatico: è settimanale (`EVERY_DAYS = 7`), l'ultimo è del
+    2026-10-19, il prossimo il 26 ottobre.
 
 - **Ponytail nelle sessioni cloud**: le sue skill sono copiate in
   `.claude/skills/` e sempre attive tramite CLAUDE.md (scelta dell'utente:

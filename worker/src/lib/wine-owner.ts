@@ -7,7 +7,7 @@
 
 // The fields that make a record "more complete" (and are filled in).
 export const DETAIL_FIELDS = ['region', 'denomination', 'grape_variety', 'alcohol', 'producer_url', 'image_url',
-  'vivino_rating', 'vivino_ratings_count', 'barcode'] as const;
+  'vivino_rating', 'vivino_ratings_count', 'rating_source', 'barcode'] as const;
 
 export const completeness = (w: Record<string, unknown>) => DETAIL_FIELDS.filter((f) => w[f] != null && w[f] !== '').length;
 

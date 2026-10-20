@@ -117,7 +117,7 @@ function rowHtml(b) {
   const price = priceText(b.price_paid) ? `${priceText(b.price_paid)} €` : '—';
   // The user's own score, or Vivino's when they have not given one (also in Confronta).
   const one = (n) => Number(n).toFixed(1).replace('.', ',');
-  const rating = b.my_rating != null ? `★ ${one(b.my_rating)}` : b.vivino_rating != null ? `Vivino ★ ${one(b.vivino_rating)}` : '';
+  const rating = b.my_rating != null ? `★ ${one(b.my_rating)}` : b.vivino_rating != null ? `${b.rating_source || 'Vivino'} ★ ${one(b.vivino_rating)}` : '';
   const score = escapeHtml(rating || '—');
   const quantity = escapeHtml(b.quantity);
   // .cellar-item wraps the sliding row and the actions revealed behind it.

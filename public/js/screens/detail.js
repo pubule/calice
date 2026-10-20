@@ -68,7 +68,8 @@ function renderStats(bottle) {
   if (bottle.vivino_rating != null) {
     const n = Number(bottle.vivino_ratings_count) || 0;
     const votes = `${n.toLocaleString('it-IT')} ${n === 1 ? 'voto' : 'voti'}`;
-    stats.push(stat(`★ ${one(bottle.vivino_rating)}`, 'Vivino', `Voto medio su Vivino ${one(bottle.vivino_rating)} su 5, ${votes}`));
+    const site = bottle.rating_source || 'Vivino';
+    stats.push(stat(`★ ${one(bottle.vivino_rating)}`, site, `Voto medio su ${site} ${one(bottle.vivino_rating)} su 5, ${votes}`));
   }
   document.querySelector('#detail-overlay .hero-stats').replaceChildren(...stats);
 }
