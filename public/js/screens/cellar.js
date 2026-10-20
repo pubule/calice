@@ -18,6 +18,8 @@ function skeletonRowHtml() {
 
 const ICON_COMPARE =
   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v18"/><path d="M16 3v18"/><path d="M3 8h4"/><path d="M17 8h4"/><path d="M3 16h4"/><path d="M17 16h4"/></svg> Confronta due vini';
+const FILTER_ICON =
+  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="7" x2="20" y2="7"/><circle cx="9" cy="7" r="2.3"/><line x1="4" y1="17" x2="20" y2="17"/><circle cx="16" cy="17" r="2.3"/></svg>';
 const ICON_CANCEL =
   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="6" y1="18" x2="18" y2="6"/></svg> Annulla selezione';
 
@@ -219,23 +221,30 @@ function renderFoodChips() {
   };
 }
 
+// One badge on Vini, one on "Scegli la bottiglia": same filters.
 function updateFilterBadge() {
   const count = Object.values(activeChips).filter(Boolean).length + (activeFood.size ? 1 : 0) + (unplacedOnly ? 1 : 0);
-  const badge = document.getElementById('cellar-filter-badge');
-  badge.textContent = count;
-  badge.classList.toggle('show', count > 0);
+  document.querySelectorAll('#cellar-filter-badge, #pick-filter-badge').forEach((badge) => {
+    badge.textContent = count;
+    badge.classList.toggle('show', count > 0);
+  });
+}
+
+// Search text and the Filtri sheet, shared by the Vini list and the bottle
+// picker of an element.
+function matchesFilters(b, q) {
+  const mQ = !q || `${b.name} ${b.producer} ${b.vintage ?? ''} ${(b.my_food_pairings ?? []).join(' ')}`.toLowerCase().includes(q);
+  const mType = !activeChips.type || b.type === activeChips.type;
+  const mCountry = !activeChips.country || b.country === activeChips.country;
+  const mRegion = !activeChips.region || b.region === activeChips.region;
+  const mFood = [...activeFood].every((f) => (b.my_food_pairings ?? []).includes(f));
+  return mQ && mType && mCountry && mRegion && mFood && (!unplacedOnly || freeCount(b) > 0);
 }
 
 function applyFilters() {
+  filterPickList();
   const q = document.getElementById('cellar-search-input').value.trim().toLowerCase();
-  const filtered = currentBottles.filter((b) => {
-    const mQ = !q || `${b.name} ${b.producer} ${b.vintage ?? ''} ${(b.my_food_pairings ?? []).join(' ')}`.toLowerCase().includes(q);
-    const mType = !activeChips.type || b.type === activeChips.type;
-    const mCountry = !activeChips.country || b.country === activeChips.country;
-    const mRegion = !activeChips.region || b.region === activeChips.region;
-    const mFood = [...activeFood].every((f) => (b.my_food_pairings ?? []).includes(f));
-    return mQ && mType && mCountry && mRegion && mFood && (!unplacedOnly || freeCount(b) > 0);
-  });
+  const filtered = currentBottles.filter((b) => matchesFilters(b, q));
   const nBottles = filtered.reduce((sum, b) => sum + (Number(b.quantity) || 0), 0);
   document.getElementById('cellar-results-count').textContent =
     `${filtered.length} ${filtered.length === 1 ? 'vino' : 'vini'} · ${nBottles} ${nBottles === 1 ? 'bottiglia' : 'bottiglie'}`;
@@ -1161,6 +1170,22 @@ async function placeBottle(elId, tier, col, depth) {
   renderBottlePickerForSlot(elId, tier, col, depth);
 }
 
+// Rows of "Scegli la bottiglia" that match its search and the Filtri sheet.
+function filterPickList() {
+  const list = document.getElementById('pick-bottle-list');
+  if (!list) return;
+  const q = (document.getElementById('pick-bottle-search')?.value ?? '').trim().toLowerCase();
+  let shown = 0;
+  list.querySelectorAll('.elem-row').forEach((row) => {
+    const b = currentBottles.find((x) => x.id === Number(row.dataset.id));
+    const ok = !!b && matchesFilters(b, q);
+    row.style.display = ok ? '' : 'none';
+    if (ok) shown++;
+  });
+  const none = document.getElementById('pick-bottle-none');
+  if (none) none.style.display = shown ? 'none' : '';
+}
+
 function renderBottlePickerForSlot(elId, tier, col, depth) {
   elementsMode = 'pick-bottle';
   document.getElementById('elements-back-btn').style.visibility = 'visible';
@@ -1169,13 +1194,13 @@ function renderBottlePickerForSlot(elId, tier, col, depth) {
   // Only wines with a bottle still without a place: each bottle has one spot.
   const choices = currentBottles.filter((b) => freeCount(b) > 0);
   const slotLabel = tier == null ? 'questo elemento' : `Livello ${tier} · ${colLetter(col)}.${depth}`;
-  // Search and type chips, like the Vini list: a cellar can hold many wines.
-  const types = [...new Set(choices.map((b) => b.type).filter(Boolean))];
   const body = document.getElementById('elements-body');
   body.innerHTML = `
     <p class="page-sub" style="margin:0 0 4px; font-size:calc(11.5rem/17); color:#736a5d;">${slotLabel} — scegli quale bottiglia mettere qui:</p>
-    ${choices.length > 1 ? `<input class="search" id="pick-bottle-search" type="search" aria-label="Cerca la bottiglia" placeholder="Cerca per nome, produttore, annata…">` : ''}
-    ${types.length > 1 ? `<div class="chips" id="pick-bottle-types">${['', ...types].map((t) => `<div class="chip${t ? '' : ' active'}" data-v="${escapeHtml(t)}" role="button" tabindex="0" aria-pressed="${!t}">${t ? escapeHtml(capitalize(t)) : 'Tutti'}</div>`).join('')}</div>` : ''}
+    ${choices.length > 1 ? `<div class="search-row pick-search">
+      <input id="pick-bottle-search" class="search" type="text" aria-label="Cerca la bottiglia" placeholder="Cerca per nome, produttore, annata…">
+      <div class="filter-btn" id="pick-filter-btn" role="button" tabindex="0" aria-label="Filtri" aria-haspopup="dialog">${FILTER_ICON}<span class="filter-badge" id="pick-filter-badge">0</span></div>
+    </div>` : ''}
     <div id="pick-bottle-list" style="display:flex; flex-direction:column; gap:9px;">${
       choices.length
         ? choices
@@ -1184,7 +1209,7 @@ function renderBottlePickerForSlot(elId, tier, col, depth) {
               const where = `${escapeHtml(b.producer)}${b.vintage ? ' · ' + escapeHtml(b.vintage) : ''}`;
               const sub = b.places?.length ? `${free} ${free === 1 ? 'bottiglia' : 'bottiglie'} senza posto · ${locationLabel({ ...b, quantity: b.places.length })}` : `${free} ${free === 1 ? 'bottiglia' : 'bottiglie'} senza posto`;
               return `
-        <div class="elem-row" data-id="${b.id}" data-type="${escapeHtml(b.type ?? '')}" data-text="${escapeHtml(`${b.name} ${b.producer} ${b.vintage ?? ''} ${b.region ?? ''}`.toLowerCase())}" role="button" tabindex="0">
+        <div class="elem-row" data-id="${b.id}" role="button" tabindex="0">
           ${photoHtml(b, 'cphoto')}
           <div class="elem-body"><div class="elem-name">${escapeHtml(b.name)}</div><div class="elem-sub">${where}</div><div class="elem-sub">${escapeHtml(sub)}</div></div>
         </div>`;
@@ -1192,24 +1217,10 @@ function renderBottlePickerForSlot(elId, tier, col, depth) {
             .join('') + '<div class="empty-note" id="pick-bottle-none" style="display:none;">Nessuna bottiglia trovata.</div>'
         : `<div class="empty-note">${currentBottles.length ? 'Tutte le bottiglie hanno già un posto.' : 'Nessuna bottiglia in questa cantina.'}</div>`
     }</div>`;
-  let pickType = '';
-  const filterPick = () => {
-    const q = (document.getElementById('pick-bottle-search')?.value ?? '').trim().toLowerCase();
-    let shown = 0;
-    body.querySelectorAll('#pick-bottle-list .elem-row').forEach((row) => {
-      const ok = (!pickType || row.dataset.type === pickType) && (!q || row.dataset.text.includes(q));
-      row.style.display = ok ? '' : 'none';
-      if (ok) shown++;
-    });
-    const none = document.getElementById('pick-bottle-none');
-    if (none) none.style.display = shown ? 'none' : '';
-  };
-  document.getElementById('pick-bottle-search')?.addEventListener('input', filterPick);
-  body.querySelectorAll('#pick-bottle-types .chip').forEach((chip) => chip.addEventListener('click', () => {
-    pickType = chip.dataset.v;
-    body.querySelectorAll('#pick-bottle-types .chip').forEach((c) => { c.classList.toggle('active', c === chip); c.setAttribute('aria-pressed', String(c === chip)); });
-    filterPick();
-  }));
+  document.getElementById('pick-bottle-search')?.addEventListener('input', filterPickList);
+  document.getElementById('pick-filter-btn')?.addEventListener('click', () => openSheet('filter-sheet'));
+  updateFilterBadge();
+  filterPickList();
   document.querySelectorAll('#pick-bottle-list .elem-row').forEach((row) =>
     row.addEventListener('click', async () => {
       const bottle = currentBottles.find((b) => b.id === Number(row.dataset.id));

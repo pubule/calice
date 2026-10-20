@@ -1856,9 +1856,12 @@ questo file è il riassunto "dove eravamo rimasti".
     dell'overlay (resta usata solo da "Scegli dove riporla").
     **Statistiche** si apre dalla prima voce di Profilo, con freccia indietro
     (`TAB_FOR_VIEW['view-stats'] = 'view-profile'`).
-    Build 173: "Scegli la bottiglia" (slot vuoto o "Aggiungi bottiglia" di uno
-    scatolone) ha una ricerca (nome, produttore, annata, regione) e i chip per
-    tipo, mostrati solo con più di una scelta / più di un tipo; ogni riga
+    Build 174: "Scegli la bottiglia" (slot vuoto o "Aggiungi bottiglia" di uno
+    scatolone) ha la stessa barra di Vini: casella + pulsante Filtri con badge,
+    che apre **lo stesso** `#filter-sheet` (spostato a livello `.screen`,
+    `z-index:23` sopra Elementi). Stessa logica (`matchesFilters()`) e stessi
+    filtri condivisi con Vini; `applyFilters()` aggiorna anche questa lista
+    (`filterPickList()`). Barra mostrata solo con più di una scelta; ogni riga
     mostra anche produttore e annata.
 
 - **Ponytail nelle sessioni cloud**: le sue skill sono copiate in

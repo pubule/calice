@@ -723,7 +723,9 @@
 
   /* sit above .detail-overlay (20) — a location edit opens this from inside
      the bottle detail sheet and must sit on top of it */
-  #elements-overlay, #cellar-sheet{z-index:22;}
+  #elements-overlay{z-index:22;}
+  /* Filtri si apre anche da "Scegli la bottiglia", sopra Elementi. */
+  #filter-sheet{z-index:23;}
 
   /* ---- custom alert/confirm/prompt, replaces the browser's native dialogs ---- */
   #app-modal{z-index:40;}
@@ -1223,6 +1225,5 @@ input.search:focus, select.search:focus, .text-input:focus, .num-input:focus, te
 .dims-preview b{font-family:'JetBrains Mono',monospace; font-size:calc(17rem/17); font-weight:600; color:#5b2333;}
 .dims-preview small{font-size:calc(12rem/17); color:#736a5d;}
 #create-element-btn{margin-top:18px;}
-/* "Scegli la bottiglia": ricerca e tipi sopra la lista. */
-#pick-bottle-search{margin:8px 0 10px;}
-#pick-bottle-types{margin-bottom:12px;}
+/* "Scegli la bottiglia": la stessa barra di ricerca di Vini. */
+#elements-body .pick-search{margin:8px 0 12px;}

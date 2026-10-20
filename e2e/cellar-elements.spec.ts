@@ -108,6 +108,19 @@ test.describe('Cantina — elementi', () => {
     await expect(page.locator('#pick-bottle-none')).toBeVisible();
     await page.fill('#pick-bottle-search', bottleName.toLowerCase());
     await expect(rows.filter({ visible: true })).toHaveCount(1);
+    // The same Filtri sheet as Vini: Tipo "bianco" hides the red wine.
+    await page.fill('#pick-bottle-search', 'E2E');
+    await page.click('#pick-filter-btn');
+    await expect(page.locator('#filter-sheet')).toHaveClass(/open/);
+    await page.selectOption('#cellar-sel-type', 'bianco');
+    await page.click('#filter-sheet-close');
+    await expect(page.locator('#pick-filter-badge')).toHaveText('1');
+    await expect(rows.filter({ hasText: bottleName, visible: true })).toHaveCount(0);
+    await expect(rows.filter({ hasText: `Altro Vino E2E ${runId}`, visible: true })).toHaveCount(1);
+    await page.click('#pick-filter-btn');
+    await page.selectOption('#cellar-sel-type', '');
+    await page.click('#filter-sheet-close');
+    await page.fill('#pick-bottle-search', bottleName.toLowerCase());
     await page.click(`#pick-bottle-list .elem-row:has-text("${bottleName}")`);
     await expect(page.locator('.box-item', { hasText: bottleName })).toBeVisible();
   });
