@@ -8,6 +8,7 @@ import { alertModal, confirmModal, promptModal, quantityModal } from '../modal.j
 import { showToast } from '../toast.js';
 import { quantityStepperHtml, wireQuantitySteppers } from '../fields.js';
 import { drinkWindow, drinkOrder } from '../drink-window.js';
+import { thumbOf } from '../photo-tools.js';
 
 function skeletonRowHtml() {
   return `
@@ -70,7 +71,7 @@ function colLetter(i) {
 // generic type-tinted placeholder whenever one is on file.
 function photoHtml(b, className) {
   return b.image_url
-    ? `<img class="${className} photo product" src="${escapeHtml(b.image_url)}" alt="">`
+    ? `<img class="${className} photo product" src="${escapeHtml(thumbOf(b.image_url))}" alt="">`
     : `<div class="${className} photo ${photoClass(b.type)}"></div>`;
 }
 

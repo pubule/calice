@@ -907,6 +907,11 @@ elenca più. Niente byte dentro il JSON: il Worker ha 128 MB di memoria. Un
 nuovo posto dove si salva una foto va aggiunto a `photoKeys()` e a
 `buildUserBackup()`.
 
+**Foto: sempre con la miniatura.** Ogni upload della foto di un vino passa
+da `photoForm()` (`js/photo-tools.js`), che aggiunge la miniatura; le liste
+mostrano `thumbOf(url)`, la scheda la foto intera. Le foto senza miniatura
+le sistema `tidyPhotos()` all'avvio.
+
 **Foto: mai link esterni.** Scelta dell'utente: ogni immagine sta nel nostro
 R2. Un `image_url` dal web viene copiato da `copyImageToR2()`
 (`routes/wine-image.ts`) al salvataggio, e il cron riprova quelli rimasti.

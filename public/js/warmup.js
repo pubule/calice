@@ -1,5 +1,6 @@
 import { api } from './api-client.js';
 import { landscapeFor, landscapeKey } from './landscape.js';
+import { thumbOf, tidyPhotos } from './photo-tools.js';
 
 // Start-up loader: everything the app shows is fetched once, here, so that
 // afterwards moving between screens and opening a wine never waits (the
@@ -53,10 +54,13 @@ export async function warmUp(onProgress = () => {}) {
     // One landscape per wine, then its photo; each bottle's own photo.
     const areas = new Map(bottles.map((b) => [landscapeKey(b), b]));
     const images = pool([...areas.values()], 4, (b) => step(landscapeFor(b).then((l) => preloadImage(l?.url))));
-    const bottleImages = pool(bottles.filter((b) => b.image_url), 6, (b) => step(preloadImage(b.image_url)));
+    // The small copy for the lists, then the photo for the wine's sheet.
+    const bottleImages = pool(bottles.filter((b) => b.image_url), 6, (b) => step(preloadImage(thumbOf(b.image_url)).then(() => preloadImage(b.image_url))));
     // What a wine's sheet reads when opened: notes and the user's photos.
     const sheets = pool(bottles, 6, (b) => step(Promise.all([api.get(`/api/bottles/${b.id}/notes`), api.get(`/api/bottles/${b.id}/photos`)])));
     await Promise.all([images, bottleImages, sheets]);
+    // Afterwards, not awaited: photos still without a small copy get one.
+    tidyPhotos([...bottles, ...lists.flatMap(([, w]) => w ?? [])]);
   })();
 
   await Promise.race([all, new Promise((r) => setTimeout(r, MAX_WAIT_MS))]);

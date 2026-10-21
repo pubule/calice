@@ -4,6 +4,7 @@ import { estimatedWindow } from '../drink-window.js';
 import { alertModal, promptModal, quantityModal } from '../modal.js';
 import { MAX_QUANTITY, WHOLE_NUMBER_ATTRS, parseDecimal, parsePrice, PRICE_ERROR, parseVintage, VINTAGE_ERROR, parseQuantity, quantityError, quantityStepperHtml, wireQuantitySteppers, parseDisgorged, DISGORGED_HINT } from '../fields.js';
 import { showToast } from '../toast.js';
+import { shrinkPhoto, photoForm, thumbOf } from '../photo-tools.js';
 import { tastingProfileHtml, wireTastingProfile, resetTastingProfile, readTastingProfile, setTastingProfile, isTastingProfileEmpty, TASTE_AXES } from '../tasting-profile.js';
 import { COUNTRIES } from '../data/wine-atlas.js';
 
@@ -26,7 +27,7 @@ const ICON_CLOCK = '<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stro
 
 function photoTag(imageUrl, type) {
   return imageUrl
-    ? `<img class="result-photo photo product" src="${escapeHtml(imageUrl)}" alt="">`
+    ? `<img class="result-photo photo product" src="${escapeHtml(thumbOf(imageUrl))}" alt="">`
     : `<div class="result-photo photo ${photoClass(type)}"></div>`;
 }
 
@@ -1513,70 +1514,11 @@ function showReviewPhoto(src) {
   document.getElementById('rec-photo-remove').classList.toggle('hidden', !src);
 }
 
-// Smaller before upload. A cut-out (transparent background, as product
-// shots often are) stays PNG so it can stand on the landscape; anything
-// else becomes JPEG.
-async function compressWineImage(blob) {
-  try {
-    const bitmap = await createImageBitmap(blob);
-    const scale = Math.min(1, 1200 / Math.max(bitmap.width, bitmap.height));
-    const canvas = document.createElement('canvas');
-    canvas.width = Math.max(1, Math.round(bitmap.width * scale));
-    canvas.height = Math.max(1, Math.round(bitmap.height * scale));
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-    bitmap.close();
-    const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    let transparent = false;
-    for (let i = 3; i < img.data.length; i += 4 * 97) if (img.data[i] < 250) { transparent = true; break; }
-    // Shop photos of a bottle usually sit on plain white: clear the white
-    // that touches the edges, and the bottle stands on the landscape.
-    if (!transparent && clearWhiteBackground(img)) {
-      ctx.putImageData(img, 0, 0);
-      transparent = true;
-    }
-    const out = await new Promise((resolve) => canvas.toBlob(resolve, transparent ? 'image/png' : 'image/jpeg', 0.86));
-    return out ?? blob;
-  } catch (err) {
+async function choosePhotoBlob(blob) {
+  const file = await shrinkPhoto(blob, { clearWhite: true }).catch((err) => {
     console.error('wine image compression failed, sending original', err);
     return blob;
-  }
-}
-
-// Flood fill from the borders over near-white pixels, making them
-// transparent. Only when all four corners are white (a white backdrop, not
-// a photo that happens to have a bright patch). Returns whether it did.
-function clearWhiteBackground(img) {
-  const { width: w, height: h, data } = img;
-  const white = (p) => data[p * 4] > 236 && data[p * 4 + 1] > 236 && data[p * 4 + 2] > 236;
-  if (![0, w - 1, (h - 1) * w, h * w - 1].every(white)) return false;
-  const seen = new Uint8Array(w * h);
-  const stack = [];
-  for (let x = 0; x < w; x++) stack.push(x, (h - 1) * w + x);
-  for (let y = 0; y < h; y++) stack.push(y * w, y * w + w - 1);
-  let cleared = 0;
-  while (stack.length) {
-    const p = stack.pop();
-    if (seen[p] || !white(p)) continue;
-    seen[p] = 1;
-    data[p * 4 + 3] = 0;
-    cleared++;
-    const x = p % w;
-    if (x > 0) stack.push(p - 1);
-    if (x < w - 1) stack.push(p + 1);
-    if (p >= w) stack.push(p - w);
-    if (p < w * (h - 1)) stack.push(p + w);
-  }
-  // Nearly everything white: not a bottle on a backdrop, leave it alone.
-  if (cleared > w * h * 0.95) {
-    for (let p = 0; p < w * h; p++) data[p * 4 + 3] = 255;
-    return false;
-  }
-  return cleared > 0;
-}
-
-async function choosePhotoBlob(blob) {
-  const file = await compressWineImage(blob);
+  });
   pendingPhoto = { file };
   showReviewPhoto(URL.createObjectURL(file));
 }
@@ -1680,9 +1622,7 @@ async function savePendingPhoto(wineId, doneLabel) {
     if (photo.remove) await api.del(`/api/wines/${wineId}/image`);
     else if (photo.url) await api.put(`/api/wines/${wineId}/image`, { url: photo.url });
     else {
-      const form = new FormData();
-      form.append('file', photo.file, 'foto');
-      await api.put(`/api/wines/${wineId}/image`, form);
+      await api.put(`/api/wines/${wineId}/image`, await photoForm(photo.file));
     }
   } catch (err) {
     console.error(err);

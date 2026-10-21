@@ -35,6 +35,32 @@ describe('wine photo chosen by the user', () => {
     expect((await app.request(wine.image_url, { headers: auth }, env)).status).toBe(404);
   });
 
+  it('keeps a small copy for the lists, served with ?thumb=1, falling back to the photo', async () => {
+    const JPEG = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 9, 9]);
+    const plain = new FormData();
+    plain.append('file', new File([PNG], 'x.png'));
+    const before = await (await app.request(`/api/wines/${wineId}/image`, { method: 'PUT', body: plain, headers: auth }, env)).json<any>();
+    const fallback = await app.request(`${before.image_url}?thumb=1`, { headers: auth }, env);
+    expect(fallback.headers.get('x-thumb')).toBe('0');
+    expect(fallback.headers.get('cache-control')).toContain('max-age=60');
+    expect(new Uint8Array(await fallback.arrayBuffer())).toEqual(PNG);
+
+    const form = new FormData();
+    form.append('file', new File([PNG], 'x.png'));
+    form.append('thumb', new File([JPEG], 't.jpg'));
+    const wine = await (await app.request(`/api/wines/${wineId}/image`, { method: 'PUT', body: form, headers: auth }, env)).json<any>();
+    const small = await app.request(`${wine.image_url}?thumb=1`, { headers: auth }, env);
+    expect(small.headers.get('x-thumb')).toBe('1');
+    expect(new Uint8Array(await small.arrayBuffer())).toEqual(JPEG);
+    // The old photo and its small copy went with it; the copy is never served on its own.
+    const oldKey = decodeURIComponent(before.image_url.slice('/api/wine-images/'.length));
+    expect(await env.PHOTOS.head(oldKey)).toBeNull();
+    const key = decodeURIComponent(wine.image_url.slice('/api/wine-images/'.length));
+    expect((await app.request(`/api/wine-images/${encodeURIComponent(key + '.thumb')}`, { headers: auth }, env)).status).toBe(404);
+    await app.request(`/api/wines/${wineId}/image`, { method: 'DELETE', headers: auth }, env);
+    expect(await env.PHOTOS.head(key + '.thumb')).toBeNull();
+  });
+
   it('refuses something that is not an image, and a stranger', async () => {
     const form = new FormData();
     form.append('file', new File([new TextEncoder().encode('<html>')], 'x.png'));

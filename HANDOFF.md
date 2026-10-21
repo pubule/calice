@@ -1942,6 +1942,19 @@ questo file è il riassunto "dove eravamo rimasti".
   filtro, quindi non accende il pallino. Sboccatura tolta di proposito
   (scelta dell'utente): vale solo per le bollicine ed è già dentro "Da bere".
 
+- **Foto dei vini più leggere** (build 186, `js/photo-tools.js`). Il
+  telefono ridimensiona (il Worker non può farlo gratis): foto a 900 px (era
+  1200), JPEG se opaca, WebP se trasparente dove il browser lo sa scrivere
+  (altrimenti PNG), più una miniatura da 240 px salvata in R2 accanto
+  (`<key>.thumb`, campo `thumb` del PUT). Liste e ricerca usano
+  `thumbOf(url)` = `?thumb=1`, che finché la miniatura non esiste serve la
+  foto intera con cache di 60 s (`X-Thumb: 0`). All'avvio, dopo il warmup,
+  `tidyPhotos()` rifà una per una le foto senza miniatura (vecchie o copiate
+  dal web dal Worker), tenendo la versione più piccola; non toglie più lo
+  sfondo bianco a quelle vecchie. Le miniature non vanno nei backup (si
+  rifanno). Provato in Chromium: 257 KB → 104 KB + miniatura 24 KB; su
+  iPhone non misurato (Safari potrebbe non scrivere WebP: allora PNG).
+
 ## Cose note, non (ancora) da rifare
 
 - Secret `TAVILY_API_KEY`, `VAPID_*` cancellati il 19 ottobre; la chiave

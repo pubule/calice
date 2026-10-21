@@ -12,6 +12,10 @@ import type { Env } from '../index';
 // under wines/<id>/…, served by /api/wine-images/<key>.
 
 const MAX_BYTES = 5_000_000;
+// A small copy for the lists, made by the phone and saved next to the photo
+// as <key>.thumb (the Worker cannot resize images for free).
+const THUMB = '.thumb';
+const MAX_THUMB_BYTES = 300_000;
 const PREFIX = '/api/wine-images/';
 const UA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1';
 
@@ -75,14 +79,15 @@ async function dropOwnImage(env: Env, wineId: number) {
   const key = keyOf(row.image_url);
   if (!key?.startsWith('wines/')) return;
   const others = await env.DB.prepare(`select image_url from wines where image_url like '/api/wine-images/%' and id != ?`).bind(wineId).all<{ image_url: string }>();
-  if (!others.results.some((w) => keyOf(w.image_url) === key)) await env.PHOTOS.delete(key);
+  if (!others.results.some((w) => keyOf(w.image_url) === key)) await env.PHOTOS.delete([key, key + THUMB]);
 }
 
-// PUT /api/wines/:id/image — multipart "file", or JSON { url }.
+// PUT /api/wines/:id/image — multipart "file" (and optionally "thumb"), or JSON { url }.
 wineImageRoutes.put('/:id/image', async (c) => {
   const id = Number(c.req.param('id'));
   if (!(await hasWineAccess(c.env, id, c.get('userId')))) return c.json({ error: 'not found' }, 404);
   let bytes: ArrayBuffer;
+  let thumb: ArrayBuffer | null = null;
   if ((c.req.header('content-type') ?? '').includes('application/json')) {
     const { url } = await c.req.json<{ url?: string }>().catch(() => ({ url: undefined }));
     const got = await downloadImage(String(url ?? ''));
@@ -94,12 +99,18 @@ wineImageRoutes.put('/:id/image', async (c) => {
     if (!file || typeof file === 'string') return c.json({ error: 'file required' }, 400);
     bytes = await file.arrayBuffer();
     if (bytes.byteLength > MAX_BYTES) return c.json({ error: 'too big' }, 400);
+    const small = form?.get('thumb');
+    if (small && typeof small !== 'string') {
+      thumb = await small.arrayBuffer();
+      if (thumb.byteLength > MAX_THUMB_BYTES || !detectImageType(thumb)) return c.json({ error: 'bad thumb' }, 400);
+    }
   }
   const type = detectImageType(bytes);
   if (!type) return c.json({ error: 'not an image' }, 400);
   await dropOwnImage(c.env, id);
   const key = `wines/${id}/${crypto.randomUUID()}`;
   await c.env.PHOTOS.put(key, bytes, { httpMetadata: { contentType: type } });
+  if (thumb) await c.env.PHOTOS.put(key + THUMB, thumb, { httpMetadata: { contentType: detectImageType(thumb)! } });
   const wine = await c.env.DB.prepare('update wines set image_url = ? where id = ? returning *').bind(PREFIX + encodeURIComponent(key), id).first();
   return c.json(wine);
 });
@@ -118,16 +129,19 @@ wineImageFileRoutes.use('*', requireAuth);
 
 // The catalog is shared, so any signed-in user may see a wine's photo. A key
 // is never reused (a new photo gets a new one): cached for good.
+// ?thumb=1 serves the small copy; while it does not exist yet, the photo
+// itself, cached briefly (X-Thumb: 0) so the small copy shows once made.
 wineImageFileRoutes.get('/:key', async (c) => {
   const key = decodeURIComponent(c.req.param('key'));
-  if (!key.startsWith('wines/')) return c.notFound();
-  const object = await c.env.PHOTOS.get(key);
+  if (!key.startsWith('wines/') || key.endsWith(THUMB)) return c.notFound();
+  const small = c.req.query('thumb') ? await c.env.PHOTOS.get(key + THUMB) : null;
+  const object = small ?? (await c.env.PHOTOS.get(key));
   if (!object) return c.notFound();
-  return new Response(object.body, {
-    headers: {
-      'content-type': object.httpMetadata?.contentType ?? 'application/octet-stream',
-      'cache-control': 'private, max-age=31536000, immutable',
-      'x-content-type-options': 'nosniff',
-    },
-  });
+  const headers: Record<string, string> = {
+    'content-type': object.httpMetadata?.contentType ?? 'application/octet-stream',
+    'cache-control': c.req.query('thumb') && !small ? 'private, max-age=60' : 'private, max-age=31536000, immutable',
+    'x-content-type-options': 'nosniff',
+  };
+  if (c.req.query('thumb')) headers['x-thumb'] = small ? '1' : '0';
+  return new Response(object.body, { headers });
 });
