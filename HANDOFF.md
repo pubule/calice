@@ -1963,6 +1963,14 @@ questo file è il riassunto "dove eravamo rimasti".
   nello stesso giro ne fa la miniatura. Se il download fallisce resta il
   link (riprova al prossimo avvio e col cron). Se "Anima" resta lenta, la
   causa è un'altra: guardare il suo `image_url` in D1.
+  Chiuse anche le altre strade: `ownWineId()` (copia di un vino di un altro
+  utente) prende la foto già in R2 di un record gemello invece di un link
+  web, e il cron copia fino a 200 link al giorno (erano 25). Sfondi e foto
+  delle bottiglie erano già solo in R2. **Non verificato in produzione**: un
+  conteggio dei vini con `image_url like 'http%'` (via workflow con il token
+  Cloudflare) è stato bloccato dai permessi della sessione; da fare in locale
+  con `wrangler d1 execute calice-db --remote --command "select count(*) from
+  wines where image_url like 'http%'"`.
 
 ## Cose note, non (ancora) da rifare
 

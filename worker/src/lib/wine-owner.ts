@@ -27,6 +27,14 @@ export async function ownWineId(db: D1Database, wineId: number, userId: number):
   const same = (await db.prepare(`select * from wines where ${SAME}`).bind(wine.name, wine.producer, wine.vintage).all<WineRow>()).results;
   const best = same.reduce((a, b) => (completeness(b) > completeness(a) ? b : a), wine);
   const mine = wine.owner_id === userId ? wine : same.filter((w) => w.owner_id === userId).sort((a, b) => a.id - b.id)[0];
+  const id = await fillOrCopy(db, mine, best, userId);
+  // A photo already in our R2 beats a web link (slow, and maybe gone).
+  const ownPhoto = same.find((w) => String(w.image_url ?? '').startsWith('/api/wine-images/'))?.image_url;
+  if (ownPhoto) await db.prepare(`update wines set image_url = ? where id = ? and (image_url is null or image_url like 'http%')`).bind(ownPhoto, id).run();
+  return id;
+}
+
+async function fillOrCopy(db: D1Database, mine: WineRow | undefined, best: WineRow, userId: number): Promise<number> {
   if (mine) {
     if (best.id !== mine.id) {
       await db

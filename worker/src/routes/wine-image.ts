@@ -58,7 +58,7 @@ export async function copyImageToR2(env: Pick<Env, 'DB' | 'PHOTOS'>, wineId: num
 }
 
 // Daily cron: the wines still showing a web link (download failed when saved).
-export async function copyExternalImages(env: Pick<Env, 'DB' | 'PHOTOS'>, fetchImpl: typeof fetch = fetch, limit = 25) {
+export async function copyExternalImages(env: Pick<Env, 'DB' | 'PHOTOS'>, fetchImpl: typeof fetch = fetch, limit = 200) {
   const rows = await env.DB.prepare(`select id, image_url from wines where image_url like 'http%' order by id limit ?`).bind(limit).all<{ id: number; image_url: string }>();
   let copied = 0;
   for (const w of rows.results) if (await copyImageToR2(env, w.id, w.image_url, fetchImpl)) copied++;

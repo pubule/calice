@@ -53,4 +53,16 @@ describe('wines per user', () => {
     const count = await env.DB.prepare(`select count(*) as n from wines where name = 'Barolo' and owner_id = ?`).bind(filled.owner_id).first<any>();
     expect(count.n).toBe(1);
   });
+
+  it('a copy takes the photo already in our R2 over a web link', async () => {
+    const a = await (await req('a@w.com', '/api/wines', 'POST', { name: 'Anima', producer: 'Le Due Torri', country: 'Italia', type: 'rosato', vintage: 2023 })).json<any>();
+    const b = await (await req('b@w.com', '/api/wines', 'POST', { name: 'Anima', producer: 'Le Due Torri', country: 'Italia', type: 'rosato', vintage: 2023,
+      region: 'Friuli', denomination: 'Friuli DOC', grapeVariety: 'Merlot' })).json<any>();
+    await env.DB.prepare('update wines set image_url = ? where id = ?').bind('/api/wine-images/wines%2F1%2Fown', a.id).run();
+    await env.DB.prepare('update wines set image_url = ? where id = ?').bind('https://example.com/anima.png', b.id).run();
+
+    const bottle = await (await req('c@w.com', `/api/cellars/${await cellarOf('c@w.com')}/bottles`, 'POST', { wineId: b.id, quantity: 1 })).json<any>();
+    const copy = await env.DB.prepare('select image_url, denomination from wines where id = ?').bind(bottle.wine_id).first<any>();
+    expect(copy).toEqual({ image_url: '/api/wine-images/wines%2F1%2Fown', denomination: 'Friuli DOC' });
+  });
 });
