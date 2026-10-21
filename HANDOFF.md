@@ -1934,6 +1934,14 @@ questo file è il riassunto "dove eravamo rimasti".
   `.claude/skills/` e sempre attive tramite CLAUDE.md (scelta dell'utente:
   nel cloud i plugin non si installano).
 
+- **Ordinamento della Cantina** (build 185): "Ordina per" in cima al foglio
+  Filtri: Aggiunti di recente (ordine del server, predefinito) · Da bere
+  prima (stesso `drinkOrder` della Home) · Nome · Annata (dalla più vecchia,
+  senza annata in fondo) · Voto (mio, altrimenti Vivino/web). Una sola
+  direzione per voce; ricordato sul dispositivo (`localStorage`); non è un
+  filtro, quindi non accende il pallino. Sboccatura tolta di proposito
+  (scelta dell'utente): vale solo per le bollicine ed è già dentro "Da bere".
+
 ## Cose note, non (ancora) da rifare
 
 - Secret `TAVILY_API_KEY`, `VAPID_*` cancellati il 19 ottobre; la chiave

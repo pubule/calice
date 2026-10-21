@@ -7,6 +7,7 @@ import { me } from '../auth.js';
 import { alertModal, confirmModal, promptModal, quantityModal } from '../modal.js';
 import { showToast } from '../toast.js';
 import { quantityStepperHtml, wireQuantitySteppers } from '../fields.js';
+import { drinkWindow, drinkOrder } from '../drink-window.js';
 
 function skeletonRowHtml() {
   return `
@@ -241,10 +242,36 @@ function matchesFilters(b, q) {
   return mQ && mType && mCountry && mRegion && mFood && (!unplacedOnly || freeCount(b) > 0);
 }
 
+// "Ordina per" in the filter sheet. Not a filter (hides nothing, no badge);
+// remembered on this device. The server's order is "Aggiunti di recente".
+const SORT_KEY = 'calice-cellar-sort';
+const myScore = (b) => b.my_rating ?? b.vivino_rating ?? -1;
+const SORTS = {
+  // Same order as Home's "Da bere": the most urgent first.
+  drink: (a, b) => drinkOrder({ window: drinkWindow(a) }, { window: drinkWindow(b) }),
+  name: (a, b) => String(a.name).localeCompare(String(b.name), 'it') || (a.vintage ?? 0) - (b.vintage ?? 0),
+  // Wines without a vintage last.
+  vintage: (a, b) => (a.vintage ?? 9999) - (b.vintage ?? 9999) || String(a.name).localeCompare(String(b.name), 'it'),
+  rating: (a, b) => myScore(b) - myScore(a),
+};
+const sortSelect = document.getElementById('cellar-sort');
+try {
+  const saved = localStorage.getItem(SORT_KEY);
+  if (sortSelect && SORTS[saved]) sortSelect.value = saved;
+} catch {}
+sortSelect?.addEventListener('change', () => {
+  try {
+    localStorage.setItem(SORT_KEY, sortSelect.value);
+  } catch {}
+  applyFilters();
+});
+
 function applyFilters() {
   filterPickList();
   const q = document.getElementById('cellar-search-input').value.trim().toLowerCase();
   const filtered = currentBottles.filter((b) => matchesFilters(b, q));
+  const sort = SORTS[sortSelect?.value];
+  if (sort) filtered.sort(sort);
   const nBottles = filtered.reduce((sum, b) => sum + (Number(b.quantity) || 0), 0);
   document.getElementById('cellar-results-count').textContent =
     `${filtered.length} ${filtered.length === 1 ? 'vino' : 'vini'} · ${nBottles} ${nBottles === 1 ? 'bottiglia' : 'bottiglie'}`;
