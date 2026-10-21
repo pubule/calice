@@ -98,15 +98,19 @@ export async function photoForm(file) {
 
 // Once per start, in the background: every photo of the user's wines that
 // has no small copy yet (saved before build 186, or copied from the web by
-// the Worker) is shrunk and saved again with one. One at a time, after the
-// screens have loaded; whatever is left is done at the next start.
+// the Worker) is shrunk and saved again with one. A photo still linked to
+// another site (its copy failed) is copied into ours first: until then it
+// loads at full size from that site. One at a time, after the screens have
+// loaded; whatever is left is done at the next start.
 export async function tidyPhotos(wines) {
   const seen = new Set();
   for (const w of wines) {
-    const url = w.image_url;
-    if (!url?.startsWith('/api/wine-images/') || seen.has(w.wine_id)) continue;
+    let url = w.image_url;
+    if (!url || seen.has(w.wine_id)) continue;
     seen.add(w.wine_id);
     try {
+      if (/^https?:/.test(url)) url = (await api.put(`/api/wines/${w.wine_id}/image`, { url })).image_url;
+      if (!url?.startsWith('/api/wine-images/')) continue;
       const probe = await fetch(thumbOf(url), { cache: 'no-store', credentials: 'include' });
       if (!probe.ok || probe.headers.get('x-thumb') !== '0') continue;
       const original = await probe.blob();

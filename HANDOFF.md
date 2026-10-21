@@ -1954,6 +1954,15 @@ questo file è il riassunto "dove eravamo rimasti".
   sfondo bianco a quelle vecchie. Le miniature non vanno nei backup (si
   rifanno). Provato in Chromium: 257 KB → 104 KB + miniatura 24 KB; su
   iPhone non misurato (Safari potrebbe non scrivere WebP: allora PNG).
+- **Foto ancora linkate al web** (build 187). Segnalato: "Anima" (Le Due
+  Torri) carica la foto molto più lentamente degli altri. Non verificabile da
+  qui (la sessione cloud non raggiunge D1/R2 di produzione), ma l'unico caso
+  che `thumbOf` non copre è un `image_url` rimasto `http…` (copia in R2
+  fallita al salvataggio): arriva a dimensione piena dal sito esterno.
+  `tidyPhotos()` ora lo fa copiare dal Worker (`PUT /image` con `{ url }`) e
+  nello stesso giro ne fa la miniatura. Se il download fallisce resta il
+  link (riprova al prossimo avvio e col cron). Se "Anima" resta lenta, la
+  causa è un'altra: guardare il suo `image_url` in D1.
 
 ## Cose note, non (ancora) da rifare
 
