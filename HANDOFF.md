@@ -1929,6 +1929,12 @@ questo file è il riassunto "dove eravamo rimasti".
     Condivisi per scelta: ricerca di "Aggiungi" (vini di tutti, con foto),
     `search_cache`, tetto giornaliero OCR comune, ricerche recenti in
     localStorage del dispositivo.
+    Build 188: lettore codici a barre (zbar-wasm 0.9.15 + polyfill 0.9.23)
+    servito da `public/vendor/` invece che da jsdelivr (stessi hash SRI),
+    in `SHELL_FILES` con `zbar.wasm`, che lo script carica dalla sua stessa
+    cartella. Foto: tutte in R2 (45 vini, nessun link esterno); restano
+    esterne solo le miniature Vivino nei risultati di ricerca, copiate in
+    R2 quando si aggiunge il vino.
 
 - **Ponytail nelle sessioni cloud**: le sue skill sono copiate in
   `.claude/skills/` e sempre attive tramite CLAUDE.md (scelta dell'utente:

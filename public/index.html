@@ -181,7 +181,7 @@
     <input type="file" id="restore-file" class="restore-file" accept=".json,application/json" aria-hidden="true" tabindex="-1">
     <div class="logout" role="button" tabindex="0">Esci</div>
     <div class="app-footer">
-      <div class="app-build">build 187</div>
+      <div class="app-build">build 188</div>
       <div class="app-credit"><a href="https://www.flaticon.com/free-icons/wine" target="_blank" rel="noopener">Wine icons created by iconixar - Flaticon</a></div>
       <div class="app-credit">Foto dei paesaggi da <a href="https://commons.wikimedia.org/" target="_blank" rel="noopener">Wikimedia Commons</a>, autori e licenze nella scheda di ogni vino</div>
     </div>
@@ -534,8 +534,11 @@
      Shape Detection API: zbar-wasm (a battle-tested C barcode decoder
      compiled to WASM) backs a drop-in window.BarcodeDetector, so the app's
      own scan code stays the same on every browser — no separate code path. -->
-<script src="https://cdn.jsdelivr.net/npm/@undecaf/zbar-wasm@0.9.15/dist/index.js" integrity="sha384-yW9Y7lGkfKYN+jnhSQpcumEsBkSCx/Ab9s2+rHyU5faxR81n4c2mhBw1K6TyFG2a" crossorigin="anonymous"></script>
-<script src="https://cdn.jsdelivr.net/npm/@undecaf/barcode-detector-polyfill@0.9.23/dist/index.js" integrity="sha384-NFIMegDBZ9bfElS5WQzuZUmREleRh+7jLt23CXLvKgM2tNuSWYZyCSeR/I1vvXeF" crossorigin="anonymous"></script>
+<!-- Served from our own site (copies of the npm packages, same SRI hashes),
+     not a CDN: nothing loads from outside. zbar-wasm fetches zbar.wasm from
+     its own folder, so the three files stay together in /vendor. -->
+<script src="/vendor/zbar-wasm-0.9.15.js" integrity="sha384-yW9Y7lGkfKYN+jnhSQpcumEsBkSCx/Ab9s2+rHyU5faxR81n4c2mhBw1K6TyFG2a"></script>
+<script src="/vendor/barcode-detector-polyfill-0.9.23.js" integrity="sha384-NFIMegDBZ9bfElS5WQzuZUmREleRh+7jLt23CXLvKgM2tNuSWYZyCSeR/I1vvXeF"></script>
 <script>
   try {
     window.BarcodeDetector.getSupportedFormats();

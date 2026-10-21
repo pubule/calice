@@ -1,4 +1,4 @@
-const CACHE = 'calice-shell-v187';
+const CACHE = 'calice-shell-v188';
 const SHELL_FILES = [
   '/', '/index.html', '/css/app.css',
   '/js/main.js', '/js/api-client.js', '/js/router.js', '/js/auth.js', '/js/util.js', '/js/modal.js',
@@ -7,6 +7,7 @@ const SHELL_FILES = [
   '/js/screens/stats.js', '/js/screens/profile.js', '/js/screens/detail.js',
   '/js/screens/explore.js', '/js/screens/aromas.js', '/js/screens/tasting.js', '/js/wine-expectation.js', '/js/data/wine-atlas.js', '/js/data/aroma-guide.js',
   '/js/loader-glass.js', '/loader-glass.png', '/loader-bowl.png',
+  '/vendor/zbar-wasm-0.9.15.js', '/vendor/barcode-detector-polyfill-0.9.23.js', '/vendor/zbar.wasm',
   '/manifest.webmanifest', '/icon-192.png', '/icon-512.png', '/apple-touch-icon.png',
 ];
 
